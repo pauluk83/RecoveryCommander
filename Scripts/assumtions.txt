@@ -1,0 +1,44 @@
+Here’s your full, locked-in architectural assumption list, Zane — cumulative, permanent, and enforced across every file I deliver:
+
+✅ Recovery Commander Architectural Assumptions
+🧱 Code Structure & Workflow
+- Designer-Free Architecture: No use of .Designer.cs or InitializeComponent(). All layout and controls are manually defined in code.
+- Modular Execution: Modules implement an embedded IModule interface and are injected via InjectModuleUI(Control).
+- Audit Compliance: Every file includes a permanent audit marker and changelog block at the top.
+- No Code Snippets or Explanations: All responses must deliver full, error-checked files only — ready to paste and run. No partial snippets, no inline commentary.
+- No External Interface or Enum Files: Shared types like IModule and Theme are embedded directly in MainForm.cs.
+
+🎨 UI & UX Design
+- Native Windows 11 Look and Feel:
+- Rounded corners, fluent spacing, Segoe UI font
+- High DPI awareness and accessibility compliance
+- Theme-aware styling for Light, Dark, and HighContrast
+- Controls styled to match Windows 11 system chrome
+- Fullscreen Launch: App opens maximized with Minimize, Maximize, and Close buttons.
+- Menu Bar:
+- File → Exit
+- Themes → Light, Dark, HighContrast (with tick/checkmark for active theme)
+- Help → About dialog
+- About Dialog:
+- Displays build date, author name (Zane Stanton), and a standard licensing message:
+
+⚙️ Runtime Behavior
+- Theme Switching:
+- Runtime-safe and updates all controls
+- Ticked menu item reflects current theme
+- Command Execution:
+- Real-time output streamed to a log box
+- Progress bar shows execution status
+- Cancel button terminates running process safely
+- Centralized Logging:
+- Timestamped entries
+- Routed through Log(string message)
+- Error Handling:
+- All public methods include try-catch blocks
+- Failures are logged, not silently ignored
+
+🔒 Development Philosophy
+- No Regression: Every update builds cumulatively — no features removed, no standards dropped.
+- Extensibility First: All patterns are future-proof and maintainable by other developers.
+- Rapid Iteration: Code is structured for fast prototyping and modular injection.
+- Accessibility & Auditability: Every control and module follows accessibility and traceability standards.
