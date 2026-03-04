@@ -517,7 +517,6 @@ namespace RecoveryCommander.Forms
             
             outputShell.Controls.Add(this.outputBox);
             outputShell.Controls.Add(shellInputField);
-            outputShell.Controls.Add(outputHeaderPanel);
             this.outputPanel.Controls.Add(outputShell);
         }
 
@@ -543,9 +542,10 @@ namespace RecoveryCommander.Forms
             bottomPanel.Height = this.progressPanel.Height + paddingExtra + 6;
             bottomPanel.Padding = new Padding(ProfessionalDesignSystem.Spacing.XL, 0, ProfessionalDesignSystem.Spacing.XL, ProfessionalDesignSystem.Spacing.LG);
 
-            // Progress panel controls are already added in InitializeProgressAndOutput
-            bottomPanel.Controls.Add(this.progressPanel);
+            // Add outputPanel first so it has the lowest dock priority
             bottomPanel.Controls.Add(this.outputPanel);
+            // Add progressPanel last so it has highest dock priority and isn't hidden by Fill
+            bottomPanel.Controls.Add(this.progressPanel);
 
             this.mainSplitContainer.Panel1.Controls.Add(this.moduleButtonsPanel);
             this.mainSplitContainer.Panel2.Controls.Add(this.moduleDisplayPanel);
@@ -665,35 +665,33 @@ namespace RecoveryCommander.Forms
 
             outputHeaderLabel = new Label
             {
-                Text = "Command Feed",
+                Text = "",
                 Dock = DockStyle.Left,
                 AutoSize = false,
-                Width = 220,
-                Font = Theme.Typography.Title,
-                ForeColor = Theme.Colors.Text,
-                BackColor = Color.Transparent,
-                TextAlign = ContentAlignment.MiddleLeft
+                Width = 0,
+                Visible = false
             };
 
             outputToolbar = new ToolStrip
             {
                 Dock = DockStyle.Right,
+                LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow,
                 GripStyle = ToolStripGripStyle.Hidden,
                 Renderer = new ToolStripProfessionalRenderer(),
-                AutoSize = false,
+                AutoSize = true,
                 Height = 38,
                 Padding = new Padding(0, 2, 0, 0),
                 Stretch = false,
                 BackColor = Color.Transparent
             };
 
-            copyOutputButton = new ToolStripButton("Copy") { ToolTipText = "Copy visible output" };
+            copyOutputButton = new ToolStripButton("Copy") { ToolTipText = "Copy visible output", DisplayStyle = ToolStripItemDisplayStyle.Text };
             copyOutputButton.Click += (s, e) => CopyOutputToClipboard();
 
-            saveOutputButton = new ToolStripButton("Save") { ToolTipText = "Save output to file" };
+            saveOutputButton = new ToolStripButton("Save") { ToolTipText = "Save output to file", DisplayStyle = ToolStripItemDisplayStyle.Text };
             saveOutputButton.Click += (s, e) => SaveOutputToFile();
 
-            clearOutputButton = new ToolStripButton("Clear") { ToolTipText = "Clear command feed" };
+            clearOutputButton = new ToolStripButton("Clear") { ToolTipText = "Clear command feed", DisplayStyle = ToolStripItemDisplayStyle.Text };
             clearOutputButton.Click += (s, e) => ClearOutputHistory();
 
             outputFilterButton = new ToolStripDropDownButton("Filter");
@@ -713,7 +711,8 @@ namespace RecoveryCommander.Forms
             {
                 CheckOnClick = true,
                 Checked = isAutoScrollEnabled,
-                ToolTipText = "Toggle automatic scroll to latest output"
+                ToolTipText = "Toggle automatic scroll to latest output",
+                DisplayStyle = ToolStripItemDisplayStyle.Text
             };
             autoScrollToggleButton.CheckedChanged += (s, e) => isAutoScrollEnabled = autoScrollToggleButton!.Checked;
 
@@ -725,7 +724,6 @@ namespace RecoveryCommander.Forms
             outputToolbar.Items.Add(new ToolStripSeparator());
             outputToolbar.Items.Add(autoScrollToggleButton);
 
-            headerPanel.Controls.Add(outputToolbar);
             headerPanel.Controls.Add(outputHeaderLabel);
 
             ApplyOutputTheme();
@@ -1931,6 +1929,14 @@ namespace RecoveryCommander.Forms
             StartUIRefreshLoop();
             
             // Update UI to show action is running
+            progressPanel.Visible = true;
+            outputPanel.Visible = true;
+            
+            // Expand the bottom panel to fit both progress and output
+            var btmPanel = progressPanel.Parent as Panel;
+            if (btmPanel != null)
+                btmPanel.Height = 300;
+            
             progressBar.Value = 0;
             progressBar.Maximum = 100;
             statusLabel.Text = $"Running: {action.DisplayName ?? action.Name}";

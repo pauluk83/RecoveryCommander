@@ -1,6 +1,24 @@
 # RecoveryCommander Changelog
 
-## 2026-02-24 - Autonomous AI Auditing & Security Patches
+## 2026-03-04 - UI Fixes & Utilities URL Updates
+
+### Bug Fixes
+- **Progress Bar & Output Panel Restored** — Fixed a critical regression where the progress bar and output feed were invisible when running module actions. The root cause was that `progressPanel.Visible` and `outputPanel.Visible` were never being set to `true` in the async action execution path (`RunModuleActionAsync`) — only their child controls were made visible, while the parent panels remained hidden. Both panels are now explicitly shown when an action starts, and the bottom panel height is expanded to 300px to accommodate both.
+- **Cancel Button Restored** — The Cancel button was hidden along with the progress panel due to the same parent visibility issue. It now correctly appears during any running operation and hides again on completion.
+
+### UI Cleanup
+- **"Command Feed" Label Removed** — The "Command Feed" heading above the output box has been removed for a cleaner, more minimal look. The output area now shows only the log feed and shell input field without a title banner.
+- **Output Toolbar Removed** — Auto Scroll, Copy, Save, Clear, and Filter toolbar buttons have been removed from the output panel header as requested, simplifying the output area.
+
+### Utilities Module — Download URL Updates
+- **PC Repair Suite** — Updated download URL to new hosted location.
+- **CCleaner Portable** — Updated download URL to new hosted location.
+- **Macrium Reflect Portable** — Updated download URL to new hosted location.
+
+### Build
+- Solution builds successfully with 0 errors.
+
+
 
 ### Security Enhancements
 - **DLL Hijacking Mitigation** — Removed insecure recursive fallback directory searching for plugins in `ModuleLoader.cs`. The module loader now strictly enforces loading modules only from the local `AppContext.BaseDirectory` + `"Module"`, effectively preventing potential arbitrary DLL execution if a malicious DLL was dropped in a globally writable parent directory.

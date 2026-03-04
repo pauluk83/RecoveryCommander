@@ -24,14 +24,14 @@ namespace UtilitiesModule
         private static class DownloadUrls
         {
             public const string CompactGuiLatest = "https://github.com/IridiumIO/CompactGUI/releases/latest/download/CompactGUI.exe";
-            public const string CCleaner = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_edeb6f790bdd4960bdfd1e7ad31a2edc.txt?dn=ccleaner.txt";
+            public const string CCleaner = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_1badceab0a0c4c65902f587b36b8d3be.txt?dn=ccleaner.txt";
             public const string Defragger = "https://drive.google.com/uc?export=download&id=1y-kGi-voJGMaT0KP8nzJ6Y5nuM9rIj4l";
             public const string Ninite = "https://drive.google.com/uc?export=download&id=1qIF8HXRBi7fdxI-ryOxJwG5UioROfMgx";
             public const string Rufus = "https://api.github.com/repos/pbatard/rufus/releases/latest";
-            public const string MacriumPortable = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_170456babcc44185a1030ad2a9a1e869.txt?dn=Macrium.txt";
+            public const string MacriumPortable = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_008a1fe1988b4d48afb25371d743c596.txt?dn=Macrium.txt";
             public const string Win11DebloatZip = "https://github.com/Raphire/Win11Debloat/archive/refs/heads/master.zip";
             public const string VCRedistApi = "https://api.github.com/repos/abbodi1406/vcredist/releases/latest";
-            public const string PCRepairSuite = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_1e2420afa5e1404b8f8f01f85018dbb6.txt?dn=PCRepairSuite.txt";
+            public const string PCRepairSuite = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_97245b3f1c08429db4201b1cbd33e992.txt?dn=PCRepairSuite.txt";
         }
 
         public string Name => "Utilities";
