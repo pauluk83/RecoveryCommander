@@ -1938,10 +1938,11 @@ namespace RecoveryCommander.Module
                             }
                         }
                     }
-                    catch (Exception appxEx)
-                    {
-                        reportOutput($"Warning: Could not list Store apps: {appxEx.Message}");
-                    }
+                }
+                catch (Exception appxEx)
+                {
+                    reportOutput($"Warning: Could not list Store apps: {appxEx.Message}");
+                }
 
                     if (cancellationToken.IsCancellationRequested) return;
 
