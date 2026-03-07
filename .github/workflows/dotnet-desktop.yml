@@ -72,6 +72,10 @@ jobs:
     - name: Publish Single-File Executable
       run: dotnet publish $env:Solution_Name --configuration Release --runtime win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true --output ./publish
 
+    - name: Push Packages to GitHub
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: dotnet nuget push "**/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:

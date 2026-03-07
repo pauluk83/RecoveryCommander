@@ -3,7 +3,14 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputType>Library</OutputType>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Zane Stanton</Authors>
+    <Company>RecoveryCommander Project</Company>
+    <Description>Standard interfaces and shared contracts for RecoveryCommander modules and plugins.</Description>
+    <PackageProjectUrl>https://github.com/pauluk83/RecoveryCommander</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/pauluk83/RecoveryCommander.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>recovery, windows, system-prep, management</PackageTags>
   </PropertyGroup>
 </Project>

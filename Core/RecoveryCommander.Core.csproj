@@ -6,6 +6,14 @@
     <OutputType>Library</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <NoWarn>$(NoWarn);NU1510</NoWarn>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Zane Stanton</Authors>
+    <Company>RecoveryCommander Project</Company>
+    <Description>Core infrastructure and common utilities for the RecoveryCommander system recovery toolkit.</Description>
+    <PackageProjectUrl>https://github.com/pauluk83/RecoveryCommander</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/pauluk83/RecoveryCommander.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>recovery, windows, system-prep, management</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
