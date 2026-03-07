@@ -24,6 +24,9 @@ using System.Text.Json;
 using System.ComponentModel;
 using System.Reflection;
 using System.Windows.Forms;
+using System.Text;
+using Microsoft.Win32;
+using System.Management;
 
 namespace RecoveryCommander.Module
 {
@@ -59,13 +62,10 @@ namespace RecoveryCommander.Module
         public IEnumerable<ModuleAction> Actions => new List<ModuleAction>
         {
             // Header for maintenance group (non-actionable)
-            new ModuleAction(string.Empty, "Maintenance") { IsHeader = true, AutoTick = false },
-
-            // Maintenance group
-            new ModuleAction("Scan for Windows Updates", "Trigger Windows Update scan/install (usoclient)") { ExecuteAction = ScanForWindowsUpdatesAsync },
-            new ModuleAction("Upgrade winget packages", "Run winget upgrade --all to upgrade installed packages") { ExecuteAction = UpgradeWingetPackagesAsync },
-            new ModuleAction("Update Store app", "Check Microsoft Store and update all available Store apps") { ExecuteAction = UpdateStoreAppsAsync },
-            new ModuleAction("Backup Drivers", "Export all system drivers to D:\\Drivers folder") { ExecuteAction = BackupDriversAsync },
+            new ModuleAction("System Software Upgrade", "Upgrade all apps via winget (includes Store, browsers, tools)") { ExecuteAction = UpgradeWingetPackagesAsync },
+            new ModuleAction("Microsoft Store Update", "Specifically force updates for Microsoft Store apps only") { ExecuteAction = UpdateStoreAppsAsync },
+            new ModuleAction("Scan for Windows Updates", "Real-time search for OS updates using native Windows Update API") { ExecuteAction = ScanForWindowsUpdatesAsync },
+            new ModuleAction("Backup System Drivers", "Export active third-party drivers to D:\\Drivers") { ExecuteAction = BackupDriversAsync },
 
             // Header for optimization/cleanup group (non-actionable)
             new ModuleAction(string.Empty, "Optimization") { IsHeader = true, AutoTick = false },
@@ -73,16 +73,30 @@ namespace RecoveryCommander.Module
             // Optimization and cleanup actions
             new ModuleAction("Clear Chrome Cache", "Clear Chrome Cache (preserve cookies, passwords, site settings)") { IsDestructive = true, ExecuteAction = ClearChromeCacheAsync },
             new ModuleAction("Clear Edge Cache", "Clear Edge Cache (preserve cookies, passwords, site settings)") { IsDestructive = true, ExecuteAction = ClearEdgeCacheAsync },
-            new ModuleAction("Delete Temp Files", "Delete temporary files") { IsDestructive = true, ExecuteAction = DeleteTempFilesAsync },
-            new ModuleAction("Compact OS", "Compact OS (Compact.exe)") { IsDestructive = true, ExecuteAction = RunCompactOSAsync },
-            new ModuleAction("Run Disk Cleanup", "Run Disk Cleanup & component cleanup") { IsDestructive = true, ExecuteAction = RunDiskCleanupAsync },
+            new ModuleAction("Delete Temp Files", "Purge redundant temporary files (Instant deep-clean)") { IsDestructive = true, ExecuteAction = DeleteTempFilesAsync },
+            new ModuleAction("Compact OS", "Compress system files (Recommended only for small SSDs < 128GB)") { IsDestructive = true, ExecuteAction = RunCompactOSAsync },
+            new ModuleAction("Quick Disk Cleanup", "Run cleanmgr (Logs, Error reports, Recycle Bin)") { IsDestructive = true, ExecuteAction = RunDiskCleanupAsync },
+            new ModuleAction("Deep Clean WinSxS", "Run DISM ResetBase (Cleanup component store / Warning: Makes updates permanent)") { IsDestructive = true, ExecuteAction = DeepCleanWinSxSAsync },
+            new ModuleAction("Optimize Driver Store", "Remove unused/old OEM drivers via pnputil") { IsDestructive = true, ExecuteAction = OptimizeDriverStoreAsync },
             new ModuleAction("Optimize Drives", "Optimize /defragment drives") { ExecuteAction = OptimizeDrivesAsync },
             new ModuleAction("Clear Prefetch", "Clear Windows Prefetch") { IsDestructive = true, ExecuteAction = ClearPrefetchAsync },
             new ModuleAction("Empty Recycle Bin", "Empty Recycle Bin") { IsDestructive = true, ExecuteAction = EmptyRecycleBinAsync },
-            new ModuleAction("Clean Windows Update", "Clean up Windows Update files") { IsDestructive = true, ExecuteAction = CleanWindowsUpdateAsync },
+            new ModuleAction("Clean Windows Update", "Stop services and wipe SoftwareDistribution/Catroot2") { IsDestructive = true, ExecuteAction = CleanWindowsUpdateAsync },
+            new ModuleAction("Reset Network", "Flush DNS, ARP, Winsock, and renew IP config") { IsDestructive = true, ExecuteAction = ResetNetworkAsync },
+            new ModuleAction("Clean User Profiles", "Delete obsolete Windows user profiles") { IsDestructive = true, ExecuteAction = CleanUserProfilesAsync },
+            new ModuleAction("Audit Scheduled Tasks", "Disable unauthorized startup tasks") { IsDestructive = true, ExecuteAction = AuditScheduledTasksAsync },
+            new ModuleAction("Clean Shadow Copies", "Purge bloated shadow copies via VSS") { IsDestructive = true, ExecuteAction = CleanShadowCopiesAsync },
+            new ModuleAction("Purge Event Logs", "Clear all Windows Event Logs") { IsDestructive = true, ExecuteAction = PurgeEventLogsAsync },
+            new ModuleAction("Privacy Hardening", "Deep disable DiagTrack services, telemetry, and tracking policies") { IsDestructive = true, ExecuteAction = DisableTelemetryAsync },
+            
+            // New: Health Assessment
+            new ModuleAction("Generate Health Report", "Export System Health Assessment to Desktop") { IsHeader = false, AutoTick = false, ExecuteAction = GenerateHealthReportAsync },
             
             // New: System Tweaks action
-            new ModuleAction("ApplySystemTweaks", "Apply System Tweaks (Windows 11)") { IsHeader = false, AutoTick = false, Highlight = true, ExecuteAction = ApplySystemTweaksAsync }
+            new ModuleAction("Interface Tweaks", "Apply UI/UX improvements (Win11 Context Menu, Taskbar, Explorer)") { IsHeader = false, AutoTick = false, Highlight = true, ExecuteAction = ApplySystemTweaksAsync },
+            
+            // New: Export Installed Software
+            new ModuleAction("Export Installed Software", "Export list of installed software (version, size, links, keys)") { IsHeader = false, AutoTick = false, ExecuteAction = ExportInstalledSoftwareAsync }
         };
 
         public string Version => "1.0.0";
@@ -361,6 +375,9 @@ namespace RecoveryCommander.Module
                 return;
             }
 
+            // Close Chrome to prevent file-in-use locks
+            KillProcessGracefully("chrome", reportOutput);
+
             foreach (var profile in Directory.EnumerateDirectories(chromeBase))
             {
                 if (isCancelled()) return;
@@ -393,6 +410,9 @@ namespace RecoveryCommander.Module
                 reportOutput("Edge user data folder not found.");
                 return;
             }
+
+            // Close Edge to prevent file-in-use locks
+            KillProcessGracefully("msedge", reportOutput);
 
             foreach (var profile in Directory.EnumerateDirectories(edgeBase))
             {
@@ -428,16 +448,44 @@ namespace RecoveryCommander.Module
             {
                 if (isCancelled()) return;
                 if (!Directory.Exists(p)) { reportOutput($"Temp folder not found: {p}"); continue; }
-                reportOutput($"Cleaning temp folder: {p}");
+                reportOutput($"Cleaning temporary directory: {p}");
                 DeleteDirectoryContents(p, reportOutput, isCancelled);
             }
         }
 
         private void RunDiskCleanup(Action<string> reportOutput, Func<bool> isCancelled)
         {
-            // Run DISM component cleanup first (non-interactive)
-            RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("dism", "/Online /Cleanup-Image /StartComponentCleanup"), reportOutput, isCancelled);
-            // Attempt to run cleanmgr sagerun; note this may require prior sageset configuration. We'll still invoke it for best-effort.
+            // Inject registry keys for aggressive cleaning BEFORE running cleanmgr
+            try
+            {
+                const string cacheKeyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches";
+                using (var baseKey = Registry.LocalMachine.OpenSubKey(cacheKeyPath, true))
+                {
+                    if (baseKey != null)
+                    {
+                        foreach (var subKeyName in baseKey.GetSubKeyNames())
+                        {
+                            using (var subKey = baseKey.OpenSubKey(subKeyName, true))
+                            {
+                                if (subKey != null)
+                                {
+                                    // StateFlags0001 = 2 tells Disk Cleanup to clean this category in /sagerun:1
+                                    subKey.SetValue("StateFlags0001", 2, RegistryValueKind.DWord);
+                                }
+                            }
+                        }
+                        reportOutput("System flags prepared for thorough cleanup.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Warning: Could not set all Disk Cleanup flags: {ex.Message}");
+            }
+
+            if (isCancelled()) return;
+
+            // Run cleanmgr sagerun; focuses on logs, crash dumps, and recycling bin
             RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("cleanmgr.exe", "/sagerun:1"), reportOutput, isCancelled);
         }
 
@@ -457,22 +505,46 @@ namespace RecoveryCommander.Module
         {
             try
             {
-                reportOutput("Stopping Windows Update service...");
-                RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("net", "stop wuauserv"), reportOutput, isCancelled);
-
-                var sd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "SoftwareDistribution", "Download");
-                if (Directory.Exists(sd))
+                var services = new[] { "wuauserv", "bits", "cryptsvc" };
+                foreach (var svc in services)
                 {
-                    DeleteDirectoryContents(sd, reportOutput, isCancelled);
-                    reportOutput($"Cleared Windows Update download cache: {sd}");
+                    reportOutput($"Stopping service: {svc}...");
+                    RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("net", $"stop {svc} /y"), reportOutput, isCancelled);
                 }
 
-                reportOutput("Starting Windows Update service...");
-                RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("net", "start wuauserv"), reportOutput, isCancelled);
+                if (isCancelled()) return;
+
+                // SoftwareDistribution wiping
+                var sd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "SoftwareDistribution");
+                if (Directory.Exists(sd))
+                {
+                    reportOutput($"Clearing SoftwareDistribution: {sd}");
+                    DeleteDirectoryContents(sd, reportOutput, isCancelled);
+                }
+
+                if (isCancelled()) return;
+
+                // Catroot2 wiping (requires cryptsvc to be fully stopped)
+                var catroot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "catroot2");
+                if (Directory.Exists(catroot))
+                {
+                    reportOutput($"Clearing catroot2: {catroot}");
+                    DeleteDirectoryContents(catroot, reportOutput, isCancelled);
+                }
+
+                if (isCancelled()) return;
+
+                foreach (var svc in services.Reverse())
+                {
+                    reportOutput($"Starting service: {svc}...");
+                    RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("net", $"start {svc}"), reportOutput, isCancelled);
+                }
+
+                reportOutput("Windows Update reset completed.");
             }
             catch (Exception ex)
             {
-                reportOutput($"Failed to clean Windows Update: {ex.Message}");
+                reportOutput($"Failed to reset Windows Update: {ex.Message}");
             }
         }
 
@@ -499,25 +571,42 @@ namespace RecoveryCommander.Module
             }
         }
 
-        private void ScanForWindowsUpdates(Action<string> reportOutput, Func<bool> isCancelled)
+        private async Task ScanForWindowsUpdatesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            progress?.Report(new ProgressReport(5, "Connecting to native Windows Update service..."));
             try
             {
-                reportOutput("Triggering Windows Update scan (usoclient StartScan)...");
+                var updates = await UpdateHelpers.GetWindowsUpdatesAsync(reportOutput, cancellationToken);
+                if (updates.Count == 0)
+                {
+                    reportOutput("No Windows Updates available at this time.");
+                    progress?.Report(new ProgressReport(100, "Clean: No updates found"));
+                    ShowGenericToast("Windows Update", "Your system is already up to date.");
+                    // Also show a message box as requested
+                    MessageBox.Show("No Windows Updates are currently available.", "Windows Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-                RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("usoclient.exe", "StartScan"), reportOutput, isCancelled);
+                reportOutput($"Discovered {updates.Count} available updates.");
+                var selected = await ShowWindowsUpdateSelectorAsync(updates);
 
-                if (isCancelled()) return;
+                if (selected.Count == 0)
+                {
+                    reportOutput("Update installation skipped by user.");
+                    progress?.Report(new ProgressReport(100, "User skipped updates"));
+                    return;
+                }
 
-                reportOutput("Triggering Windows Update install (usoclient StartInstall)...");
-
-                RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("usoclient.exe", "StartInstall"), reportOutput, isCancelled);
-
-                reportOutput("Windows Update scan/install triggered.");
+                progress?.Report(new ProgressReport(40, "Downloading and installing selected updates..."));
+                await UpdateHelpers.InstallWindowsUpdatesAsync(selected, reportOutput, cancellationToken);
+                progress?.Report(new ProgressReport(100, "Windows Update process complete"));
             }
             catch (Exception ex)
             {
-                reportOutput($"Failed to trigger Windows Update scan/install: {ex.Message}");
+                reportOutput($"Modern Update Scan failed: {ex.Message}");
+                // Fallback attempt to usoclient only if COM is totally broken
+                reportOutput("Falling back to legacy usoclient trigger...");
+                RunProcessAndReport(RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("usoclient.exe", "StartScan"), reportOutput, () => cancellationToken.IsCancellationRequested);
             }
         }
 
@@ -928,18 +1017,38 @@ namespace RecoveryCommander.Module
         {
             try
             {
-                // Use AsyncHelpers for proper async execution
+                // Use AsyncHelpers for proper async execution with process-level cancellation support
                 await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
             }
             catch (OperationCanceledException)
             {
-                reportOutput("Process cancelled by user.");
+                reportOutput($"CRITICAL: Terminating {psi.FileName} due to user cancellation...");
                 throw;
             }
             catch (Exception ex)
             {
                 reportOutput($"Failed to run process {psi.FileName} {psi.Arguments}: {ex.Message}");
                 throw;
+            }
+        }
+
+        private void KillProcessGracefully(string name, Action<string> reportOutput)
+        {
+            try
+            {
+                var processes = Process.GetProcessesByName(name);
+                if (processes.Length > 0)
+                {
+                    reportOutput($"Active {name} detected. Closing instances...");
+                    foreach (var p in processes)
+                    {
+                        try { p.Kill(); p.WaitForExit(2000); } catch { }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Warning: Could not close {name}: {ex.Message}");
             }
         }
 
@@ -1114,33 +1223,11 @@ namespace RecoveryCommander.Module
 
         private async Task DeleteTempFilesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            progress?.Report(new ProgressReport(10, "Deleting temporary files..."));
+            progress?.Report(new ProgressReport(10, "Clearing user and system temporary directories..."));
             try
             {
-                var tempPath = Path.GetTempPath();
-                var files = await Task.Run(() => Directory.GetFiles(tempPath, "*", SearchOption.AllDirectories), cancellationToken);
-                int deletedCount = 0;
-                
-                foreach (var file in files)
-                {
-                    if (cancellationToken.IsCancellationRequested) break;
-                    
-                    try
-                    {
-                        await Task.Run(() => CoreUtilities.SafeDeleteFile(file), cancellationToken);
-                        deletedCount++;
-                        if (deletedCount % 10 == 0)
-                        {
-                            progress?.Report(new ProgressReport(Math.Min(90, 10 + (deletedCount * 80 / files.Length)), $"Deleted {deletedCount}/{files.Length} temp files"));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        reportOutput($"Failed to delete {file}: {ex.Message}");
-                    }
-                }
-                
-                progress?.Report(new ProgressReport(90, $"Deleted {deletedCount} temporary files"));
+                await Task.Run(() => DeleteTempFiles(reportOutput, () => cancellationToken.IsCancellationRequested), cancellationToken);
+                progress?.Report(new ProgressReport(100, "Temporary files deleted"));
             }
             catch (Exception ex)
             {
@@ -1256,55 +1343,7 @@ namespace RecoveryCommander.Module
             }
         }
 
-        private async Task ScanForWindowsUpdatesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
-        {
-            progress?.Report(new ProgressReport(10, "Scanning for Windows Updates..."));
-            try
-            {
-                var updates = await UpdateHelpers.GetWindowsUpdatesAsync(reportOutput, cancellationToken);
-                if (updates.Count == 0)
-                {
-                    reportOutput("No Windows Updates found.");
-                    progress?.Report(new ProgressReport(100, "No Windows Updates available"));
-                    ShowGenericToast("Windows Update", "No Windows Updates are currently available.");
-                    return;
-                }
-
-                foreach (var item in updates)
-                {
-                    reportOutput($"Discovered Windows Update: {item.Title} ({item.KBArticle}) [{item.Category}]");
-                }
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                var selected = await ShowWindowsUpdateSelectorAsync(updates);
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                if (selected.Count == 0)
-                {
-                    reportOutput("No Windows Updates selected for installation.");
-                    progress?.Report(new ProgressReport(100, "No Windows Updates selected"));
-                    ShowGenericToast("Windows Update", "No Windows Updates were selected for installation.");
-                    return;
-                }
-
-                progress?.Report(new ProgressReport(40, "Installing selected Windows Updates..."));
-                await UpdateHelpers.InstallWindowsUpdatesAsync(selected, reportOutput, cancellationToken);
-                progress?.Report(new ProgressReport(100, "Completed Windows Updates"));
-            }
-            catch (Exception ex)
-            {
-                reportOutput($"Error scanning or installing Windows Updates: {ex.Message}");
-                throw;
-            }
-        }
+        // ScanForWindowsUpdatesAsync was moved higher and consolidated to avoid duplication.
 
         private async Task UpgradeWingetPackagesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
@@ -1314,9 +1353,10 @@ namespace RecoveryCommander.Module
                 var upgrades = await UpdateHelpers.GetWingetUpgradesAsync(reportOutput, cancellationToken);
                 if (upgrades.Count == 0)
                 {
-                    reportOutput("No winget upgrades found.");
-                    progress?.Report(new ProgressReport(100, "No winget upgrades available"));
-                    ShowWingetToast("No winget package updates are currently available.");
+                    reportOutput("No winget upgrades available.");
+                    progress?.Report(new ProgressReport(100, "Clean: No upgrades found"));
+                    ShowWingetToast("All winget packages are up to date.");
+                    MessageBox.Show("No software upgrades are available via winget.", "Software Upgrade", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -1386,61 +1426,43 @@ namespace RecoveryCommander.Module
 
         private async Task UpdateStoreAppsAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            progress?.Report(new ProgressReport(10, "Checking Microsoft Store app updates..."));
+            progress?.Report(new ProgressReport(10, "Scanning for Microsoft Store updates..."));
             try
             {
-                var upgrades = await UpdateHelpers.GetWingetUpgradesAsync(reportOutput, cancellationToken);
-                var storeItems = upgrades.Where(u => string.Equals(u.Source, "msstore", StringComparison.OrdinalIgnoreCase)).ToList();
+                // We use winget's msstore source to allow selective updates for Store apps
+                var updates = await UpdateHelpers.GetWingetUpgradesAsync(reportOutput, cancellationToken);
+                var storeItems = updates.Where(u => string.Equals(u.Source, "msstore", StringComparison.OrdinalIgnoreCase)).ToList();
 
                 if (storeItems.Count == 0)
                 {
                     reportOutput("No Microsoft Store app updates found.");
-                    progress?.Report(new ProgressReport(100, "No Microsoft Store app updates available"));
-                    ShowGenericToast("Microsoft Store", "No Microsoft Store app updates are currently available.");
+                    progress?.Report(new ProgressReport(100, "Clean: Store apps up to date"));
+                    MessageBox.Show("No Microsoft Store apps require updates.", "Store Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
                 foreach (var item in storeItems)
                 {
-                    reportOutput($"Store app update: {item.Name} ({item.Id}) {item.InstalledVersion} -> {item.AvailableVersion} [{item.Source}]");
-                }
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
+                    reportOutput($"Discovered Store Update: {item.Name} ({item.Id}) {item.InstalledVersion} -> {item.AvailableVersion}");
                 }
 
                 var selected = await ShowWingetSelectorAsync(storeItems);
-
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
                 if (selected.Count == 0)
                 {
-                    reportOutput("No Microsoft Store apps selected for update.");
-                    progress?.Report(new ProgressReport(100, "No Microsoft Store apps selected"));
-                    ShowGenericToast("Microsoft Store", "No Microsoft Store apps were selected for update.");
+                    reportOutput("Store update installation skipped by user.");
+                    progress?.Report(new ProgressReport(100, "User skipped Store updates"));
                     return;
                 }
 
-                var wingetPath = FindWingetExecutable(reportOutput);
-                var exe = string.IsNullOrEmpty(wingetPath) ? "winget" : wingetPath;
-
-                int index = 0;
+                progress?.Report(new ProgressReport(40, "Installing selected Store updates..."));
+                var exe = FindWingetExecutable(reportOutput) ?? "winget";
+                
+                int count = 0;
                 foreach (var item in selected)
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        reportOutput("Microsoft Store app update cancelled during execution.");
-                        break;
-                    }
-
-                    index++;
-                    var percent = 40 + (int)((index - 1) * 60.0 / Math.Max(1, selected.Count));
-                    progress?.Report(new ProgressReport(percent, $"Updating {item.Name} ({item.Id}) to {item.AvailableVersion}..."));
-
+                    if (cancellationToken.IsCancellationRequested) break;
+                    
+                    reportOutput($"Updating Store App: {item.Name}...");
                     var args = $"upgrade --id \"{item.Id}\" --source msstore --accept-source-agreements --accept-package-agreements";
                     var psi = new ProcessStartInfo(exe, args)
                     {
@@ -1449,16 +1471,15 @@ namespace RecoveryCommander.Module
                         RedirectStandardError = true,
                         CreateNoWindow = true
                     };
-
                     await RunProcessAndReportAsync(psi, progress!, reportOutput, cancellationToken);
+                    count++;
                 }
 
-                reportOutput($"Microsoft Store app update completed for {selected.Count} app(s).");
-                progress?.Report(new ProgressReport(100, "Completed Microsoft Store app updates"));
+                progress?.Report(new ProgressReport(100, "Microsoft Store updates complete"));
             }
             catch (Exception ex)
             {
-                reportOutput($"Error updating Store apps: {ex.Message}");
+                reportOutput($"Error during Microsoft Store update: {ex.Message}");
                 throw;
             }
         }
@@ -1487,6 +1508,65 @@ namespace RecoveryCommander.Module
             catch (Exception ex)
             {
                 reportOutput($"Error applying System Tweaks: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task ResetNetworkAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Resetting Network Configuration..."));
+            try
+            {
+                var cmds = new[] {
+                    ("ipconfig.exe", "/flushdns"),
+                    ("ipconfig.exe", "/release"),
+                    ("ipconfig.exe", "/renew"),
+                    ("netsh.exe", "winsock reset"),
+                    ("netsh.exe", "int ip reset"),
+                    ("arp.exe", "-d *"),
+                };
+                
+                int index = 0;
+                foreach (var cmd in cmds)
+                {
+                    if (cancellationToken.IsCancellationRequested) break;
+                    
+                    var pIndex = 10 + (index * 60 / cmds.Length);
+                    progress?.Report(new ProgressReport(pIndex, $"Executing: {cmd.Item1} {cmd.Item2}"));
+
+                    var psi = new ProcessStartInfo(cmd.Item1, cmd.Item2)
+                    {
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                    
+                    await RunProcessAndReportAsync(psi, progress!, reportOutput, cancellationToken);
+                    index++;
+                }
+
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    progress?.Report(new ProgressReport(80, "Modernizing: Restarting Network Adapters..."));
+                    // Modern PowerShell way to actually reset the physical state of NICs
+                    var psScript = "Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Restart-NetAdapter -Confirm:$false";
+                    var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"")
+                    {
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                    await RunProcessAndReportAsync(psi, reportOutput, cancellationToken);
+                }
+
+                progress?.Report(new ProgressReport(100, "Network reset complete (Connection will drop momentarily)"));
+                reportOutput("Network stack has been modernized and adapters have been cycled.");
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error resetting network: {ex.Message}");
                 throw;
             }
         }
@@ -1612,11 +1692,16 @@ namespace RecoveryCommander.Module
         {
             try
             {
-                // Delegate to the robust implementation in CoreUtilities
+                // Wrapper that ensures process termination if our awaiter detects cancellation
                 await AsyncHelpers.RunProcessAsync(psi, 
                     output => reportOutput(output), 
                     error => reportOutput("ERROR: " + error), 
                     cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                reportOutput($"STOP: {psi.FileName} process has been halted by the cancellation token.");
+                throw;
             }
             catch (Exception ex)
             {
@@ -1755,6 +1840,455 @@ namespace RecoveryCommander.Module
             {
                 reportOutput($"EXCEPTION: {ex.GetType().Name}: {ex.Message}");
                 reportOutput($"Stack trace: {ex.StackTrace}");
+            }
+        }
+
+        private async Task ExportInstalledSoftwareAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Gathering installed software..."));
+            try
+            {
+                await Task.Run(() => 
+                {
+                    var apps = new List<(string Name, string Version, string Size, string Link, string ProdKey)>();
+                    var keysToSearch = new[]
+                    {
+                        RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64)?.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+                        RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32)?.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),
+                        RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default)?.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")
+                    };
+
+                    HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var baseKey in keysToSearch)
+                    {
+                        if (baseKey == null) continue;
+                        using (baseKey)
+                        {
+                            foreach (var subKeyName in baseKey.GetSubKeyNames())
+                            {
+                                if (cancellationToken.IsCancellationRequested) break;
+                                using (var subKey = baseKey.OpenSubKey(subKeyName))
+                                {
+                                    if (subKey == null) continue;
+                                    var name = subKey.GetValue("DisplayName") as string;
+                                    if (string.IsNullOrWhiteSpace(name)) continue;
+
+                                    if (!seen.Add(name)) continue;
+
+                                    var version = subKey.GetValue("DisplayVersion") as string ?? "";
+                                    var sizeKb = subKey.GetValue("EstimatedSize");
+                                    string sizeStr = "";
+                                    if (sizeKb is int kb)
+                                    {
+                                        sizeStr = (kb / 1024.0).ToString("0.##");
+                                    }
+                                    
+                                    var updateInfo = subKey.GetValue("URLUpdateInfo") as string;
+                                    var helpLink = subKey.GetValue("HelpLink") as string;
+                                    var infoAbout = subKey.GetValue("URLInfoAbout") as string;
+
+                                    var rawLink = updateInfo ?? helpLink ?? infoAbout ?? "";
+                                    string link = rawLink.StartsWith("http", StringComparison.OrdinalIgnoreCase) 
+                                        ? rawLink 
+                                        : $"https://www.google.com/search?q=download+{Uri.EscapeDataString(name)}+installer";
+                                        
+                                    var prodKey = subKey.GetValue("ProductID") as string ?? "";
+
+                                    apps.Add((name, version, sizeStr, link, prodKey));
+                                }
+                            }
+                        }
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    // Modern Addition: Collect Microsoft Store (Appx) Packages
+                    reportOutput("Querying Microsoft Store (AppX) packages...");
+                    try
+                    {
+                        var psScript = "Get-AppxPackage -AllUsers | Select-Object Name, Version, PackageFullName | ConvertTo-Json";
+                        var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"")
+                        {
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            CreateNoWindow = true
+                        };
+                        using (var p = Process.Start(psi))
+                        {
+                            var json = p.StandardOutput.ReadToEnd();
+                            p.WaitForExit();
+                            if (!string.IsNullOrWhiteSpace(json))
+                            {
+                                var appxList = JsonDocument.Parse(json).RootElement;
+                                if (appxList.ValueKind == JsonValueKind.Array)
+                                {
+                                    foreach (var pkg in appxList.EnumerateArray())
+                                    {
+                                        var name = pkg.GetProperty("Name").GetString() ?? "";
+                                        var version = pkg.GetProperty("Version").GetString() ?? "";
+                                        if (seen.Add(name))
+                                        {
+                                            apps.Add((name, version, "Store App", $"ms-windows-store://search/?query={Uri.EscapeDataString(name)}", "AppX"));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception appxEx)
+                    {
+                        reportOutput($"Warning: Could not list Store apps: {appxEx.Message}");
+                    }
+
+                    if (cancellationToken.IsCancellationRequested) return;
+
+                    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    string fileName = $"InstalledSoftware_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                    string filePath = Path.Combine(desktopPath, fileName);
+                    
+                    using (var workbook = new ClosedXML.Excel.XLWorkbook())
+                    {
+                        var worksheet = workbook.Worksheets.Add("Installed Software");
+                        
+                        var headers = new[] { "Name", "Version", "Size (MB)", "Download Link", "Product Key" };
+                        for (int i = 0; i < headers.Length; i++)
+                        {
+                            worksheet.Cell(1, i + 1).Value = headers[i];
+                            worksheet.Cell(1, i + 1).Style.Font.Bold = true;
+                        }
+
+                        int row = 2;
+                        foreach (var app in apps)
+                        {
+                            worksheet.Cell(row, 1).Value = app.Name;
+                            worksheet.Cell(row, 2).Value = app.Version;
+                            worksheet.Cell(row, 3).Value = app.Size;
+                            
+                            var linkCell = worksheet.Cell(row, 4);
+                            linkCell.Value = app.Link.Contains("google.com/search") ? "Search Installer" : "Vendor Link";
+                            if (Uri.TryCreate(app.Link, UriKind.Absolute, out _))
+                            {
+                                linkCell.SetHyperlink(new ClosedXML.Excel.XLHyperlink(app.Link));
+                            }
+                            else
+                            {
+                                linkCell.Value = app.Link;
+                            }
+                            
+                            worksheet.Cell(row, 5).Value = app.ProdKey;
+                            row++;
+                        }
+
+                        worksheet.Columns().AdjustToContents();
+                        workbook.SaveAs(filePath);
+                    }
+                    
+                    // Create PowerShell script to download the software
+                    string ps1FileName = $"DownloadInstalledSoftware_{DateTime.Now:yyyyMMdd_HHmmss}.ps1";
+                    string ps1FilePath = Path.Combine(desktopPath, ps1FileName);
+                    var ps1Lines = new List<string>();
+                    ps1Lines.Add("# Auto-generated PowerShell script to download installed software");
+                    ps1Lines.Add("$DownloadDir = Join-Path [Environment]::GetFolderPath('Desktop') 'SoftwareDownloads'");
+                    ps1Lines.Add("if (-not (Test-Path $DownloadDir)) { New-Item -ItemType Directory -Path $DownloadDir | Out-Null }");
+                    ps1Lines.Add("Write-Host \"Downloads will be saved to: $DownloadDir\" -ForegroundColor Green");
+                    ps1Lines.Add("Write-Host \"Note: Many registry links are vendor webpages rather than direct installers.\" -ForegroundColor Yellow");
+                    ps1Lines.Add("");
+                    
+                    foreach (var app in apps)
+                    {
+                        var safeName = string.Join("_", app.Name.Split(Path.GetInvalidFileNameChars())).Replace(" ", "_").Replace("'", "");
+                        if (string.IsNullOrWhiteSpace(safeName)) continue;
+                        
+                        ps1Lines.Add($"Write-Host 'Processing {app.Name}...'");
+                        
+                        if (app.Link.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !app.Link.Contains("google.com/search"))
+                        {
+                            string ext = ".html"; 
+                            if (app.Link.Contains(".exe", StringComparison.OrdinalIgnoreCase)) ext = ".exe";
+                            else if (app.Link.Contains(".msi", StringComparison.OrdinalIgnoreCase)) ext = ".msi";
+                            else if (app.Link.Contains(".zip", StringComparison.OrdinalIgnoreCase)) ext = ".zip";
+                            
+                            ps1Lines.Add($"try {{ Invoke-WebRequest -Uri '{app.Link}' -OutFile \"$DownloadDir\\{safeName}{ext}\" -UseBasicParsing }} catch {{ Write-Host ' -> Failed to download from vendor link.' -ForegroundColor Red }}");
+                        }
+                        else
+                        {
+                            ps1Lines.Add($"# No direct download link available for {app.Name}");
+                            ps1Lines.Add($"# You may try to download and install it via winget:");
+                            ps1Lines.Add($"# winget install --name \"{app.Name}\"");
+                        }
+                        ps1Lines.Add("");
+                    }
+                    
+                    File.WriteAllLines(ps1FilePath, ps1Lines, Encoding.UTF8);
+                    
+                    reportOutput($"Exported {apps.Count} applications to Desktop\\{fileName} and script {ps1FileName}");
+
+                }, cancellationToken);
+                
+                progress?.Report(new ProgressReport(100, "Software export complete"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error exporting software: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task CleanUserProfilesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Cleaning obsolete user profiles..."));
+            try
+            {
+                await Task.Run(() => 
+                {
+                    try
+                    {
+                        var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_UserProfile WHERE Special = False AND Loaded = False");
+                        foreach (ManagementObject profile in searcher.Get().Cast<ManagementObject>())
+                        {
+                            if (cancellationToken.IsCancellationRequested) break;
+                            
+                            var path = profile["LocalPath"]?.ToString();
+                            reportOutput($"Native Cleanup: Removing profile disk footprint and registry hive for {path}...");
+                            try { profile.Delete(); } catch (Exception ex) { reportOutput($"Skipping: {path} (In use or inaccessible: {ex.Message})"); }
+                        }
+                    }
+                    catch (Exception wmiEx)
+                    {
+                        reportOutput($"Native WMI profile cleanup failed: {wmiEx.Message}");
+                    }
+                }, cancellationToken);
+                progress?.Report(new ProgressReport(100, "User profile cleanup complete"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error cleaning user profiles: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task AuditScheduledTasksAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Auditing and disabling non-Microsoft scheduled tasks..."));
+            try
+            {
+                // For modern, robust task auditing in C#, we use PowerShell with exact filtering to identify 3rd party startup hooks
+                var script = "Get-ScheduledTask | Where-Object { $_.TaskPath -notmatch \"\\\\Microsoft\\\\\" -and $_.State -eq 'Ready' -and $_.TaskPath -notmatch \"\\\\Mozilla\\\\\" } | ForEach-Object { Disable-ScheduledTask -TaskName $_.TaskName -TaskPath $_.TaskPath }";
+                var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                await RunProcessAndReportAsync(psi, reportOutput, cancellationToken);
+                progress?.Report(new ProgressReport(100, "Scheduled task audit complete"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error auditing scheduled tasks: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task CleanShadowCopiesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Purging shadow copies via VSS..."));
+            try
+            {
+                var psi = new ProcessStartInfo("vssadmin.exe", "delete shadows /all /quiet")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                await RunProcessAndReportAsync(psi, reportOutput, cancellationToken);
+                progress?.Report(new ProgressReport(100, "Shadow copies purged"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error purging shadow copies: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task GenerateHealthReportAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Generating Environment Health Assessment..."));
+            try
+            {
+                await Task.Run(() => 
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine("<!DOCTYPE html><html><head><title>Environment Health Assessment</title>");
+                    sb.AppendLine("<style>body { font-family: Arial, sans-serif; margin: 40px; } h1 { color: #333; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style>");
+                    sb.AppendLine("</head><body>");
+                    sb.AppendLine("<h1>Environment Health Assessment</h1>");
+                    sb.AppendLine($"<p>Generated on: {DateTime.Now}</p>");
+                    sb.AppendLine($"<p>Machine Name: {Environment.MachineName}</p>");
+                    sb.AppendLine($"<p>OS Version: {Environment.OSVersion}</p>");
+                    sb.AppendLine($"<p>System Uptime: {TimeSpan.FromMilliseconds(Environment.TickCount64)}</p>");
+                    
+                    sb.AppendLine("<h2>Logical Drives</h2>");
+                    sb.AppendLine("<table><tr><th>Drive</th><th>Format</th><th>Type</th><th>Total Space (GB)</th><th>Free Space (GB)</th><th>Usage</th></tr>");
+                    foreach (var drive in DriveInfo.GetDrives())
+                    {
+                        if (cancellationToken.IsCancellationRequested) return;
+                        if (drive.IsReady)
+                        {
+                            var totalGb = drive.TotalSize / 1024.0 / 1024.0 / 1024.0;
+                            var freeGb = drive.TotalFreeSpace / 1024.0 / 1024.0 / 1024.0;
+                            var usagePercent = 100 - (drive.TotalFreeSpace * 100 / drive.TotalSize);
+                            sb.AppendLine($"<tr><td>{drive.Name}</td><td>{drive.DriveFormat}</td><td>{drive.DriveType}</td><td>{totalGb:F2}</td><td>{freeGb:F2}</td><td>{usagePercent}%</td></tr>");
+                        }
+                    }
+                    sb.AppendLine("</table>");
+                    sb.AppendLine("</body></html>");
+
+                    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    string fileName = $"HealthAssessment_{DateTime.Now:yyyyMMdd_HHmmss}.html";
+                    string filePath = Path.Combine(desktopPath, fileName);
+                    File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
+
+                    reportOutput($"Health Assessment Report generated at {filePath}");
+
+                }, cancellationToken);
+
+                progress?.Report(new ProgressReport(100, "Health Assessment generated"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error generating health report: {ex.Message}");
+                throw;
+            }
+        }
+        private async Task DeepCleanWinSxSAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Performing Deep WinSxS Component Cleanup (ResetBase)..."));
+            try
+            {
+                // This command is intensive and makes current updates permanent.
+                var psi = new ProcessStartInfo("dism.exe", "/Online /Cleanup-Image /StartComponentCleanup /ResetBase")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                await RunProcessAndReportAsync(psi, reportOutput, cancellationToken);
+                progress?.Report(new ProgressReport(100, "WinSxS Deep Cleanup complete"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error during WinSxS cleanup: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task OptimizeDriverStoreAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Optimizing Driver Store (Removing non-active OEM drivers)..."));
+            try
+            {
+                // We use pnputil to attempt deletion of all OEM drivers. 
+                // Drivers in use will throw an error and be skipped, effectively cleaning only orphaned ones.
+                var script = "Get-WindowsDriver -Online | Where-Object { $_.Inbox -eq $false } | ForEach-Object { & pnputil /delete-driver $_.Driver /force }";
+                var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                await RunProcessAndReportAsync(psi, reportOutput, cancellationToken);
+                progress?.Report(new ProgressReport(100, "Driver Store optimization complete"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error optimizing Driver Store: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task PurgeEventLogsAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Purging all Windows Event Logs..."));
+            try
+            {
+                await Task.Run(() => 
+                {
+                    var logs = System.Diagnostics.EventLog.GetEventLogs();
+                    int count = 0;
+                    foreach (var log in logs)
+                    {
+                        if (cancellationToken.IsCancellationRequested) break;
+                        try 
+                        { 
+                            reportOutput($"Clearing: {log.LogDisplayName}...");
+                            log.Clear(); 
+                            count++;
+                        } 
+                        catch (Exception ex) { reportOutput($"Skipping {log.LogDisplayName}: {ex.Message}"); }
+                    }
+                    reportOutput($"Successfully cleared {count} event logs.");
+                }, cancellationToken);
+                progress?.Report(new ProgressReport(100, "Event logs purged"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error purging event logs: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task DisableTelemetryAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress?.Report(new ProgressReport(10, "Disabling Windows Telemetry and Tracking services..."));
+            try
+            {
+                var services = new[] { "DiagTrack", "dmwappushservice" };
+                foreach (var svcName in services)
+                {
+                    if (cancellationToken.IsCancellationRequested) break;
+                    
+                    try
+                    {
+                        var script = $"Set-Service -Name {svcName} -StartupType Disabled; Stop-Service -Name {svcName} -Force";
+                        var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"")
+                        {
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            CreateNoWindow = true
+                        };
+                        reportOutput($"Disabling {svcName}...");
+                        await RunProcessAndReportAsync(psi, reportOutput, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        reportOutput($"Failed to disable {svcName}: {ex.Message}");
+                    }
+                }
+                
+                // Also disable telemetry in the registry for good measure
+                try
+                {
+                    using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Windows\DataCollection", true))
+                    {
+                        if (key != null) key.SetValue("AllowTelemetry", 0, RegistryValueKind.DWord);
+                    }
+                    reportOutput("Registry telemetry policy updated to 'Disabled'.");
+                }
+                catch { }
+
+                progress?.Report(new ProgressReport(100, "Telemetry services disabled"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error disabling telemetry: {ex.Message}");
+                throw;
             }
         }
     }

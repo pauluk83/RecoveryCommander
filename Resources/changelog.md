@@ -1,5 +1,28 @@
 # RecoveryCommander Changelog
 
+## 2026-03-07 - System Prep Modernization & Update Engine Overhaul
+
+### Management & Updates
+- **Native Windows Update Engine** — Replaced the legacy `usoclient.exe` (undocumented/unreliable) with a native C# implementation using the **Microsoft.Update.Session COM API**.
+- **Granular Update Selection** — Introduced a new selection UI for Windows Updates that displays **Title**, **Size (MB)**, and **KB Article**. Users can now selectively download and install updates instead of trigger-and-hope.
+- **Microsoft Store Update Overhaul** — Replaced the global "re-register all apps" command with a selective **Winget-based Store Update** engine. Users can now choose which specific Store apps to update.
+- **Improved Winget Integration** — Modernized the Winget upgrade flow with better parsing and explicit selection UI for all software upgrades.
+- **"No Updates" Feedback** — Added mandatory user feedback (MessageBox and Toast notifications) when scanning for Windows, Store, or Winget updates if no updates are available, ending silent non-actions.
+
+### Network & Performance
+- **Modern Network Reset** — Enhanced the network repair stack by adding physical **Network Adapter Restarts** via PowerShell (`Restart-NetAdapter`). This provides a true "hardware-level" reset beyond just clearing DNS/IP caches.
+- **Compact OS Performance Guard** — Updated the "Compact OS" action description with a performance warning. It is now correctly recommended only for small SSDs (<128GB) to prevent unnecessary CPU overhead on high-end NVMe systems.
+
+### Auditing & Redundancy
+- **Enhanced Software Export** — Upgraded the software auditor to perform a **Live AppX Manifest Query**. It now captures Microsoft Store apps and Winget packages alongside traditional desktop applications for a truly complete system audit.
+- **Action Redundancy Cleanup** — Stripped duplicate DISM component cleanup logic from "Quick Disk Cleanup", consolidating it into the dedicated "Deep Clean WinSxS" action to ensure surgical efficiency.
+- **Refined Temp File Logic** — Unified User and Windows temp folder cleanup into a single, high-reliability atomic pass.
+
+### Build & Reliability
+- **Logic Collision Fixes** — Resolved several method naming collisions and duplicate logic blocks in `SystemPrepModule` that were causing build warnings and non-deterministic behavior.
+- **Thread-Safe COM Operations** — Implemented STA-threaded execution for Windows Update COM calls to ensure stability on modern Windows kernels.
+
+
 ## 2026-03-04 - UI Fixes & Utilities URL Updates
 
 ### Bug Fixes

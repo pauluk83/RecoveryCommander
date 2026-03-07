@@ -97,6 +97,8 @@ namespace SystemPrepModule
             public string Category { get; set; } = string.Empty;
             public string KBArticle { get; set; } = string.Empty;
             public string UpdateId { get; set; } = string.Empty;
+            public string Size { get; set; } = "Unknown";
+            public string Description { get; set; } = string.Empty;
         }
 
         public static async Task<List<WindowsUpdateItem>> GetWindowsUpdatesAsync(Action<string> reportOutput, CancellationToken cancellationToken)
@@ -216,12 +218,28 @@ namespace SystemPrepModule
                             }
                         }
 
+                        string sizeStr = "Unknown";
+                        try
+                        {
+                            var sizeObj = uType.InvokeMember("MaxDownloadSize", BindingFlags.GetProperty, null, update, null);
+                            if (sizeObj is decimal bytes)
+                            {
+                                sizeStr = $"{(bytes / 1024 / 1024):F2} MB";
+                            }
+                        }
+                        catch { }
+
+                        var descObj = uType.InvokeMember("Description", BindingFlags.GetProperty, null, update, null);
+                        var description = descObj as string ?? string.Empty;
+
                         items.Add(new WindowsUpdateItem
                         {
                             Title = title,
                             Category = categoryName,
                             KBArticle = kb,
-                            UpdateId = updateId
+                            UpdateId = updateId,
+                            Size = sizeStr,
+                            Description = description
                         });
                     }
 
