@@ -1061,11 +1061,11 @@ namespace RecoveryCommander.Module
         {
             try
             {
-                string scriptPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Tweaks.ps1");
+                string scriptPath = Path.Combine(AppContext.BaseDirectory, "Resources", "Tweaks.ps1");
                 if (!File.Exists(scriptPath))
                 {
-                    // Fallback to module directory if not found in Resources
-                    scriptPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "", "Tweaks.ps1");
+                    // Fallback to base directory directly if not found in Resources (internal location in publish)
+                    scriptPath = Path.Combine(AppContext.BaseDirectory, "Tweaks.ps1");
                     if (!File.Exists(scriptPath))
                     {
                         reportOutput($"Script not found: Tweaks.ps1");
@@ -1916,9 +1916,11 @@ namespace RecoveryCommander.Module
                         };
                         using (var p = Process.Start(psi))
                         {
-                            var json = p.StandardOutput.ReadToEnd();
-                            p.WaitForExit();
-                            if (!string.IsNullOrWhiteSpace(json))
+                            if (p != null)
+                            {
+                                var json = p.StandardOutput.ReadToEnd();
+                                p.WaitForExit();
+                                if (!string.IsNullOrWhiteSpace(json))
                             {
                                 var appxList = JsonDocument.Parse(json).RootElement;
                                 if (appxList.ValueKind == JsonValueKind.Array)

@@ -233,7 +233,7 @@ namespace RecoveryCommander.Module
             }
         }
 
-        private void ProcessSfcOutputLine(string line, Action<string> reportOutput, IProgress<ProgressReport> progress, ref int progressPercent)
+        private void ProcessSfcOutputLine(string line, Action<string> reportOutput, IProgress<ProgressReport>? progress, ref int progressPercent)
         {
             if (string.IsNullOrWhiteSpace(line)) return;
 

@@ -67,26 +67,32 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Ensure Module Folder
-      run: mkdir -p bin/Release/net10.0-windows/win-x64/publish/Module
+      run: mkdir -p bin/${{ matrix.configuration }}/net10.0-windows/win-x64/publish/Module
 
-    - name: Publish Single-File Executable
-      run: dotnet publish $env:Solution_Name --configuration Release --runtime win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true --output ./publish
+    - name: Restore Dependencies
+      run: dotnet restore $env:Solution_Name
+
+    - name: Build Solution
+      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore
+
+    - name: Publish Executable
+      run: dotnet publish RecoveryCommander.csproj --configuration ${{ matrix.configuration }} --runtime win-x64 --no-build --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true --output ./publish/${{ matrix.configuration }}
 
     - name: Push Packages to GitHub
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
       run: dotnet nuget push "**/*.nupkg" --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: RecoveryCommander-Windows-x64
-        path: ./publish/RecoveryCommander.exe
+        name: RecoveryCommander-Windows-x64-${{ matrix.configuration }}
+        path: ./publish/${{ matrix.configuration }}/RecoveryCommander.exe
 
     - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: startsWith(github.ref, 'refs/tags/v') && matrix.configuration == 'Release'
       uses: softprops/action-gh-release@v2
       with:
-        files: ./publish/RecoveryCommander.exe
+        files: ./publish/Release/RecoveryCommander.exe
         draft: false
         prerelease: false
         generate_release_notes: true
