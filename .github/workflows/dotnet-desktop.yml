@@ -70,10 +70,10 @@ jobs:
       run: mkdir -p bin/${{ matrix.configuration }}/net10.0-windows/win-x64/publish/Module
 
     - name: Restore Dependencies
-      run: dotnet restore $env:Solution_Name
+      run: dotnet restore $env:Solution_Name --runtime win-x64
 
     - name: Build Solution
-      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore
+      run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --runtime win-x64 --no-restore
 
     - name: Publish Executable
       run: dotnet publish RecoveryCommander.csproj --configuration ${{ matrix.configuration }} --runtime win-x64 --no-build --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true --output ./publish/${{ matrix.configuration }}
