@@ -103,11 +103,19 @@ namespace RecoveryCommander.Forms
                 content = $"Error loading {title}: {ex.Message}";
             }
 
+            ShowContentDialog(host, content, title);
+        }
+
+        public static void ShowContentDialog(Form? host, string content, string title)
+        {
             using var form = new Form()
             {
                 Text = title,
-                Size = new System.Drawing.Size(840, 620),
-                StartPosition = FormStartPosition.CenterParent
+                Size = new System.Drawing.Size(700, 500),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
             };
 
             Theme.ApplyFormStyle(form);
@@ -133,7 +141,6 @@ namespace RecoveryCommander.Forms
                 Height = 36
             };
 
-            // Create a custom RichTextBox with dark scrollbars using the same implementation as output box
             var rtb = new Theme.RoundedRichTextBox
             {
                 Dock = DockStyle.Fill,
@@ -144,7 +151,6 @@ namespace RecoveryCommander.Forms
                 ForeColor = Theme.Text
             };
             
-            // Apply theme colors to match the application
             rtb.BackColor = Theme.Surface;
             rtb.ForeColor = Theme.Text;
 
@@ -153,7 +159,7 @@ namespace RecoveryCommander.Forms
 
             var footerPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(18) };
             var footerFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
-            var closeBtn = new RecoveryCommander.UI.ModernButton { Text = "Close", Width = 180, Height = 40, Margin = new Padding(0, 0, 12, 0), ButtonStyle = Theme.ButtonStyle.Secondary, CornerRadius = 10, TextAlign = ContentAlignment.MiddleLeft };
+            var closeBtn = new RecoveryCommander.UI.ModernButton { Text = "Close", Width = 150, Height = 36, Margin = new Padding(0, 0, 12, 0), ButtonStyle = Theme.ButtonStyle.Secondary, CornerRadius = 10, TextAlign = ContentAlignment.MiddleCenter };
             closeBtn.Click += (s, e) => form.Close();
             Theme.ApplyButtonStyle(closeBtn, Theme.ButtonStyle.Secondary, 8);
             footerFlow.Controls.Add(closeBtn);
@@ -163,7 +169,6 @@ namespace RecoveryCommander.Forms
             layout.Controls.Add(footerPanel, 0, 1);
 
             form.Controls.Add(layout);
-
             form.ShowDialog(host);
         }
 

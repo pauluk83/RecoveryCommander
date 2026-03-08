@@ -16,13 +16,20 @@ namespace RecoveryCommander.Contracts
         
         IEnumerable<ModuleAction> Actions { get; }
         
-        Task ExecuteActionAsync(string actionName, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        Task ExecuteActionAsync(string actionName, IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
             // Default explicit delegate routing instead of string mapping in each module
             var action = System.Linq.Enumerable.FirstOrDefault(Actions, a => a.Name == actionName);
-            if (action != null && action.ExecuteAction != null)
+            if (action != null)
             {
-                return action.ExecuteAction(progress, reportOutput, cancellationToken);
+                if (action.ExecuteActionExtended != null)
+                {
+                    return action.ExecuteActionExtended(progress, reportOutput, dialogService, cancellationToken);
+                }
+                if (action.ExecuteAction != null)
+                {
+                    return action.ExecuteAction(progress, reportOutput, cancellationToken);
+                }
             }
             
             reportOutput($"Action '{actionName}' not properly configured or missing execution delegate.");
@@ -45,6 +52,7 @@ namespace RecoveryCommander.Contracts
         public bool Highlight { get; set; } = false;
         
         public Func<IProgress<ProgressReport>, Action<string>, CancellationToken, Task>? ExecuteAction { get; set; }
+        public Func<IProgress<ProgressReport>, Action<string>, IDialogService, CancellationToken, Task>? ExecuteActionExtended { get; set; }
         
         public ModuleAction(string name, string? displayName = null, Func<IProgress<ProgressReport>, Action<string>, CancellationToken, Task>? executeAction = null)
         {
@@ -101,5 +109,10 @@ namespace RecoveryCommander.Contracts
         void ReportOutput(string output);
         void ReportError(string error);
         void Report(ProgressReport report);
+    }
+
+    public interface IDialogService
+    {
+        void ShowContentDialog(string content, string title);
     }
 }

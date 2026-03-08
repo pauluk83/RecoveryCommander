@@ -22,7 +22,7 @@ using static RecoveryCommander.UI.ProfessionalDesignSystem;
 
 namespace RecoveryCommander.Forms
 {
-    public partial class MainForm : Form
+    public partial class MainForm : Form, IDialogService
     {
         // UI Components
         public MenuStrip mainMenu = null!;
@@ -1968,8 +1968,8 @@ namespace RecoveryCommander.Forms
             
             try
             {
-                // All modules now support async interface
-                await module.ExecuteActionAsync(action.Name, progressReporter, (output) => ShowOutput(output, sourceModule: module), cancellationTokenSource.Token);
+                // All modules now support async interface - passing 'this' as IDialogService
+                await module.ExecuteActionAsync(action.Name, progressReporter, (output) => ShowOutput(output, sourceModule: module), this, cancellationTokenSource.Token);
                 
                 if (!cancellationTokenSource.Token.IsCancellationRequested)
                 {
@@ -2289,23 +2289,8 @@ namespace RecoveryCommander.Forms
                 // Show progress indication
                 UpdateStatus($"Starting {action.DisplayName ?? action.Name}...");
 
-                // Safety First Logic
-                if (action.IsDestructive || action.Highlight)
-                {
-                    var safetyChoice = MessageBox.Show(
-                        "This action is marked as impactful. Would you like to create a System Restore point and Registry backup before proceeding?",
-                        "Safety First",
-                        MessageBoxButtons.YesNoCancel,
-                        MessageBoxIcon.Warning
-                    );
-
-                    if (safetyChoice == DialogResult.Cancel) return;
-                    if (safetyChoice == DialogResult.Yes)
-                    {
-                        UpdateStatus("Safety snapshot feature is currently disabled.");
-                        // TODO: Re-implement safety snapshot using ManagementTools.RestorePointManager
-                    }
-                }
+                // Safety First Logic - Removed as snapshot feature is currently disabled
+                // and the popup was considered redundant for modern modules.
 
                 if (!string.Equals(module.Name, "REAgentc", StringComparison.OrdinalIgnoreCase) || !string.Equals(action.Name, "Info", StringComparison.OrdinalIgnoreCase))
                 {
@@ -2399,7 +2384,16 @@ namespace RecoveryCommander.Forms
                 }
             }
         }
-         
+        public void ShowContentDialog(string content, string title)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => ShowContentDialog(content, title)));
+                return;
+            }
+            DialogFactory.ShowContentDialog(this, content, title);
+        }
+
         [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
         private static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
         
@@ -2820,7 +2814,7 @@ namespace RecoveryCommander.Forms
 
             try
             {
-                await module.ExecuteActionAsync(actionName, progressReporter, output => ShowOutput(output), cancellationTokenSource.Token);
+                await module.ExecuteActionAsync(actionName, progressReporter, output => ShowOutput(output), this, cancellationTokenSource.Token);
 
                 if (!cancellationTokenSource.Token.IsCancellationRequested)
                 {

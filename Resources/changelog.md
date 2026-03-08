@@ -1,6 +1,32 @@
 # RecoveryCommander Changelog
 
-## 2026-03-07 - System Prep Modernization & Update Engine Overhaul
+## 2026-03-08 - SFC & REAgentc Modernization, Themed UI
+
+### SFC Module Modernization
+- **Refactored SFC Logic** — Ported `SFCModule` to modern C# syntax and abstracted process logic into `SfcHelper.cs`.
+- **Phase Detection** — Implemented distinct phase tracking for Verification and Repair stages with localized progress parsing.
+- **Exit Code Interpretation** — Added mapping for `sfc.exe` exit codes (0-4) to provide specific user-friendly summaries (e.g., "Violations Repaired", "Reboot Pending").
+- **Offline Scan Helper** — Improved folder selection and validation for offline system file checking.
+
+### REAgentc Module Modernization
+- **Modernized Recovery Actions** — Removed legacy/redundant custom WIM creation actions to align with Windows 11's image-less recovery model.
+- **WinRE Link Repair** — Added a new "Reset Recovery" action that performs a Disable/Enable toggle to fix common recovery environment issues.
+- **ReagentcHelper Integration** — Abstracted `reagentc.exe` interaction into a dedicated helper class for accurate status parsing and partition identification.
+- **Themed Information Popup** — The output of the "Check Status" action is now displayed in a premium, dark-themed popup instead of a standard Windows message box.
+
+### UI & Core Architecture
+- **Themed Content Dialogs** — Added `ShowContentDialog` to `DialogFactory` for consistent, rounded, dark-mode information windows.
+- **`IDialogService` Interface** — Introduced a new contract to allow modules to trigger themed UI popups without direct dependencies on the UI project.
+- **Safety Popup Removal** — Removed the redundant "Safety First" popup from the `MainForm` execution path to streamline the user experience.
+- **Build & Contracts** — Updated `IRecoveryModule` to support extended execution delegates for UI service injection.
+
+## 2026-03-07 - System Prep Modernization & Build Automation
+
+### Build & Release Automation
+- **GitHub Actions Workflow** — Implemented a full CI/CD pipeline (`dotnet-desktop.yml`) for automated building, testing, and publishing.
+- **Automated GitHub Releases** — Configured automatic Release creation and executable asset delivery on version tag pushes.
+- **NuGet Package Publishing** — Enabled automated publishing of core library packages to GitHub Packages on successful main branch builds.
+- **Build Warning Suppression** — Resolved critical warnings related to nullability and single-file publish compatibility.
 
 ### Management & Updates
 - **Native Windows Update Engine** — Replaced the legacy `usoclient.exe` (undocumented/unreliable) with a native C# implementation using the **Microsoft.Update.Session COM API**.
