@@ -32,8 +32,9 @@ namespace RecoveryCommander.Forms
             Text = "Bootable Recovery Media";
             StartPosition = FormStartPosition.CenterParent;
             Size = new Size(1000, 800);
-            MinimizeBox = false;
-            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MinimizeBox = true;
+            MaximizeBox = true;
             AutoScroll = true;
 
             // Simple panel with absolute positioning
@@ -387,7 +388,10 @@ namespace RecoveryCommander.Forms
             {
                 Text = "Media Tools",
                 Size = new Size(800, 600),
-                StartPosition = FormStartPosition.CenterParent
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MaximizeBox = true,
+                MinimizeBox = true
             };
 
             Theme.ApplyFormStyle(form);

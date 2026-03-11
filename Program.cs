@@ -38,6 +38,10 @@ namespace RecoveryCommander
                 // Create and configure main form
                 var mainForm = ServiceContainer.GetOptionalService<MainForm>() ?? new MainForm();
                 
+                // Initialize theme colors for Core components
+                ThemeProvider.BackgroundColor = Theme.Background;
+                ThemeProvider.ForegroundColor = Theme.Text;
+                
                 // Apply animations and transitions
                 try
                 {

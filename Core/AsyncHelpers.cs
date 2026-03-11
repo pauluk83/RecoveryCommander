@@ -393,6 +393,7 @@ namespace RecoveryCommander.Core
             CancellationToken cancellationToken,
             string[]? allowedExtensions = null)
         {
+            reportOutput?.Invoke($"Starting download from: {url}");
             progress?.Report(new ProgressReport(0, $"Downloading {fileName}...", "Connecting..."));
             try
             {

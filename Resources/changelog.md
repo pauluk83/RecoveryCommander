@@ -1,5 +1,53 @@
 # RecoveryCommander Changelog
 
+## 2026-03-11 - Push-Button Reset Setup Wizard & Theming Enhancements
+
+### Major New Feature: PBR Setup Wizard
+- **Complete PBR Setup Wizard** — Added comprehensive step-by-step wizard for Push-Button Reset configuration combining ScanState capture and OEM image registration.
+- **Guided User Experience** — Professional wizard interface with welcome, ScanState capture, OEM image registration, and completion steps.
+- **Automatic ADK Detection** — Proactive detection of Windows ADK with download assistance when missing.
+- **Modern UI Integration** — Full theming support with dynamic color adaptation for light/dark modes.
+
+### Wizard Features & Functionality
+- **Step 1: ScanState Capture** — Automated capture of system customizations with progress tracking and error handling.
+- **Step 2: OEM Image Registration** — Guided selection and registration of custom Windows recovery images.
+- **ADK Download Assistance** — Integrated download options for Windows ADK 10/11 with browser automation.
+- **Progress Reporting** — Real-time status updates and milestone logging throughout the setup process.
+
+### UI & Theming Improvements
+- **Fixed Button Text Colors** — Resolved black text issues on navigation buttons in dark theme.
+- **Enhanced Theme Integration** — Improved `ThemeProvider` color propagation across all wizard controls.
+- **Professional Button Styling** — Applied consistent FlatStyle and color theming to all navigation elements.
+- **Dynamic Color Detection** — Automatic theme-aware color selection for optimal text visibility.
+
+### Code Quality & Maintenance
+- **Removed Redundant Action** — Eliminated standalone "Capture Customization Package" action in favor of the comprehensive wizard.
+- **Build Warning Resolution** — Fixed all CA1416 platform compatibility warnings with proper `[SupportedOSPlatform]` attributes.
+- **Clean Build Process** — Zero build warnings across all modules and components.
+- **Streamlined Module Interface** — Consolidated PBR functionality into single, user-friendly wizard interface.
+
+### Technical Implementation
+- **Core Namespace Migration** — Moved `WinREWizards` to `RecoveryCommander.Core` for better architecture.
+- **ThemeProvider Pattern** — Implemented static theme color provider for cross-assembly theming.
+- **Async/Await Optimization** — Proper async patterns for wizard operations and process execution.
+- **Error Handling Enhancement** — Comprehensive exception handling with user-friendly error messages.
+
+## 2026-03-10 - Dialog Enhancements & Word Wrap Support
+
+### UI & UX Improvements
+- **Sizable Dialogs** — Major application dialogs (About, Content, Restore Point Manager, Startup Manager, Media Tools, Network Optimizer) are now sizable and include Maximize/Minimize buttons.
+- **Enhanced `RoundedRichTextBox`** — Refactored the custom text control to support internal word wrapping and improved scrollability. 
+- **Dynamic Re-wrapping** — Text automatically re-wraps when dialogs are resized, ensuring optimal readability at any window size.
+- **Improved Scrolling** — Integrated better scrollbar handling and smooth scrolling for text-heavy content like changelogs and tool outputs.
+
+## 2026-03-09 - Modern Recovery Customization (ScanState & OEM Restore)
+
+### REAgentc Module Enhancements
+- **Modern Recovery Support** — Added the "modern Windows 11 way" to achieve `recimg`-like results using Provisioning Packages and OEM extensibility.
+- **Capture Customization Package** — Integrated `ScanState.exe` (USMT) to capture all installed desktop applications and settings into `.ppkg` files. These are automatically applied by Windows during a "Keep my files" reset.
+- **Register OEM Restore Image** — Added automation for creating `ResetConfig.xml` to support custom WIM-based factory resets.
+- **Modern Recovery Guide** — Embedded a comprehensive guide for Audit Mode, Sysprep, and DISM capture workflows within the module documentation.
+
 ## 2026-03-08 - SFC & REAgentc Modernization, Themed UI
 
 ### SFC Module Modernization

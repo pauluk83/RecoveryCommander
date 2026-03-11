@@ -44,8 +44,9 @@ namespace RecoveryCommander.Features
             Text = "Network Repair & Optimization";
             StartPosition = FormStartPosition.CenterParent;
             Size = new Size(850, 650);
-            MinimizeBox = false;
-            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.Sizable;
+            MinimizeBox = true;
+            MaximizeBox = true;
             Icon = SystemIcons.Application;
 
             InitializeComponents();

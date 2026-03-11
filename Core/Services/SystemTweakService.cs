@@ -2,6 +2,7 @@ using System;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using RecoveryCommander.Contracts;
 
@@ -36,7 +37,8 @@ namespace RecoveryCommander.Core.Services
             }
             catch (Exception ex)
             {
-                // Log error
+                var logger = ServiceContainer.GetService<ILogger>();
+                logger?.LogError(ex, "Failed to set registry value: {KeyPath}\\{ValueName} = {Value}", keyPath, valueName, value);
             }
         }
     }

@@ -1265,13 +1265,30 @@ namespace RecoveryCommander.UI
         {
             private const int CornerRadius = 12;
             private const int ScrollBarWidth = 17;
-            private readonly List<string> _lines = new List<string>();
+            private readonly List<string> _originalLines = new List<string>();
+            private readonly List<string> _displayLines = new List<string>();
             private readonly List<Color> _lineColors = new List<Color>();
             private readonly CustomScrollBar _scrollBar;
             private int _scrollPosition = 0;
             private int _visibleLines = 0;
             private Font _font = new Font("Consolas", 9.5f);
-            
+            private bool _wordWrap = true;
+
+            [Category("Appearance")]
+            [DefaultValue(true)]
+            public bool WordWrap
+            {
+                get => _wordWrap;
+                set
+                {
+                    if (_wordWrap != value)
+                    {
+                        _wordWrap = value;
+                        ReWrapAll();
+                    }
+                }
+            }
+
             #pragma warning disable CS8764, CS8765 // Nullability mismatch warnings for overridden properties
             public override Font Font
             {
@@ -1279,7 +1296,7 @@ namespace RecoveryCommander.UI
                 set
                 {
                     _font = value ?? new Font("Consolas", 9.5f);
-                    Invalidate();
+                    ReWrapAll();
                 }
             }
             
@@ -1322,24 +1339,115 @@ namespace RecoveryCommander.UI
 
             public void Clear()
             {
-                _lines.Clear();
+                _originalLines.Clear();
+                _displayLines.Clear();
                 _lineColors.Clear();
                 _scrollPosition = 0;
                 UpdateScrollBar();
                 Invalidate();
             }
 
+            private void ReWrapAll()
+            {
+                _displayLines.Clear();
+                _lineColors.Clear();
+
+                if (_originalLines.Count == 0)
+                {
+                    UpdateScrollBar();
+                    Invalidate();
+                    return;
+                }
+
+                int maxWidth = Width - 32 - (_scrollBar.Visible ? ScrollBarWidth : 0);
+                if (maxWidth <= 0) maxWidth = 100;
+
+                using var g = IsHandleCreated ? CreateGraphics() : null;
+                
+                foreach (var line in _originalLines)
+                {
+                    var highlightedColor = ApplySyntaxHighlighting(line);
+                    if (!_wordWrap || g == null)
+                    {
+                        _displayLines.Add(line);
+                        _lineColors.Add(highlightedColor);
+                    }
+                    else
+                    {
+                        var wrapped = WrapLine(g, line, maxWidth);
+                        foreach (var w in wrapped)
+                        {
+                            _displayLines.Add(w);
+                            _lineColors.Add(highlightedColor);
+                        }
+                    }
+                }
+                UpdateScrollBar();
+                Invalidate();
+            }
+
+            private List<string> WrapLine(Graphics g, string line, int maxWidth)
+            {
+                var result = new List<string>();
+                if (string.IsNullOrEmpty(line))
+                {
+                    result.Add("");
+                    return result;
+                }
+
+                // Simple word wrap
+                var words = line.Split(' ');
+                var currentLine = "";
+
+                foreach (var word in words)
+                {
+                    var testLine = string.IsNullOrEmpty(currentLine) ? word : currentLine + " " + word;
+                    var size = g.MeasureString(testLine, _font);
+
+                    if (size.Width > maxWidth && !string.IsNullOrEmpty(currentLine))
+                    {
+                        result.Add(currentLine);
+                        currentLine = word;
+                    }
+                    else
+                    {
+                        currentLine = testLine;
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(currentLine))
+                    result.Add(currentLine);
+
+                return result;
+            }
+
             public void AppendText(string text, Color color)
             {
                 var lines = text.Split('\n');
+                using var g = IsHandleCreated ? CreateGraphics() : null;
+                int maxWidth = Width - 32 - (_scrollBar.Visible ? ScrollBarWidth : 0);
+                if (maxWidth <= 0) maxWidth = 100;
+
                 foreach (var line in lines)
                 {
-                    if (!string.IsNullOrEmpty(line))
+                    var cleanLine = line.TrimEnd('\r');
+                    _originalLines.Add(cleanLine);
+                    
+                    var highlightedColor = color == ForeColor ? ApplySyntaxHighlighting(cleanLine) : color;
+
+                    if (!_wordWrap || g == null)
                     {
-                        _lines.Add(line);
-                        // Apply syntax highlighting if default color is used
-                        var highlightedColor = color == ForeColor ? ApplySyntaxHighlighting(line) : color;
+                        _displayLines.Add(cleanLine);
                         _lineColors.Add(highlightedColor);
+                    }
+                    else
+                    {
+                        var wrapped = WrapLine(g, cleanLine, maxWidth);
+                        foreach (var w in wrapped)
+                        {
+                            _displayLines.Add(w);
+                            _lineColors.Add(highlightedColor);
+                        }
                     }
                 }
                 UpdateScrollBar();
@@ -1400,39 +1508,21 @@ namespace RecoveryCommander.UI
                 AppendText(text, ForeColor);
             }
 
-            public void BeginUpdate()
-            {
-                // Suspend layout for batch updates
-            }
-
-            public void EndUpdate()
-            {
-                // Resume layout and invalidate
-                Invalidate();
-            }
-
-            public new void SuspendLayout()
-            {
-                // Suspend layout
-            }
-
-            public new void ResumeLayout()
-            {
-                // Resume layout
-            }
+            public void BeginUpdate() { }
+            public void EndUpdate() { Invalidate(); }
+            public new void SuspendLayout() { }
+            public new void ResumeLayout() { }
 
             public void ScrollToCaret()
             {
-                // Auto-scroll to bottom - ensures latest content is visible
-                if (_lines.Count > _visibleLines)
+                if (_displayLines.Count > _visibleLines)
                 {
-                    _scrollPosition = Math.Max(0, _lines.Count - _visibleLines);
+                    _scrollPosition = Math.Max(0, _displayLines.Count - _visibleLines);
                     _scrollBar.Value = _scrollPosition;
                     Invalidate();
                 }
-                else if (_lines.Count > 0)
+                else if (_displayLines.Count > 0)
                 {
-                    // Ensure we're at the bottom when content fits in view
                     _scrollPosition = 0;
                     _scrollBar.Value = 0;
                     Invalidate();
@@ -1442,22 +1532,19 @@ namespace RecoveryCommander.UI
             #pragma warning disable CS8764, CS8765 // Nullability mismatch warnings for overridden properties
             public override string Text
             {
-                get => string.Join(Environment.NewLine, _lines);
+                get => string.Join(Environment.NewLine, _originalLines);
                 set
                 {
-                    _lines.Clear();
-                    _lineColors.Clear();
+                    _originalLines.Clear();
                     if (!string.IsNullOrEmpty(value))
                     {
                         var lines = value!.Split('\n');
                         foreach (var line in lines)
                         {
-                            _lines.Add(line);
-                            _lineColors.Add(ForeColor);
+                            _originalLines.Add(line.TrimEnd('\r'));
                         }
                     }
-                    UpdateScrollBar();
-                    Invalidate();
+                    ReWrapAll();
                 }
             }
 #pragma warning restore CS8764, CS8765
@@ -1470,21 +1557,20 @@ namespace RecoveryCommander.UI
 
             private void OnResize(object? sender, EventArgs e)
             {
-                UpdateScrollBar();
+                ReWrapAll();
             }
 
             private void UpdateScrollBar()
             {
                 _visibleLines = Math.Max(1, Height / _font.Height);
                 
-                if (_lines.Count > _visibleLines)
+                if (_displayLines.Count > _visibleLines)
                 {
                     _scrollBar.Visible = true;
-                    _scrollBar.Maximum = Math.Max(0, _lines.Count - 1);
+                    _scrollBar.Maximum = Math.Max(0, _displayLines.Count - 1);
                     _scrollBar.LargeChange = Math.Max(1, _visibleLines);
                     _scrollBar.SmallChange = 1;
                     
-                    // Ensure scroll position stays within valid range
                     if (_scrollPosition > _scrollBar.Maximum)
                     {
                         _scrollPosition = _scrollBar.Maximum;
@@ -1504,63 +1590,40 @@ namespace RecoveryCommander.UI
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-                // Draw rounded background with enhanced border
                 var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
                 using (var path = GetRoundedRectPath(bounds, CornerRadius))
                 {
-                    // Fill background
                     using (var brush = new SolidBrush(BackColor))
-                    {
                         g.FillPath(brush, path);
-                    }
                     
-                    // Draw border with subtle shadow effect
                     using (var borderPen = new Pen(Color.FromArgb(60, 60, 70), 1.5f))
-                    {
                         g.DrawPath(borderPen, path);
-                    }
-                    
-                    // Draw inner highlight for depth
-                    var innerBounds = new Rectangle(1, 1, Width - 3, Height - 3);
-                    using (var innerPath = GetRoundedRectPath(innerBounds, CornerRadius - 1))
-                    {
-                        using (var innerPen = new Pen(Color.FromArgb(40, 40, 50), 1f))
-                        {
-                            g.DrawPath(innerPen, innerPath);
-                        }
-                    }
                 }
 
-                // Set clipping region for text
                 var textBounds = new Rectangle(8, 8, Width - 16 - (_scrollBar.Visible ? ScrollBarWidth : 0), Height - 16);
                 using (var clipPath = GetRoundedRectPath(textBounds, CornerRadius - 4))
                 {
                     g.SetClip(clipPath);
                 }
 
-                // Draw text lines
                 var y = 8;
-                var lineIndex = _scrollPosition;
-                var maxLineIndex = Math.Max(0, _lines.Count - _visibleLines);
+                var maxLineIndex = Math.Max(0, _displayLines.Count - _visibleLines);
                 var actualScrollPosition = Math.Min(_scrollPosition, maxLineIndex);
                 
-                // Ensure we don't start drawing beyond the content
-                if (actualScrollPosition >= _lines.Count)
-                {
-                    actualScrollPosition = Math.Max(0, _lines.Count - _visibleLines);
-                }
+                if (actualScrollPosition >= _displayLines.Count)
+                    actualScrollPosition = Math.Max(0, _displayLines.Count - _visibleLines);
                 
-                var linesToDraw = Math.Min(_visibleLines, _lines.Count - actualScrollPosition);
+                var linesToDraw = Math.Min(_visibleLines, _displayLines.Count - actualScrollPosition);
 
-                for (int i = 0; i < linesToDraw && actualScrollPosition + i < _lines.Count; i++)
+                for (int i = 0; i < linesToDraw && actualScrollPosition + i < _displayLines.Count; i++)
                 {
-                    var line = _lines[actualScrollPosition + i];
+                    var line = _displayLines[actualScrollPosition + i];
                     var baseColor = actualScrollPosition + i < _lineColors.Count ? _lineColors[actualScrollPosition + i] : ForeColor;
                     
                     if (y + _font.Height <= Height - 8)
                     {
-                        // Draw line with syntax highlighting
-                        DrawSyntaxHighlightedLine(g, line, baseColor, 8, y);
+                        using (var brush = new SolidBrush(baseColor))
+                            g.DrawString(line, _font, brush, 8, y);
                     }
                     y += _font.Height;
                 }
@@ -1570,11 +1633,8 @@ namespace RecoveryCommander.UI
             {
                 if (!_scrollBar.Visible) return;
                 
-                // Calculate new scroll position based on wheel delta
-                var delta = e.Delta / 120; // Standard wheel click
+                var delta = e.Delta / 120;
                 var newValue = _scrollPosition - (delta * _scrollBar.SmallChange);
-                
-                // Clamp to valid range
                 newValue = Math.Max(0, Math.Min(_scrollBar.Maximum - _visibleLines + 1, newValue));
                 
                 if (newValue != _scrollPosition)
@@ -1585,19 +1645,8 @@ namespace RecoveryCommander.UI
                 }
             }
 
-            private void DrawSyntaxHighlightedLine(Graphics g, string line, Color defaultColor, float x, float y)
-            {
-                // Draw entire line in the provided color (already syntax-highlighted)
-                using (var brush = new SolidBrush(defaultColor))
-                {
-                    g.DrawString(line, _font, brush, x, y);
-                }
-            }
-            
-            protected override void OnPaintBackground(PaintEventArgs e)
-            {
-                // Don't call base - we handle all painting
-            }
+            protected override void OnPaintBackground(PaintEventArgs e) { }
+
         }
 
         public class RoundedPanel : Panel

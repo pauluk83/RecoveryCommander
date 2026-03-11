@@ -55,9 +55,9 @@ namespace RecoveryCommander.Forms
                 Text = "About RecoveryCommander",
                 Size = new Size(450, 350),
                 StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MaximizeBox = true,
+                MinimizeBox = true
             };
 
             Theme.ApplyFormStyle(form);
@@ -113,9 +113,9 @@ namespace RecoveryCommander.Forms
                 Text = title,
                 Size = new System.Drawing.Size(700, 500),
                 StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MaximizeBox = true,
+                MinimizeBox = true
             };
 
             Theme.ApplyFormStyle(form);
@@ -180,7 +180,10 @@ namespace RecoveryCommander.Forms
             {
                 Text = "Restore Point Manager",
                 Size = new System.Drawing.Size(820, 520),
-                StartPosition = FormStartPosition.CenterParent
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MaximizeBox = true,
+                MinimizeBox = true
             };
 
             var list = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, HideSelection = false, BorderStyle = BorderStyle.None };
@@ -307,7 +310,10 @@ namespace RecoveryCommander.Forms
                 {
                     Text = "Startup Manager",
                     Size = new System.Drawing.Size(920, 640),
-                    StartPosition = FormStartPosition.CenterParent
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.Sizable,
+                    MaximizeBox = true,
+                    MinimizeBox = true
                 };
 
             var list = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, HideSelection = false, BorderStyle = BorderStyle.None };

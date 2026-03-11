@@ -5,9 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
+using System.Runtime.Versioning;
 
 namespace RecoveryCommander.Module;
 
+[SupportedOSPlatform("windows")]
 internal static class ReagentcHelper
 {
     public static async Task<string> RunReagentcAsync(string arguments, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

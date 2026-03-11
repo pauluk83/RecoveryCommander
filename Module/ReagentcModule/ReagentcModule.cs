@@ -57,6 +57,13 @@ public sealed class ReagentcModule : IRecoveryModule
             Description = "Allows picking a recovery WIM from a hidden partition or directory and manually re-linking it.",
             RequiresAdmin = true,
             IconName = "Settings"
+        },
+        new("Complete PBR Setup Wizard", "Guided Push-Button Reset Setup (ScanState + OEM Image)", ExecutePbrSetupWizardAsync)
+        {
+            Description = "Step-by-step wizard that guides you through capturing system customizations with ScanState and registering an OEM recovery image for complete Push-Button Reset functionality.",
+            RequiresAdmin = true,
+            Highlight = true,
+            IconName = "Wizard"
         }
     };
 
@@ -173,6 +180,87 @@ public sealed class ReagentcModule : IRecoveryModule
                 await DiskUtility.RunDiskpartScriptAsync(script, reportOutput, cancellationToken);
             }
             progress.Report(new ProgressReport(100, "Finished."));
+        }
+    }
+
+    private async Task ExecutePbrSetupWizardAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
+    {
+        progress.Report(new ProgressReport(0, "Configuring OEM Restore Image..."));
+
+        using var ofd = new OpenFileDialog
+        {
+            Filter = "Windows Image (install.wim)|install.wim|WIM Files (*.wim)|*.wim|All Files (*.*)|*.*",
+            Title = "Select the Custom Windows Image (WIM) to use for Factory Reset",
+            CheckFileExists = true
+        };
+
+        if (ofd.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(ofd.FileName))
+        {
+            string wimPath = ofd.FileName;
+            string oemDir = @"C:\Recovery\OEM";
+            if (!Directory.Exists(oemDir)) Directory.CreateDirectory(oemDir);
+
+            string xmlPath = Path.Combine(oemDir, "ResetConfig.xml");
+            
+            string xmlContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<Reset>
+  <Run>
+    <Phase>FactoryReset_AfterDiskFormat</Phase>
+    <Path>scripts\PreparePartitions.cmd</Path>
+    <Duration>2</Duration>
+  </Run>
+  <SystemDisk>
+    <MinSize>60000</MinSize>
+  </SystemDisk>
+</Reset>";
+            
+            try
+            {
+                await File.WriteAllTextAsync(xmlPath, xmlContent, System.Text.Encoding.UTF8, cancellationToken);
+                reportOutput($"SUCCESS: Created {xmlPath}. Note: You must also place your custom WIM and any necessary scripts in {oemDir}.");
+                progress.Report(new ProgressReport(100, "OEM Image Registration (Config) Complete."));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Failed to create ResetConfig.xml: {ex.Message}");
+                progress.Report(new ProgressReport(100, "Registration failed."));
+            }
+        }
+        else
+        {
+            reportOutput("Registration cancelled.");
+            progress.Report(new ProgressReport(100, "Cancelled."));
+        }
+    }
+
+    private async Task ExecutePbrSetupWizardAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    {
+        progress.Report(new ProgressReport(0, "Launching Push-Button Reset Setup Wizard..."));
+
+        try
+        {
+            // Run the wizard on a background thread to avoid blocking the UI
+            var result = await Task.Run(() =>
+            {
+                using var wizard = new RecoveryCommander.Core.WinREWizards(reportOutput);
+                return wizard.ShowDialog();
+            }, cancellationToken);
+
+            if (result == DialogResult.OK)
+            {
+                reportOutput("Push-Button Reset Setup Wizard completed successfully!");
+                progress.Report(new ProgressReport(100, "PBR Setup Wizard completed."));
+            }
+            else
+            {
+                reportOutput("Push-Button Reset Setup Wizard was cancelled.");
+                progress.Report(new ProgressReport(100, "Wizard cancelled."));
+            }
+        }
+        catch (Exception ex)
+        {
+            reportOutput($"Failed to launch PBR Setup Wizard: {ex.Message}");
+            progress.Report(new ProgressReport(100, "Wizard failed to launch."));
         }
     }
 }
