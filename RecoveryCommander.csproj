@@ -19,6 +19,7 @@
     <SelfContained>false</SelfContained>
     <IncludeNativeLibrariesForSelfContained>true</IncludeNativeLibrariesForSelfContained>
     <NoWarn>$(NoWarn);NU1510</NoWarn>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -65,6 +66,23 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- Copy dynamically compiled modules to publish directory after publish -->
+  <!-- Source: bin\Configuration\TargetFramework\Module\ModuleName\TargetFramework\*.dll -->
+  <!-- Target: publish\Module\ModuleName\*.dll (flattened, no TFM subfolder) -->
+  <Target Name="CopyModulesToPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_ModuleSourceDir>$(BaseOutputPath)$(Configuration)\$(TargetFramework)\Module\</_ModuleSourceDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- Match DLLs inside the nested TFM subfolder inside each module subfolder -->
+      <ModulesToCopy Include="$(_ModuleSourceDir)*\$(TargetFramework)\*.dll" />
+    </ItemGroup>
+    <Message Text="Copying modules from $(_ModuleSourceDir) → $(PublishDir)Module\" Importance="high" />
+    <!-- Strip the TFM subfolder: copy each DLL to Module\{ModuleName}\ directly -->
+    <Copy SourceFiles="@(ModulesToCopy)"
+          DestinationFiles="@(ModulesToCopy->'$(PublishDir)Module\%(RecursiveDir)..\%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 
 </Project>
