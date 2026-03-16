@@ -411,8 +411,8 @@ namespace RecoveryCommander.Core
                     progress?.Report(new ProgressReport(100, "Failed"));
                     return;
                 }
-                // Only allow whitelisted extensions (default: exe, msi, bat, cmd)
-                allowedExtensions ??= new[] { "exe", "msi", "bat", "cmd" };
+                // Only allow whitelisted extensions (default: exe, msi, bat, cmd, ps1)
+                allowedExtensions ??= new[] { "exe", "msi", "bat", "cmd", "ps1" };
                 if (!SecurityHelpers.IsAllowedFileExtension(sanitizedFileName, allowedExtensions))
                 {
                     reportOutput?.Invoke("File extension not allowed.");
@@ -456,13 +456,31 @@ namespace RecoveryCommander.Core
                 // Small delay to allow antivirus/SmartScreen to release the file handle lock after closing
                 await Task.Delay(500, cancellationToken);
 
-                var psi = new ProcessStartInfo
+                ProcessStartInfo psi;
+                string extension = Path.GetExtension(validatedPath!).ToLowerInvariant();
+
+                if (extension == ".ps1")
                 {
-                    FileName = validatedPath!,
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
-                };
+                    psi = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{validatedPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
+                    };
+                }
+                else
+                {
+                    psi = new ProcessStartInfo
+                    {
+                        FileName = validatedPath!,
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
+                    };
+                }
+
                 using (var proc = Process.Start(psi))
                 {
                     if (proc != null)
