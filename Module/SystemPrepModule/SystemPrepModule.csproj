@@ -8,6 +8,7 @@
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\SystemPrepModule\</OutputPath>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

@@ -10,6 +10,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <EnableDefaultPageItems>true</EnableDefaultPageItems>
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\UtilitiesModule\</OutputPath>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="UtilitiesModule.cs" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Management" Version="10.0.3" />
   </ItemGroup>
   
   <ItemGroup>

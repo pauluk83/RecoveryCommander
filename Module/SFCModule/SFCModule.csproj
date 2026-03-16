@@ -12,6 +12,7 @@
     <FileVersion>1.0.0.0</FileVersion>
     <Version>1.0.0</Version>
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\SFCModule\</OutputPath>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

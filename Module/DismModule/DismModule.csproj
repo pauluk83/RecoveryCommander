@@ -8,13 +8,14 @@
     <UseWindowsForms>true</UseWindowsForms>
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\DismModule\</OutputPath>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\RecoveryCommander.Contracts\RecoveryCommander.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DismModule.cs" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Management" Version="10.0.3" />
   </ItemGroup>
   <ItemGroup>
      <ProjectReference Include="..\..\Core\RecoveryCommander.Core.csproj" />
