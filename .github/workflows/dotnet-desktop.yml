@@ -54,6 +54,7 @@ jobs:
 
     env:
       Solution_Name: RecoveryCommander.sln
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout

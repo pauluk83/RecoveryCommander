@@ -1,5 +1,12 @@
 # RecoveryCommander Changelog
 
+## 2026-03-16 - GitHub Actions Node 24 Opt-In & Build Fixes
+
+### Build Warning Resolution
+- **GitHub Actions Maintenance** — Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` environment variable to `.github/workflows/dotnet-desktop.yml` to automatically opt into Node.js 24 runners, mitigating the Node.js 20 deprecation warning for `checkout@v4` and `setup-dotnet@v4` actions.
+- **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs` caused by `FirstOrDefault` and potentially null UI controls.
+
+
 ## 2026-03-16 - Application Metadata & Documentation Updates
 
 ### About Dialog & Help Menu enhancements

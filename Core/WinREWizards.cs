@@ -562,7 +562,7 @@ namespace RecoveryCommander.Core
                     Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", "ScanState", "scanstate.exe")
                 };
 
-                string scanstatePath = searchPaths.FirstOrDefault(File.Exists);
+                string? scanstatePath = searchPaths.FirstOrDefault(File.Exists);
                 if (string.IsNullOrEmpty(scanstatePath))
                 {
                     reportOutput("Windows ADK not found. Checking requirements...");
@@ -624,8 +624,11 @@ namespace RecoveryCommander.Core
                 scanStateCompleted = true;
 
                 reportOutput("SUCCESS: Customizations captured successfully!");
-                lblStatus.Text = "✓ Capture completed successfully!";
-                lblStatus.ForeColor = Color.Green;
+                if (lblStatus != null)
+                {
+                    lblStatus.Text = "✓ Capture completed successfully!";
+                    lblStatus.ForeColor = Color.Green;
+                }
 
                 // Add path display
                 var lblPath = new Label
