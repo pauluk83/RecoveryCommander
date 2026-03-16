@@ -9,8 +9,9 @@
 - **All Modules Bundled into Single EXE** — Added all 6 module projects (`SFCModule`, `DismModule`, `ReagentcModule`, `MalwareRemovalModule`, `SystemPrepModule`, `UtilitiesModule`) as direct `<ProjectReference>` items in `RecoveryCommander.csproj`. With `PublishSingleFile=true`, their DLLs are embedded inside the EXE — no separate `Module/` folder needed. EXE grew from ~26 MB to ~51 MB.
 - **Package Version Alignment** — Aligned `System.Management` to `10.0.3` across all module and core project files to resolve `NU1605` downgrade conflict errors.
 - **Embedded PDB Symbols** — Added `<DebugType>embedded</DebugType>` to all projects to embed debug symbols and eliminate stray `.pdb` files from the publish output.
-- **ModuleLoader AppDomain Scan** — Fixed `ModuleLoader.cs` to scan `AppDomain.CurrentDomain.GetAssemblies()` and explicitly force-load all referenced assemblies. When `PublishSingleFile` bundles modules as ProjectReferences, they load as separate assemblies that might not be active until needed; the new loading logic ensures they are active and discovered on startup.
+- **ModuleLoader & Warm-Up Fix** — Implemented a "Warm-Up" phase in `Program.cs` that explicitly references a type from each module. This is the most reliable way to ensure that the .NET linker does not prune the module assemblies during single-file publishing and that they are correctly loaded into the `AppDomain` for discovery by the `ModuleLoader`.
 - **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs`.
+- **Single-File Bundling Optimization** — Enabled `IncludeAllContentForSelfContained` to further consolidate resources into the executable.
 
 
 ## 2026-03-16 - Application Metadata & Documentation Updates
