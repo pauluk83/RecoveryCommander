@@ -3,7 +3,7 @@
 ## 2026-03-16 - GitHub Actions Node 24 Opt-In & Build Fixes
 
 ### Build Warning Resolution
-- **GitHub Actions Maintenance** — Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24="true"` as a string value at the root level and explicitly in the `env` blocks for `actions/checkout@v4` and `actions/setup-dotnet@v4` to address the Node.js 20 deprecation.
+- **GitHub Actions Maintenance** — Updated `actions/checkout@v4` to `v6`, `actions/setup-dotnet@v4` to `v5`, and `actions/upload-artifact@v4` to `v6`. These new major versions run natively on Node.js 24, completely resolving the Node.js 20 deprecation warning without needing explicit environment variables.
 - **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs` caused by `FirstOrDefault` and potentially null UI controls.
 
 
