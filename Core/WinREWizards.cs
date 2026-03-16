@@ -30,7 +30,9 @@ namespace RecoveryCommander.Core
         private enum WizardStep
         {
             Welcome,
+            CaptureChoice,
             ScanStateCapture,
+            FfuCaptureInfo,
             OemImageRegistration,
             Completion
         }
@@ -44,6 +46,10 @@ namespace RecoveryCommander.Core
         private string registeredOemImagePath = "";
         private bool scanStateCompleted = false;
         private bool oemRegistrationCompleted = false;
+        private bool useFfuCapture = false;
+
+        private RadioButton? rbScanState;
+        private RadioButton? rbFfu;
 
         public WinREWizards(Action<string> outputCallback)
         {
@@ -114,7 +120,7 @@ namespace RecoveryCommander.Core
                 Text = "< Back",
                 Location = new Point(20, 410),
                 Size = new Size(80, 35),
-                Enabled = false,
+                Enabled = true,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = ThemeProvider.BackgroundColor,
                 ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
@@ -168,28 +174,42 @@ namespace RecoveryCommander.Core
             switch (currentStep)
             {
                 case WizardStep.Welcome:
-                    lblStepIndicator!.Text = "Step 1 of 3: Introduction";
+                    lblStepIndicator!.Text = "Step 1 of 5: Introduction";
                     btnBack!.Enabled = false;
                     btnNext!.Text = "Next >";
                     ShowWelcomeStep();
                     break;
 
+                case WizardStep.CaptureChoice:
+                    lblStepIndicator!.Text = "Step 2 of 5: Choose Capture Method";
+                    btnBack!.Enabled = true;
+                    btnNext!.Text = "Next >";
+                    ShowCaptureChoiceStep();
+                    break;
+
                 case WizardStep.ScanStateCapture:
-                    lblStepIndicator!.Text = "Step 2 of 3: Capture Customizations";
+                    lblStepIndicator!.Text = "Step 3 of 5: Capture Customizations (ScanState)";
                     btnBack!.Enabled = true;
                     btnNext!.Text = scanStateCompleted ? "Next >" : "Capture Now";
                     ShowScanStateStep();
                     break;
 
+                case WizardStep.FfuCaptureInfo:
+                    lblStepIndicator!.Text = "Step 3 of 5: FFU Capture Instructions (Offline)";
+                    btnBack!.Enabled = true;
+                    btnNext!.Text = "Next >";
+                    ShowFfuCaptureInfoStep();
+                    break;
+
                 case WizardStep.OemImageRegistration:
-                    lblStepIndicator!.Text = "Step 3 of 3: Register OEM Image";
+                    lblStepIndicator!.Text = "Step 4 of 5: Register OEM Image";
                     btnBack!.Enabled = true;
                     btnNext!.Text = oemRegistrationCompleted ? "Finish" : "Register Now";
                     ShowOemImageStep();
                     break;
 
                 case WizardStep.Completion:
-                    lblStepIndicator!.Text = "Complete!";
+                    lblStepIndicator!.Text = "Step 5 of 5: Complete!";
                     btnBack!.Enabled = false;
                     btnNext!.Text = "Close";
                     ShowCompletionStep();
@@ -197,7 +217,7 @@ namespace RecoveryCommander.Core
             }
 
             // Update progress
-            progressBar!.Value = ((int)currentStep * 100) / 3;
+            progressBar!.Value = ((int)currentStep * 100) / 5;
         }
 
         private void ShowWelcomeStep()
@@ -233,6 +253,92 @@ namespace RecoveryCommander.Core
             };
             lblDescription.Font = new Font("Segoe UI", 9);
             pnlContent.Controls.Add(lblDescription);
+        }
+
+        private void ShowCaptureChoiceStep()
+        {
+            if (pnlContent == null) return;
+
+            var lblTitle = new Label
+            {
+                Text = "Choose Customization Capture Method",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Location = new Point(20, 20),
+                Size = new Size(500, 30),
+                ForeColor = ThemeProvider.ForegroundColor
+            };
+            pnlContent.Controls.Add(lblTitle);
+
+            rbScanState = new RadioButton
+            {
+                Text = "Provisioning Package (ScanState / WIM)\nCaptures apps and settings online. Best for most users.",
+                Location = new Point(30, 70),
+                Size = new Size(500, 60),
+                Checked = !useFfuCapture,
+                ForeColor = ThemeProvider.ForegroundColor
+            };
+            rbScanState.CheckedChanged += (s, e) => { if (rbScanState.Checked) useFfuCapture = false; };
+            pnlContent.Controls.Add(rbScanState);
+
+            rbFfu = new RadioButton
+            {
+                Text = "Modern FFU / Full System Image\nSector-based capture (offline). Extremely fast restore.",
+                Location = new Point(30, 140),
+                Size = new Size(500, 60),
+                Checked = useFfuCapture,
+                ForeColor = ThemeProvider.ForegroundColor
+            };
+            rbFfu.CheckedChanged += (s, e) => { if (rbFfu.Checked) useFfuCapture = true; };
+            pnlContent.Controls.Add(rbFfu);
+
+            var lblTip = new Label
+            {
+                Text = "Tip: If ScanState previously failed with exit code 29, " +
+                       "the FFU method is a more reliable but requires booting into WinPE.",
+                Location = new Point(20, 220),
+                Size = new Size(500, 60),
+                Font = new Font("Segoe UI", 9, FontStyle.Italic),
+                ForeColor = ThemeProvider.ForegroundColor
+            };
+            pnlContent.Controls.Add(lblTip);
+        }
+
+        private void ShowFfuCaptureInfoStep()
+        {
+            if (pnlContent == null) return;
+
+            var lblTitle = new Label
+            {
+                Text = "FFU Capture Instructions (Offline)",
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Location = new Point(20, 20),
+                Size = new Size(500, 30),
+                ForeColor = ThemeProvider.ForegroundColor
+            };
+            pnlContent.Controls.Add(lblTitle);
+
+            var txtInstructions = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
+                Location = new Point(20, 60),
+                Size = new Size(510, 220),
+                Font = new Font("Consolas", 9),
+                BackColor = ThemeProvider.BackgroundColor,
+                ForeColor = ThemeProvider.ForegroundColor,
+                BorderStyle = BorderStyle.None,
+                Text = "To capture an FFU image for factory reset:\r\n\r\n" +
+                       "1. Create a Windows Installation or WinPE USB drive.\r\n" +
+                       "2. Boot from the USB drive.\r\n" +
+                       "3. Press Shift+F10 to open a Command Prompt.\r\n" +
+                       "4. Identify your primary disk (usually disk 0).\r\n" +
+                       "5. Run the capture command:\r\n" +
+                       "   dism /Capture-Ffu /ImageFile:D:\\install.ffu /CaptureDrive:\\\\.\\PhysicalDrive0\r\n" +
+                       "   (Change D:\\ to your backup drive letter)\r\n\r\n" +
+                       "Once you have the .ffu file, click Next to register it."
+            };
+            pnlContent.Controls.Add(txtInstructions);
         }
 
         private void ShowScanStateStep()
@@ -385,7 +491,18 @@ namespace RecoveryCommander.Core
 
             if (currentStep > WizardStep.Welcome)
             {
-                currentStep--;
+                if (currentStep == WizardStep.OemImageRegistration)
+                {
+                    currentStep = useFfuCapture ? WizardStep.FfuCaptureInfo : WizardStep.ScanStateCapture;
+                }
+                else if (currentStep == WizardStep.ScanStateCapture || currentStep == WizardStep.FfuCaptureInfo)
+                {
+                    currentStep = WizardStep.CaptureChoice;
+                }
+                else
+                {
+                    currentStep--;
+                }
                 UpdateWizardDisplay();
             }
         }
@@ -416,17 +533,32 @@ namespace RecoveryCommander.Core
             // Move to next step
             if (currentStep < WizardStep.Completion)
             {
-                currentStep++;
+                if (currentStep == WizardStep.CaptureChoice)
+                {
+                    currentStep = useFfuCapture ? WizardStep.FfuCaptureInfo : WizardStep.ScanStateCapture;
+                }
+                else if (currentStep == WizardStep.ScanStateCapture)
+                {
+                    currentStep = WizardStep.OemImageRegistration;
+                }
+                else if (currentStep == WizardStep.FfuCaptureInfo)
+                {
+                    currentStep = WizardStep.OemImageRegistration;
+                }
+                else
+                {
+                    currentStep++;
+                }
                 UpdateWizardDisplay();
             }
         }
 
-        private async Task DownloadWindowsAdkAsync()
+        private Task DownloadWindowsAdkAsync()
         {
             try
             {
                 reportOutput("Preparing Windows ADK download...");
-                
+
                 // Show download options dialog
                 var adkForm = new Form
                 {
@@ -481,33 +613,36 @@ namespace RecoveryCommander.Core
                 };
                 adkForm.Controls.Add(btnCancel);
 
-                btnAdk11.Click += (s, e) => {
-                    System.Diagnostics.Process.Start(new ProcessStartInfo 
-                    { 
+                btnAdk11.Click += (s, e) =>
+                {
+                    System.Diagnostics.Process.Start(new ProcessStartInfo
+                    {
                         FileName = "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install",
-                        UseShellExecute = true 
+                        UseShellExecute = true
                     });
                     adkForm.DialogResult = DialogResult.OK;
                     adkForm.Close();
                 };
 
-                btnAdk10.Click += (s, e) => {
-                    System.Diagnostics.Process.Start(new ProcessStartInfo 
-                    { 
+                btnAdk10.Click += (s, e) =>
+                {
+                    System.Diagnostics.Process.Start(new ProcessStartInfo
+                    {
                         FileName = "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install",
-                        UseShellExecute = true 
+                        UseShellExecute = true
                     });
                     adkForm.DialogResult = DialogResult.OK;
                     adkForm.Close();
                 };
 
-                btnCancel.Click += (s, e) => {
+                btnCancel.Click += (s, e) =>
+                {
                     adkForm.DialogResult = DialogResult.Cancel;
                     adkForm.Close();
                 };
 
                 var result = adkForm.ShowDialog();
-                
+
                 if (result == DialogResult.OK)
                 {
                     reportOutput("Windows ADK download page opened in browser.");
@@ -516,8 +651,8 @@ namespace RecoveryCommander.Core
                         "✓ User State Migration Tool (USMT)\n" +
                         "✓ Deployment Tools (optional but recommended)\n\n" +
                         "After installation, restart this wizard to continue.",
-                        "Installation Instructions", 
-                        MessageBoxButtons.OK, 
+                        "Installation Instructions",
+                        MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
                 }
                 else
@@ -530,6 +665,7 @@ namespace RecoveryCommander.Core
                 reportOutput($"ADK download failed: {ex.Message}");
                 MessageBox.Show($"Failed to open ADK download: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            return Task.CompletedTask;
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)
@@ -566,15 +702,15 @@ namespace RecoveryCommander.Core
                 if (string.IsNullOrEmpty(scanstatePath))
                 {
                     reportOutput("Windows ADK not found. Checking requirements...");
-                    
+
                     var result = MessageBox.Show(
                         "Windows ADK (Assessment and Deployment Kit) with User State Migration Tool is required for this step.\n\n" +
                         "Would you like to:\n" +
                         "• Yes - Download Windows ADK (recommended)\n" +
                         "• No - Continue without ADK (manual setup required)\n" +
                         "• Cancel - Exit wizard",
-                        "Windows ADK Required", 
-                        MessageBoxButtons.YesNoCancel, 
+                        "Windows ADK Required",
+                        MessageBoxButtons.YesNoCancel,
                         MessageBoxIcon.Question);
 
                     if (result == DialogResult.Yes)
@@ -593,8 +729,8 @@ namespace RecoveryCommander.Core
                             "   • C:\\Program Files (x86)\\Windows Kits\\10\\Assessment and Deployment Kit\\User State Migration Tool\\amd64\\\n" +
                             "   • C:\\Program Files (x86)\\Windows Kits\\11\\Assessment and Deployment Kit\\User State Migration Tool\\amd64\\\n" +
                             "   • [AppFolder]\\Tools\\ScanState\\",
-                            "Manual Setup Required", 
-                            MessageBoxButtons.OK, 
+                            "Manual Setup Required",
+                            MessageBoxButtons.OK,
                             MessageBoxIcon.Information);
                         return;
                     }

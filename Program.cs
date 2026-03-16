@@ -22,6 +22,7 @@ namespace RecoveryCommander
             _ = typeof(MalwareRemovalModule.MalwareRemovalModule);
             _ = typeof(RecoveryCommander.Module.SystemPrepModule);
             _ = typeof(UtilitiesModule.UtilitiesModule);
+            _ = typeof(DiagnosticsModule.DiagnosticsModule);
 
             try
             {

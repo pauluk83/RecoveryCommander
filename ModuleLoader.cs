@@ -25,7 +25,7 @@ namespace RecoveryCommander
             // Explicitly try to load our known modules to ensure they are in the AppDomain.
             try
             {
-                string[] knownModules = { "SFCModule", "DismModule", "ReagentcModule", "MalwareRemovalModule", "SystemPrepModule", "UtilitiesModule" };
+                string[] knownModules = { "DiagnosticsModule", "SFCModule", "DismModule", "ReagentcModule", "MalwareRemovalModule", "SystemPrepModule", "UtilitiesModule" };
                 foreach (var moduleName in knownModules)
                 {
                     try

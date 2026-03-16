@@ -27,6 +27,7 @@
     <ProjectReference Include="RecoveryCommander.Contracts\RecoveryCommander.Contracts.csproj" />
     <ProjectReference Include="Core\RecoveryCommander.Core.csproj" />
     <!-- Modules referenced directly so PublishSingleFile bundles them into the EXE -->
+    <ProjectReference Include="Module\DiagnosticsModule\DiagnosticsModule.csproj" />
     <ProjectReference Include="Module\SFCModule\SFCModule.csproj" />
     <ProjectReference Include="Module\DismModule\DismModule.csproj" />
     <ProjectReference Include="Module\ReagentcModule\ReagentcModule.csproj" />

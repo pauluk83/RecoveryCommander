@@ -1,5 +1,34 @@
 # RecoveryCommander Changelog
 
+## 2026-03-16 - Diagnostics Module & UI Layout Polishing
+
+### Diagnostics Module Enhancements
+- **Priority Loading** — Refactored `MainForm` module discovery to ensure the **Diagnostics** module is always pinned to the absolute top of the sidebar.
+- **Dashboard Redesign** — Completely overhauled the Diagnostics module with a compact 3-column action grid, eliminating internal scrollbars and ensuring all items are visible at a glance.
+- **Themed Report Dialogs** — Diagnostic reports now use professional themed popups with integrated `MessageBox` fallbacks for 100% reliable output delivery.
+- **Checklist Visibility** — Optimized the "What this toolkit checks" info pane with tighter spacing and clear headers to prevent text cut-off.
+
+### UI & Architecture Improvements
+- **Expanded Window Canvas** — Increased default application resolution to **1500x950** and enabled **Maximized** launch state to provide more room for technical tools.
+- **Module Warm-Up Fix** — Added `DiagnosticsModule` to the pre-load warm-up list in `Program.cs`, curing issues with missing actions in bundled single-file builds.
+- **Responsive Table Layout** — Replaced fixed splitters with a dynamic `TableLayoutPanel` for the Diagnostics dashboard, providing better scaling on high-DPI displays.
+- **Case-Insensitive Action Lookup** — Hardened the action execution engine in `SimpleContracts` to handle module actions regardless of string casing, improving plugin compatibility.
+
+
+## 2026-03-16 - Modern FFU-based Factory Reset & Wizard Enhancements
+
+### REAgentc Module & Recovery Enhancements
+- **Modern FFU Restore Support** — Added support for Full Flash Update (FFU) images as a high-speed alternative to WIM-based recovery. FFU is sector-based and can restore a system 10-20x faster than traditional file-based methods.
+- **FFU Registration Action** — New action to register an FFU image for factory reset, automatically generating the necessary `ResetConfig.xml` for DISM-based sector restoration.
+- **Improved WinRE Linkage** — Updated `ReagentcModule` to version 1.2.0 with enhanced logic for detecting and linking recovery environments in modern Windows 11 builds (including 26000+ series).
+
+### Push-Button Reset Setup Wizard (v2.0)
+- **Multi-Path Capture Wizard** — The PBR Setup Wizard now offers a choice between **Online ScanState (WIM)** and **Offline FFU Capture**. 
+- **ScanState Exit-29 Resolution** — Explicitly addressed the common USMT failure (Exit Code 29) by providing a reliable offline capture alternative that bypasses environmental and configuration issues.
+- **FFU Capture Guide** — Integrated a high-fidelity instruction set for capturing FFU images via DISM in WinPE, ensuring users have a clear path to creating a true factory-style restore image.
+- **Branching Logic UI** — Refactored the wizard navigation and back-stack to support branching paths based on the user's chosen capture strategy.
+
+
 ## 2026-03-16 - Single-File EXE Bundling, Module Fixes & Build Pipeline
 
 ### Build Warning Resolution

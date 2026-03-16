@@ -14,12 +14,12 @@ using RecoveryCommander.Core;
 namespace RecoveryCommander.Module;
 
 [SupportedOSPlatform("windows")]
-[RecoveryModuleAttribute("ReagentcModule", "1.1.0")]
+[RecoveryModuleAttribute("ReagentcModule", "1.2.0")]
 public sealed class ReagentcModule : IRecoveryModule
 {
     public string Name => "REAgentc";
     public string Description => "Manages the Windows Recovery Environment (WinRE) including status and linkage repair.";
-    public string Version => "1.1.0";
+    public string Version => "1.2.0";
     public string HealthStatus => "Healthy";
     public string BuildInfo => "REAgentc Module - Windows Recovery Environment Manager (Modernized)";
     public bool SupportsAsync => true;
@@ -64,6 +64,12 @@ public sealed class ReagentcModule : IRecoveryModule
             RequiresAdmin = true,
             Highlight = true,
             IconName = "Wizard"
+        },
+        new("Register FFU Restore", "Register Modern FFU Factory Image", ExecuteFfuRegistrationAsync)
+        {
+            Description = "Registers a Full Flash Update (FFU) image for high-speed factory restore. FFU is sector-based and significantly faster than WIM restores.",
+            RequiresAdmin = true,
+            IconName = "Lightning"
         }
     };
 
@@ -261,6 +267,61 @@ public sealed class ReagentcModule : IRecoveryModule
         {
             reportOutput($"Failed to launch PBR Setup Wizard: {ex.Message}");
             progress.Report(new ProgressReport(100, "Wizard failed to launch."));
+        }
+    }
+
+    private async Task ExecuteFfuRegistrationAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    {
+        progress.Report(new ProgressReport(0, "Configuring Modern FFU Factory Reset..."));
+
+        using var ofd = new OpenFileDialog
+        {
+            Filter = "FFU Image (*.ffu)|*.ffu|All Files (*.*)|*.*",
+            Title = "Select the Full Flash Update (FFU) Image for Factory Reset",
+            CheckFileExists = true
+        };
+
+        if (ofd.ShowDialog() != DialogResult.OK || string.IsNullOrWhiteSpace(ofd.FileName))
+        {
+            reportOutput("Registration cancelled.");
+            progress.Report(new ProgressReport(100, "Cancelled."));
+            return;
+        }
+
+        string ffuPath = ofd.FileName;
+        string oemDir = @"C:\Recovery\OEM";
+        if (!Directory.Exists(oemDir)) Directory.CreateDirectory(oemDir);
+
+        string xmlPath = Path.Combine(oemDir, "ResetConfig.xml");
+        
+        // FFU utilizes a different restore logic than WIM (sector-based vs file-based)
+        string xmlContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
+<Reset>
+  <Run Phase=""FactoryReset_AfterDiskFormat"">
+    <Path>cmd.exe /c dism /Apply-Ffu /ImageFile:""{ffuPath}"" /ApplyDrive:\\.\PhysicalDrive0 /CheckIntegrity</Path>
+  </Run>
+  <Run Phase=""FactoryReset_AfterImageApply"">
+    <Path>cmd.exe /c bcdboot C:\Windows</Path>
+  </Run>
+</Reset>";
+
+        try
+        {
+            await File.WriteAllTextAsync(xmlPath, xmlContent, System.Text.Encoding.UTF8, cancellationToken);
+            reportOutput($"SUCCESS: Modern FFU Restore Configured.");
+            reportOutput($"Registered: {ffuPath}");
+            reportOutput($"Config: {xmlPath}");
+            reportOutput("NOTE: FFU restore is sector-accurate. Ensure the FFU was captured from the same physical drive layout.");
+            progress.Report(new ProgressReport(100, "FFU Registration Complete."));
+            
+            MessageBox.Show("FFU-based Factory Reset has been configured.\n\n" +
+                "When you initiate 'Reset this PC', Windows will now use DISM to apply your FFU image directly to the physical drive.", 
+                "Modern Reset Configured", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            reportOutput($"Failed to register FFU: {ex.Message}");
+            progress.Report(new ProgressReport(100, "Registration failed."));
         }
     }
 }

@@ -107,7 +107,7 @@ namespace RecoveryCommander.Forms
             this.Text = "Recovery Commander";
             this.WindowState = FormWindowState.Maximized; // Launch maximized for better experience
             this.MinimumSize = new Size(1024, 768);
-            this.Size = new Size(1280, 800);
+            this.Size = new Size(1500, 950);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Icon = SystemIcons.Shield;
 
@@ -1309,98 +1309,55 @@ namespace RecoveryCommander.Forms
             try
             {
                 // Clear existing controls and data
-                if (mainSplitContainer.Panel1.Controls.Count > 0)
-                {
-                    var moduleButtonsPanel = mainSplitContainer.Panel1.Controls[0] as FlowLayoutPanel;
-                    if (moduleButtonsPanel != null)
-                        moduleButtonsPanel.Controls.Clear();
-                }
+                moduleButtonsPanel.Controls.Clear();
                 loadedModules.Clear();
 
                 // Use the ModuleLoader to load modules
                 var modules = ModuleLoader.LoadModules(logger: message => ShowOutput(message));
-                loadedModules.AddRange(modules);
+                
+                // Sort modules: Diagnostics ALWAYS at top
+                loadedModules = modules.OrderBy(m => {
+                    var name = m.Name.Trim();
+                    if (string.Equals(name, "Diagnostics", StringComparison.OrdinalIgnoreCase)) return 0;
+                    return 1;
+                }).ThenBy(m => m.Name).ToList();
 
-                // If no modules found, show professional empty state
-                if (loadedModules.Count == 0)
+                // Clear and add in correct order (FlowLayoutPanel index 0 is TOP)
+                moduleButtonsPanel.Controls.Clear();
+                ShowOutput($"[DEBUG] Building module buttons for {loadedModules.Count} modules (Diagnostics should be @ index 0)...");
+                
+                for (int i = 0; i < loadedModules.Count; i++)
                 {
-                    var emptyState = ProfessionalDesignSystem.CreateEmptyState(
-                        "No Modules Available",
-                        "Recovery modules will appear here when available.",
-                        "📦"
-                    );
-                    moduleButtonsPanel.Controls.Add(emptyState);
-                }
-
-
-
-                // Add module buttons with dynamic sizing
-                foreach (var module in loadedModules)
-                {
-                    var moduleButton = new ModernButton
-                    {
-                        Text = $"{module.Name}\nv{module.Version}",
-                        Height = 72,
-                        Margin = new Padding(0, 0, 0, 10),
-                        Tag = module,
-                        TextAlign = ContentAlignment.MiddleCenter,
-                        Font = Theme.Typography.BodyStrong,
-                        ButtonStyle = Theme.ButtonStyle.Secondary,
-                        CornerRadius = 10,
-                        AutoSize = false
-                    };
-                    
-                    // Calculate optimal width based on text content with better measurement
-                    var textSize = TextRenderer.MeasureText(moduleButton.Text, moduleButton.Font, Size.Empty, TextFormatFlags.WordBreak);
-                    var optimalWidth = Math.Max(textSize.Width + 60, 200); // Increased padding and minimum width
-                    moduleButton.Width = optimalWidth;
-                    
-                    // Ensure the panel is wide enough for the longest button
-                    if (optimalWidth > moduleButtonsPanel.Width - 20)
-                    {
-                        moduleButtonsPanel.Width = optimalWidth + 40;
-                        // Update the splitter distance to accommodate the new width
-                        if (mainSplitContainer.SplitterDistance < optimalWidth + 60)
-                        {
-                            mainSplitContainer.SplitterDistance = optimalWidth + 60;
-                        }
-                    }
-
-                    moduleButton.Click += (s, e) => {
-                        foreach (ModernButton btn in moduleButtonsPanel.Controls)
-                        {
-                            btn.Width = moduleButtonsPanel.ClientSize.Width - 20;
-                        }
-                        if (s is ModernButton button && button.Tag is IRecoveryModule selectedModule)
-                        {
-                            UpdateModuleButtonStyles(moduleButtonsPanel, button);
-                            DisplayModule(selectedModule);
-                        }
-                    };
-                    
+                    var module = loadedModules[i];
+                    var moduleButton = CreateModuleButton(module);
                     moduleButtonsPanel.Controls.Add(moduleButton);
-                    
+                    moduleButtonsPanel.Controls.SetChildIndex(moduleButton, i);
+                    ShowOutput($"[DEBUG] Added button {i}: '{module.Name}'");
                 }
 
-                // Make sure panels are visible
+                // Ensure panels and sidebar are visible
                 mainSplitContainer.Panel1Collapsed = false;
                 mainSplitContainer.Panel2Collapsed = false;
 
-                // Select first module if available
+                // Select Diagnostics by default
                 if (loadedModules.Count > 0)
                 {
-                    var buttonPanel = mainSplitContainer.Panel1.Controls[0] as FlowLayoutPanel;
-                    if (buttonPanel != null && buttonPanel.Controls.Count > 0)
+                    var diagModule = loadedModules.FirstOrDefault(m => string.Equals(m.Name.Trim(), "Diagnostics", StringComparison.OrdinalIgnoreCase));
+                    if (diagModule != null)
                     {
-                        var firstButton = moduleButtonsPanel.Controls[0] as ModernButton;
-                        if (firstButton != null)
+                        DisplayModule(diagModule);
+                        foreach (Control ctrl in moduleButtonsPanel.Controls)
                         {
-                            firstButton.PerformClick();
-                            if (firstButton.Tag is IRecoveryModule firstModule)
+                            if (ctrl is ModernButton btn && btn.Tag == diagModule)
                             {
-                                DisplayModule(firstModule);
+                                UpdateModuleButtonStyles(moduleButtonsPanel, btn);
+                                break;
                             }
                         }
+                    }
+                    else
+                    {
+                        DisplayModule(loadedModules[0]);
                     }
                 }
                 UpdateStatus($"Loaded {loadedModules.Count} modules");
@@ -1417,6 +1374,41 @@ namespace RecoveryCommander.Forms
         }
 #pragma warning restore CS8600
         
+        private ModernButton CreateModuleButton(IRecoveryModule module)
+        {
+            var moduleButton = new ModernButton
+            {
+                Text = $"{module.Name}\nv{module.Version}",
+                Height = 72,
+                Margin = new Padding(0, 0, 0, 10),
+                Tag = module,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = Theme.Typography.BodyStrong,
+                ButtonStyle = Theme.ButtonStyle.Secondary,
+                CornerRadius = 10,
+                AutoSize = false
+            };
+
+            // Calculate optimal width
+            var textSize = TextRenderer.MeasureText(moduleButton.Text, moduleButton.Font, Size.Empty, TextFormatFlags.WordBreak);
+            var optimalWidth = Math.Max(textSize.Width + 60, 200);
+            moduleButton.Width = optimalWidth;
+
+            moduleButton.Click += (s, e) => {
+                foreach (ModernButton btn in moduleButtonsPanel.Controls)
+                {
+                    btn.Width = moduleButtonsPanel.ClientSize.Width - 20;
+                }
+                if (s is ModernButton button && button.Tag is IRecoveryModule selectedModule)
+                {
+                    UpdateModuleButtonStyles(moduleButtonsPanel, button);
+                    DisplayModule(selectedModule);
+                }
+            };
+
+            return moduleButton;
+        }
+
         private void UpdateModuleButtonStyles(FlowLayoutPanel moduleButtonsPanel, ModernButton selectedButton)
         {
             foreach (ModernButton btn in moduleButtonsPanel.Controls)
@@ -1427,13 +1419,159 @@ namespace RecoveryCommander.Forms
         
         // TreeView removed; selection handled via ListBox
         
+        private string GetModuleIcon(string moduleName)
+        {
+            return moduleName switch
+            {
+                "Diagnostics" => "🛠️",
+                "SFC" => "🛡️",
+                "DISM" => "📦",
+                "Reagentc" => "🔄",
+                "Malware Removal" => "🧹",
+                "System Prep" => "⚙️",
+                "Utilities" => "🔧",
+                _ => "🧩"
+            };
+        }
+
+        public void DisplayMainDashboard()
+        {
+            moduleContentPanel.Controls.Clear();
+            welcomeLabel.Text = "Recovery Dashboard";
+            heroDetailLabel.Text = "Welcome to Recovery Commander. Select a module below to begin system maintenance or use the diagnostics suite for a full check.";
+            currentModule = null;
+            selectedActions.Clear();
+
+            var dashboardPanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                Padding = new Padding(20),
+                BackColor = Color.Transparent
+            };
+
+            foreach (var module in loadedModules)
+            {
+                var moduleCard = CreateModuleDashboardCard(module);
+                dashboardPanel.Controls.Add(moduleCard);
+            }
+
+            moduleContentPanel.Controls.Add(dashboardPanel);
+            UpdateStatus("Ready - Dashboard View");
+        }
+
+        private Panel CreateModuleDashboardCard(IRecoveryModule module)
+        {
+            var card = new Panel
+            {
+                Width = 280,
+                Height = 160,
+                Margin = new Padding(15),
+                BackColor = Theme.Colors.SurfaceVariant,
+                Cursor = Cursors.Hand
+            };
+
+            card.Paint += (s, e) =>
+            {
+                ProfessionalDesignSystem.DrawProfessionalCard(e.Graphics, card.ClientRectangle, 12);
+            };
+
+            var iconLabel = new Label
+            {
+                Text = GetModuleIcon(module.Name),
+                Font = new Font("Segoe UI Emoji", 24f),
+                ForeColor = Theme.Colors.Primary,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Left,
+                Width = 60,
+                BackColor = Color.Transparent
+            };
+
+            var nameLabel = new Label
+            {
+                Text = module.Name,
+                Font = Theme.Typography.Header,
+                ForeColor = Theme.Colors.Primary,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Dock = DockStyle.Fill,
+                Height = 30,
+                Padding = new Padding(10, 0, 0, 0),
+                BackColor = Color.Transparent
+            };
+
+            var headerPanel = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent };
+            headerPanel.Controls.Add(nameLabel);
+            headerPanel.Controls.Add(iconLabel);
+
+            var descLabel = new Label
+            {
+                Text = module.Description,
+                Font = Theme.Typography.Body,
+                ForeColor = Theme.Colors.Text,
+                TextAlign = ContentAlignment.TopLeft,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(10, 5, 10, 5),
+                BackColor = Color.Transparent
+            };
+
+            var actionCount = module.Actions?.Count() ?? 0;
+            var footerLabel = new Label
+            {
+                Text = $"{actionCount} Tools Available",
+                Font = Theme.Typography.Caption,
+                ForeColor = Theme.Colors.SubtleText,
+                TextAlign = ContentAlignment.BottomRight,
+                Dock = DockStyle.Bottom,
+                Height = 25,
+                Padding = new Padding(0, 0, 10, 5),
+                BackColor = Color.Transparent
+            };
+
+            card.Controls.Add(descLabel);
+            card.Controls.Add(headerPanel);
+            card.Controls.Add(footerLabel);
+
+            void LaunchModule()
+            {
+                // Find the corresponding button on the left to keep UI in sync
+                foreach (Control ctrl in moduleButtonsPanel.Controls)
+                {
+                    if (ctrl is ModernButton btn && btn.Tag == module)
+                    {
+                        btn.PerformClick();
+                        break;
+                    }
+                }
+            }
+
+            card.Click += (s, e) => LaunchModule();
+            nameLabel.Click += (s, e) => LaunchModule();
+            descLabel.Click += (s, e) => LaunchModule();
+
+            return card;
+        }
+
         private void DisplayModule(IRecoveryModule module)
         {
             moduleContentPanel.Controls.Clear();
-            heroDetailLabel.Text = string.IsNullOrWhiteSpace(module.Description) ? "Select a module to see its tools." : module.Description;
+            
+            // Special handling for Dashboard/Diagnostics module
+            if (module.Name == "Diagnostics")
+            {
+                welcomeLabel.Text = "Diagnostic Dashboard";
+                welcomeLabel.Height = 35; // Tighter header
+                heroDetailLabel.Text = "Technician toolkit for comprehensive system health analysis and troubleshooting.";
+                heroDetailLabel.Height = 25; // Tighter subheader
+            }
+            else
+            {
+                welcomeLabel.Text = module.Name;
+                heroDetailLabel.Text = string.IsNullOrWhiteSpace(module.Description) ? "Select a module to see its tools." : module.Description;
+            }
+
             currentModule = module;
             selectedActions.Clear();
-            UpdateStatus($"Selected module: {module.Name}");
+            UpdateStatus($"Selected: {module.Name}");
 
             var mainPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0), BackColor = Color.Transparent };
             currentModulePanel = mainPanel;
@@ -1446,7 +1584,7 @@ namespace RecoveryCommander.Forms
 
             moduleContentPanel.Controls.Add(mainPanel);
             
-            // Check if this module has an active background job
+            // ... (rest of the existing job restoration logic)
             if (activeJobs.TryGetValue(module, out var job))
             {
                 // Re-attach UI to existing job
@@ -1464,12 +1602,10 @@ namespace RecoveryCommander.Forms
                 outputBox.Clear();
                 foreach (var entry in job.OutputHistory)
                 {
-                    // This is a simplified restore - ideally we'd use the full ShowOutput logic
                     var color = GetOutputColor(entry.Level);
                     outputBox.AppendText($"{entry.Timestamp:HH:mm:ss} {GetOutputPrefix(entry.Level)}{entry.Text}\r\n", color);
                 }
                 
-                // Restore progress
                 if (job.LastReport != null)
                 {
                     UpdateProgressUI(job.LastReport);
@@ -1482,7 +1618,6 @@ namespace RecoveryCommander.Forms
             }
             else
             {
-                // Reset UI if no job is running
                 progressPanel.Visible = false;
                 outputPanel.Visible = false;
                 progressBar.Value = 0;
@@ -1491,19 +1626,121 @@ namespace RecoveryCommander.Forms
                 cancellationTokenSource = null;
             }
 
-            // Trigger fade-in animation
             mainPanel.FadeIn(300);
         }
 
         private Panel BuildActionContainer(IRecoveryModule module)
         {
             var actionContainer = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, AutoSize = false, Padding = new Padding(0) };
-            var actionsPanelFlow = new Theme.DarkFlowLayoutPanel(enableScroll: false) { Dock = DockStyle.Fill };
-            actionsPanelFlow.FlowDirection = FlowDirection.LeftToRight;
-            actionsPanelFlow.WrapContents = true;
-            actionsPanelFlow.Padding = new Padding(8);
-            actionsPanelFlow.Margin = new Padding(0);
-            Theme.ApplyPanelStyle(actionsPanelFlow);
+            
+            // Special Dashboard Layout for Diagnostics
+            if (module.Name == "Diagnostics")
+            {
+                var mainLayout = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill,
+                    ColumnCount = 2,
+                    RowCount = 1,
+                    BackColor = Color.Transparent,
+                    Padding = new Padding(15)
+                };
+                mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f)); // Actions
+                mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f)); // Info pane
+
+                // Left side: Actions Grid (Optimized for 3 columns)
+                var actionsPanelFlow = new FlowLayoutPanel 
+                { 
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(0),
+                    Margin = new Padding(0),
+                    FlowDirection = FlowDirection.LeftToRight,
+                    WrapContents = true,
+                    BackColor = Color.Transparent,
+                    AutoScroll = false
+                };
+                
+                // Use a standard panel instead of DarkFlowLayoutPanel for more predictable layout in Diagnostics
+                foreach (var action in module.Actions)
+                {
+                    if (action.IsHeader) continue;
+                    var tile = CreateActionTile(module, action, null);
+                    tile.Width = 280; // Reliable 3-column width for 70% of 1500px
+                    tile.Height = 48; // Shorter to save vertical space
+                    actionsPanelFlow.Controls.Add(tile);
+                }
+                
+                mainLayout.Controls.Add(actionsPanelFlow, 0, 0);
+
+                // Right side: "What this toolkit checks" info pane
+                var infoPane = new Panel 
+                { 
+                    Dock = DockStyle.Fill, 
+                    Padding = new Padding(15), 
+                    BackColor = Color.FromArgb(20, Theme.Colors.Primary), 
+                    Margin = new Padding(10, 0, 0, 0) 
+                };
+                infoPane.Paint += (s, e) => {
+                    ProfessionalDesignSystem.DrawProfessionalCard(e.Graphics, infoPane.ClientRectangle, 12);
+                };
+
+                var infoTitle = new Label {
+                    Text = "WHAT THIS TOOLKIT CHECKS",
+                    Dock = DockStyle.Top,
+                    Height = 35,
+                    Font = Theme.Typography.Header,
+                    ForeColor = Theme.Colors.Primary,
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Margin = new Padding(0, 0, 0, 10)
+                };
+
+                var checklist = new FlowLayoutPanel 
+                { 
+                    Dock = DockStyle.Fill, 
+                    FlowDirection = FlowDirection.TopDown, 
+                    AutoScroll = false,
+                    WrapContents = false,
+                    BackColor = Color.Transparent
+                };
+                
+                string[] checks = { 
+                    "✓ System hardware info", 
+                    "✓ CPU & Processor details", 
+                    "✓ RAM modules & speed", 
+                    "✓ Disk health (SMART)", 
+                    "✓ Free storage space", 
+                    "✓ Network configuration", 
+                    "✓ Active connections", 
+                    "✓ Startup programs", 
+                    "✓ Running processes", 
+                    "✓ System integrity" 
+                };
+
+                foreach (var check in checks)
+                {
+                    var checkLabel = new Label { 
+                        Text = check, 
+                        AutoSize = true, 
+                        Font = new Font(Theme.Typography.DefaultFontFamily, 10f), 
+                        ForeColor = Theme.Colors.Text,
+                        Margin = new Padding(0, 3, 0, 3)
+                    };
+                    checklist.Controls.Add(checkLabel);
+                }
+
+                infoPane.Controls.Add(checklist);
+                infoPane.Controls.Add(infoTitle);
+                mainLayout.Controls.Add(infoPane, 1, 0);
+
+                actionContainer.Controls.Add(mainLayout);
+                return actionContainer;
+            }
+
+            var actionsPanelFlowDefault = new Theme.DarkFlowLayoutPanel(enableScroll: false) { Dock = DockStyle.Fill };
+            actionsPanelFlowDefault.FlowDirection = FlowDirection.LeftToRight;
+            actionsPanelFlowDefault.WrapContents = true;
+            actionsPanelFlowDefault.Padding = new Padding(8);
+            actionsPanelFlowDefault.Margin = new Padding(0);
+            Theme.ApplyPanelStyle(actionsPanelFlowDefault);
 
             ModernButton? runSelectedButton = null;
             if (module.Name == "System Prep")
@@ -1522,13 +1759,13 @@ namespace RecoveryCommander.Forms
                 runSelectedButton.Click += (s, e) => RunSelectedActions();
             }
 
-            BuildAndAddActionTiles(module, actionsPanelFlow, runSelectedButton);
+            BuildAndAddActionTiles(module, actionsPanelFlowDefault, runSelectedButton);
 
             if (runSelectedButton != null)
             {
                 actionContainer.Controls.Add(runSelectedButton);
             }
-            actionContainer.Controls.Add(actionsPanelFlow);
+            actionContainer.Controls.Add(actionsPanelFlowDefault);
 
             return actionContainer;
         }
@@ -1578,6 +1815,17 @@ namespace RecoveryCommander.Forms
                 ProfessionalDesignSystem.DrawProfessionalCard(e.Graphics, rect, 10);
             };
 
+            var iconLabel = new Label
+            {
+                Text = module.Name == "Diagnostics" ? "✓" : "⚡",
+                Dock = DockStyle.Left,
+                Width = 40,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI Emoji", 14f),
+                ForeColor = action.Highlight ? Theme.Colors.Success : Theme.Colors.Accent,
+                BackColor = Color.Transparent
+            };
+
             var title = new Label
             {
                 Text = action.DisplayName ?? action.Name,
@@ -1587,10 +1835,11 @@ namespace RecoveryCommander.Forms
                 ForeColor = Theme.Colors.Text,
                 Font = Theme.Typography.BodyStrong,
                 AutoSize = false,
-                Padding = new Padding(0)
+                Padding = new Padding(8, 0, 0, 0)
             };
 
             tile.Controls.Add(title);
+            tile.Controls.Add(iconLabel);
 
             // Paint is now handled by the professional card style above
 

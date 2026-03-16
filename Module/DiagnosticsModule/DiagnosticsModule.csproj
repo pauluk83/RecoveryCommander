@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultPageItems>true</EnableDefaultPageItems>
+    <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\DiagnosticsModule\</OutputPath>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\RecoveryCommander.Contracts\RecoveryCommander.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\RecoveryCommander.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="DiagnosticsModule.cs" />
+    <PackageReference Include="System.Management" Version="10.0.3" />
+  </ItemGroup>
+
+</Project>

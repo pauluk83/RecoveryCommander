@@ -18,8 +18,9 @@ namespace RecoveryCommander.Contracts
         
         Task ExecuteActionAsync(string actionName, IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
-            // Default explicit delegate routing instead of string mapping in each module
-            var action = System.Linq.Enumerable.FirstOrDefault(Actions, a => a.Name == actionName);
+            // Direct lookup with case-insensitivity to prevent mismatch
+            var action = System.Linq.Enumerable.FirstOrDefault(Actions, a => string.Equals(a.Name, actionName, StringComparison.OrdinalIgnoreCase));
+            
             if (action != null)
             {
                 if (action.ExecuteActionExtended != null)
@@ -32,7 +33,7 @@ namespace RecoveryCommander.Contracts
                 }
             }
             
-            reportOutput($"Action '{actionName}' not properly configured or missing execution delegate.");
+            reportOutput($"[ERROR] Action '{actionName}' not found in {Name} module.");
             return Task.CompletedTask;
         }
     }
