@@ -3,7 +3,7 @@
 ## 2026-03-16 - GitHub Actions Node 24 Opt-In & Build Fixes
 
 ### Build Warning Resolution
-- **GitHub Actions Maintenance** — Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` environment variable to `.github/workflows/dotnet-desktop.yml` to automatically opt into Node.js 24 runners, mitigating the Node.js 20 deprecation warning for `checkout@v4` and `setup-dotnet@v4` actions.
+- **GitHub Actions Maintenance** — Added `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` environment variable to the root level of `.github/workflows/dotnet-desktop.yml` to automatically opt into Node.js 24 runners for all jobs, mitigating the Node.js 20 deprecation warning for `checkout@v4`, `setup-dotnet@v4`, and `upload-artifact@v4` actions.
 - **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs` caused by `FirstOrDefault` and potentially null UI controls.
 
 
