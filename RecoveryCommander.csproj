@@ -10,6 +10,9 @@
     <ApplicationIcon>Resources\system_restore.ico</ApplicationIcon>
     <AssemblyName>RecoveryCommander</AssemblyName>
     <RootNamespace>RecoveryCommander</RootNamespace>
+    <Description>RecoveryCommander - A comprehensive Windows system recovery and maintenance tool. Features complete PBR Setup Wizard and modern UI.</Description>
+    <Authors>Zane Stanton; pauluk83</Authors>
+    <RepositoryUrl>https://github.com/pauluk83/RecoveryCommander</RepositoryUrl>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishSingleFile>true</PublishSingleFile>
@@ -35,6 +38,10 @@
   <!-- Include resources and documentation files -->
   <ItemGroup>
     <Content Include="Resources\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="README.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

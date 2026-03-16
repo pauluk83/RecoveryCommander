@@ -1,5 +1,5 @@
 # RecoveryCommander Project Manifest
-*Auto-generated on 2025-10-04 19:38*
+*Auto-generated on 2026-03-16 00:44*
 
 ## 📊 Project Overview
 
@@ -63,9 +63,9 @@ Files: changelog.txt, system icons, embedded resources
 - **`ReflectionRecoveryModuleAdapter.cs`** (6.0 KB) - Module compatibility adapter
 - **`App.config`** (0.1 KB) - Application configuration
 - **`app.manifest`** (0.5 KB) - Windows application manifest
-- **`README.md`** (15.6 KB) - Project documentation (consolidated)
-- **`RecoveryCommander.csproj`** (2.1 KB) - Main project file
-- **`RecoveryCommander.sln`** (10.3 KB) - Visual Studio solution file
+- **`README.md`** (16.0 KB) - Project documentation (consolidated)
+- **`RecoveryCommander.csproj`** (2.7 KB) - Main project file
+- **`RecoveryCommander.sln`** (11.5 KB) - Visual Studio solution file
 - **`NuGet.config`** (0.2 KB) - NuGet package configuration
 
 ## 🔧 Recent Optimizations
@@ -78,7 +78,7 @@ Files: changelog.txt, system icons, embedded resources
 
 ## 🔧 Generation Info
 
-- **Generated**: 2025-10-04 19:38
+- **Generated**: 2026-03-16 00:44
 - **Purpose**: Quick project structure reference
 - **Note**: For comprehensive documentation, see README.md
 - **Maintenance**: This file should be updated when major structure changes occur

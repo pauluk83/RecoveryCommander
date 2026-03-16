@@ -11,6 +11,10 @@ A comprehensive Windows system recovery and maintenance tool with a modern Windo
 - **Real-time Progress**: Live progress tracking with clean output console
 - **Thread-Safe Operations**: Robust threading with proper disposal handling
 
+## 🔗 Links & Resources
+- **GitHub Repository**: [pauluk83/RecoveryCommander](https://github.com/pauluk83/RecoveryCommander)
+- **Official Website**: [RecoveryCommander Portal](https://pauluk63.wixsite.com/pspage)
+
 ## 📊 Project Status & Recent Updates
 
 ### Current Status (Updated 2026-03-11)

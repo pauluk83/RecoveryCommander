@@ -9,8 +9,8 @@ namespace RecoveryCommander.Forms
 {
     public static class MenuManager
     {
-        private const string README_PATH = @"Resources\README.md";
-        private const string CHANGELOG_PATH = @"Resources\CHANGELOG.md";
+        private const string README_PATH = @"README.md";
+        private const string CHANGELOG_PATH = @"Resources\changelog.md";
         private const string PROJECT_MANIFEST_PATH = @"Resources\PROJECT_MANIFEST.md";
 
         public static IEnumerable<ToolStripItem> BuildMenuItems(Form parent)

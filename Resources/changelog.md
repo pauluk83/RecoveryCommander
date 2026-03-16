@@ -1,5 +1,12 @@
 # RecoveryCommander Changelog
 
+## 2026-03-16 - Application Metadata & Documentation Updates
+
+### About Dialog & Help Menu enhancements
+- **Menu Help Links** — Fixed the `README.md` file path in the Help menu to ensure it opens correctly.
+- **Link Display Updates** — Modified the "GitHub" and "Website" links in the About dialog to hide raw URLs and act as clickable picture links with `github.png` and `website.jpg`. Added tooltips to identify them on hover.
+- **Open Source Declaration** — Updated the copyright text below the author information to explicitly state that the code and files are open source, removing the previous license agreement reference.
+
 ## 2026-03-11 - Push-Button Reset Setup Wizard & Theming Enhancements
 
 ### Major New Feature: PBR Setup Wizard

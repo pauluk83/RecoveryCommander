@@ -47,7 +47,7 @@ namespace RecoveryCommander.Forms
 
             string info = $"RecoveryCommander\nVersion: {version}\nBuild Date: {buildDate}\nAuthor: Zane Stanton\n" +
                           "© 2025 RecoveryCommander™\nAll rights reserved.\n\n" +
-                          "Licensed for use under the RecoveryCommander License Agreement.";
+                          "This code and all files are open source.";
 
             // Create themed About dialog instead of MessageBox
             using var form = new Form()
@@ -63,7 +63,10 @@ namespace RecoveryCommander.Forms
             Theme.ApplyFormStyle(form);
             Theme.ApplyTheme(form);
 
-            var contentPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(30) };
+            var contentPanel = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(30), ColumnCount = 1, RowCount = 2 };
+            contentPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            contentPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
             var contentLabel = new Label
             {
                 Text = info,
@@ -73,7 +76,28 @@ namespace RecoveryCommander.Forms
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false
             };
-            contentPanel.Controls.Add(contentLabel);
+            
+            var linksFlow = new FlowLayoutPanel { Anchor = AnchorStyles.None, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
+            
+            ToolTip toolTip = new ToolTip();
+            
+            var ghLogo = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(48, 48), Margin = new Padding(0, 0, 20, 0), Cursor = Cursors.Hand };
+            var logoPath = Path.Combine(AppContext.BaseDirectory, @"Resources\github.png");
+            if (File.Exists(logoPath)) ghLogo.ImageLocation = logoPath;
+            ghLogo.Click += (s, e) => { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/pauluk83/RecoveryCommander") { UseShellExecute = true }); };
+            toolTip.SetToolTip(ghLogo, "GitHub");
+            
+            var webLogo = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(48, 48), Margin = new Padding(0, 0, 0, 0), Cursor = Cursors.Hand };
+            var webLogoPath = Path.Combine(AppContext.BaseDirectory, @"Resources\website.jpg");
+            if (File.Exists(webLogoPath)) webLogo.ImageLocation = webLogoPath;
+            webLogo.Click += (s, e) => { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://pauluk63.wixsite.com/pspage") { UseShellExecute = true }); };
+            toolTip.SetToolTip(webLogo, "Website");
+            
+            linksFlow.Controls.Add(ghLogo);
+            linksFlow.Controls.Add(webLogo);
+
+            contentPanel.Controls.Add(contentLabel, 0, 0);
+            contentPanel.Controls.Add(linksFlow, 0, 1);
 
             form.Controls.Add(contentPanel);
             form.ShowDialog(parent);
