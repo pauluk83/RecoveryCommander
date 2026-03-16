@@ -90,13 +90,17 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         name: RecoveryCommander-Windows-x64-${{ matrix.configuration }}
-        path: ./publish/${{ matrix.configuration }}/RecoveryCommander.exe
+        path: |
+          ./publish/${{ matrix.configuration }}/RecoveryCommander.exe
+          ./publish/${{ matrix.configuration }}/Module/
 
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v') && matrix.configuration == 'Release'
       uses: softprops/action-gh-release@v2
       with:
-        files: ./publish/Release/RecoveryCommander.exe
+        files: |
+          ./publish/Release/RecoveryCommander.exe
+          ./publish/Release/Module/**/*
         draft: false
         prerelease: false
         generate_release_notes: true

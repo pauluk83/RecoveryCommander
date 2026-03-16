@@ -5,6 +5,7 @@
 ### Build Warning Resolution
 - **GitHub Actions Maintenance** — Updated `actions/checkout@v4` to `v6`, `actions/setup-dotnet@v4` to `v5`, and `actions/upload-artifact@v4` to `v6`. These new major versions run natively on Node.js 24, completely resolving the Node.js 20 deprecation warning without needing explicit environment variables.
 - **NuGet GitHub Packages Permissions Fix** — Added explicit `permissions:` block (`contents: write`, `packages: write`) to the build job to resolve a `403 (Forbidden)` error when attempting to push `.nupkg` artifacts to the GitHub Package Registry.
+- **Missing Modules in Release Artifacts Fix** — Updated `upload-artifact` and `action-gh-release` steps in `.github/workflows/dotnet-desktop.yml` to explicitly include the `publish/Release/Module/` directory alongside the `RecoveryCommander.exe` file, ensuring modules load properly in production releases.
 - **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs` caused by `FirstOrDefault` and potentially null UI controls.
 
 
