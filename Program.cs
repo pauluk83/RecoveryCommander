@@ -15,6 +15,14 @@ namespace RecoveryCommander
         [STAThread]
         static void Main()
         {
+            // Modules Warm-Up: Force load module assemblies so reflection finds them in single-file EXE
+            _ = typeof(RecoveryCommander.Module.SfcModule);
+            _ = typeof(RecoveryCommander.Module.DismModule);
+            _ = typeof(RecoveryCommander.Module.ReagentcModule);
+            _ = typeof(MalwareRemovalModule.MalwareRemovalModule);
+            _ = typeof(RecoveryCommander.Module.SystemPrepModule);
+            _ = typeof(UtilitiesModule.UtilitiesModule);
+
             try
             {
                 // Initialize dependency injection container

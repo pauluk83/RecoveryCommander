@@ -21,21 +21,18 @@ namespace RecoveryCommander
 
             // Scan all assemblies loaded in the current AppDomain.
             // When using PublishSingleFile, referenced module DLLs are bundled but still
-            // load as separate assemblies — GetExecutingAssembly() alone won't find them.
-            // However, they might not be loaded yet! Force load them from references.
+            // load as separate assemblies. They might not be loaded yet! 
+            // Explicitly try to load our known modules to ensure they are in the AppDomain.
             try
             {
-                var entryAssembly = Assembly.GetEntryAssembly();
-                if (entryAssembly != null)
+                string[] knownModules = { "SFCModule", "DismModule", "ReagentcModule", "MalwareRemovalModule", "SystemPrepModule", "UtilitiesModule" };
+                foreach (var moduleName in knownModules)
                 {
-                    foreach (var referencedAssemblyName in entryAssembly.GetReferencedAssemblies())
+                    try
                     {
-                        try
-                        {
-                            Assembly.Load(referencedAssemblyName);
-                        }
-                        catch { }
+                        Assembly.Load(moduleName);
                     }
+                    catch { }
                 }
 
                 var builtInTypes = AppDomain.CurrentDomain.GetAssemblies()
@@ -55,66 +52,59 @@ namespace RecoveryCommander
                             logger.Invoke($"✓ Loaded module: {module.Name}");
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        logger.Invoke($"✗ Error initializing {type.Name}: {ex.Message}");
+                    }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                logger.Invoke($"✗ Error during AppDomain scan: {ex.Message}");
+            }
 
             try
             {
                 var baseDir = AppContext.BaseDirectory;
                 var moduleDir = Path.Combine(baseDir, "Module");
                 
-                if (!Directory.Exists(moduleDir) || Directory.GetFiles(moduleDir, "*.dll", SearchOption.AllDirectories).Length == 0)
+                if (Directory.Exists(moduleDir))
                 {
-                    logger.Invoke($"! Module directory empty or not found at: {moduleDir}");
+                    logger.Invoke($"Scanning and searching for plugins in: {moduleDir}");
                     
-                    // SECURITY FIX: Removed deep fallback path searching (e.g. `..\..\..\Module`)
-                    // which could lead to arbitrary DLL execution if a malicious DLL is dropped 
-                    // into a globally writable directory within the fallback chain.
-                    // Only load from the strictly defined "Module" folder next to the executable.
-
-                    logger.Invoke("✗ Could not find module directory or any .dll plugins.");
-                    return modules;
-                }
-
-                logger.Invoke($"Scanning and searching for plugins in: {moduleDir}");
-                
-                // Get all DLL files recursively
-                var allDlls = Directory.GetFiles(moduleDir, "*.dll", SearchOption.AllDirectories);
-                logger.Invoke($"Found {allDlls.Length} potential modules");
-
-                foreach (var dllPath in allDlls)
-                {
-                    try
+                    // Get all DLL files recursively
+                    var allDlls = Directory.GetFiles(moduleDir, "*.dll", SearchOption.AllDirectories);
+                    
+                    if (allDlls.Length > 0)
                     {
-                        var assembly = Assembly.LoadFrom(dllPath);
-                        var moduleTypes = assembly.GetTypes()
-                            .Where(t => !t.IsInterface && !t.IsAbstract && (typeof(IRecoveryModule).IsAssignableFrom(t) || t.GetInterface("IRecoveryModule") != null))
-                            .ToList();
-
-                        foreach (var type in moduleTypes)
+                        foreach (var dllPath in allDlls)
                         {
                             try
                             {
-                                var module = (IRecoveryModule)Activator.CreateInstance(type)!;
-                                if (!modules.Any(m => m.Name == module.Name))
+                                var assembly = Assembly.LoadFrom(dllPath);
+                                var moduleTypes = assembly.GetTypes()
+                                    .Where(t => !t.IsInterface && !t.IsAbstract && (typeof(IRecoveryModule).IsAssignableFrom(t) || t.GetInterface("IRecoveryModule") != null))
+                                    .ToList();
+
+                                foreach (var type in moduleTypes)
                                 {
-                                    modules.Add(module);
-                                    logger.Invoke($"✓ Loaded plugin: {module.Name} v{module.Version} from {Path.GetFileName(dllPath)}");
+                                    try
+                                    {
+                                        var module = (IRecoveryModule)Activator.CreateInstance(type)!;
+                                        if (!modules.Any(m => m.Name == module.Name))
+                                        {
+                                            modules.Add(module);
+                                            logger.Invoke($"✓ Loaded plugin: {module.Name} v{module.Version} from {Path.GetFileName(dllPath)}");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        logger.Invoke($"✗ Error initializing {type.Name}: {ex.Message}");
+                                    }
                                 }
                             }
-                            catch (Exception ex)
-                            {
-                                logger.Invoke($"✗ Error initializing {type.Name}: {ex.Message}");
-                            }
+                            catch { }
                         }
-                    }
-                    catch (Exception)
-                    {
-                         // Skip non-module assemblies or load errors
-                         if (dllPath.Contains("RecoveryCommander.dll") || dllPath.Contains("RecoveryCommander.Contracts.dll")) continue;
-                         // logger.Invoke($"! Skipping {Path.GetFileName(dllPath)}: {ex.Message}");
                     }
                 }
             }
