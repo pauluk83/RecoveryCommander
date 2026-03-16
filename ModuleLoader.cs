@@ -22,8 +22,22 @@ namespace RecoveryCommander
             // Scan all assemblies loaded in the current AppDomain.
             // When using PublishSingleFile, referenced module DLLs are bundled but still
             // load as separate assemblies — GetExecutingAssembly() alone won't find them.
+            // However, they might not be loaded yet! Force load them from references.
             try
             {
+                var entryAssembly = Assembly.GetEntryAssembly();
+                if (entryAssembly != null)
+                {
+                    foreach (var referencedAssemblyName in entryAssembly.GetReferencedAssemblies())
+                    {
+                        try
+                        {
+                            Assembly.Load(referencedAssemblyName);
+                        }
+                        catch { }
+                    }
+                }
+
                 var builtInTypes = AppDomain.CurrentDomain.GetAssemblies()
                     .Where(a => !a.IsDynamic)
                     .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })

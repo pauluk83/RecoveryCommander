@@ -1,12 +1,16 @@
 # RecoveryCommander Changelog
 
-## 2026-03-16 - GitHub Actions Node 24 Opt-In & Build Fixes
+## 2026-03-16 - Single-File EXE Bundling, Module Fixes & Build Pipeline
 
 ### Build Warning Resolution
-- **GitHub Actions Maintenance** — Updated `actions/checkout@v4` to `v6`, `actions/setup-dotnet@v4` to `v5`, and `actions/upload-artifact@v4` to `v6`. These new major versions run natively on Node.js 24, completely resolving the Node.js 20 deprecation warning without needing explicit environment variables.
-- **NuGet GitHub Packages Permissions Fix** — Added explicit `permissions:` block (`contents: write`, `packages: write`) to the build job to resolve a `403 (Forbidden)` error when attempting to push `.nupkg` artifacts to the GitHub Package Registry.
-- **Missing Modules in Release Artifacts Fix** — Added a `CopyModulesToPublish` MSBuild target to `RecoveryCommander.csproj` that automatically copies compiled module DLLs from `bin\Release\net10.0-windows\Module\` into `publish\Module\` during `dotnet publish`. This ensures the `Module` folder with all 6 modules is always present next to the executable, whether building locally or via GitHub Actions.
-- **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs` caused by `FirstOrDefault` and potentially null UI controls.
+- **GitHub Actions Maintenance** — Updated `actions/checkout@v4` → `v6`, `actions/setup-dotnet@v4` → `v5`, `actions/upload-artifact@v4` → `v6`. These versions support Node.js 24 natively, resolving all deprecation warnings.
+- **NuGet GitHub Packages Permissions Fix** — Added explicit `permissions: contents: write, packages: write` to the build job, fixing `403 (Forbidden)` errors when pushing `.nupkg` packages to GitHub Package Registry.
+- **GitHub Release Packaging** — Release step now compresses the entire `publish/Release/` directory into `RecoveryCommander-vX.X.X.zip` via PowerShell `Compress-Archive`, preserving directory structure for downloaded releases.
+- **All Modules Bundled into Single EXE** — Added all 6 module projects (`SFCModule`, `DismModule`, `ReagentcModule`, `MalwareRemovalModule`, `SystemPrepModule`, `UtilitiesModule`) as direct `<ProjectReference>` items in `RecoveryCommander.csproj`. With `PublishSingleFile=true`, their DLLs are embedded inside the EXE — no separate `Module/` folder needed. EXE grew from ~26 MB to ~51 MB.
+- **Package Version Alignment** — Aligned `System.Management` to `10.0.3` across all module and core project files to resolve `NU1605` downgrade conflict errors.
+- **Embedded PDB Symbols** — Added `<DebugType>embedded</DebugType>` to all projects to embed debug symbols and eliminate stray `.pdb` files from the publish output.
+- **ModuleLoader AppDomain Scan** — Fixed `ModuleLoader.cs` to scan `AppDomain.CurrentDomain.GetAssemblies()` instead of `Assembly.GetExecutingAssembly()`. When `PublishSingleFile` bundles modules, each still loads as its own assembly at runtime — the old approach silently missed all of them.
+- **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs`.
 
 
 ## 2026-03-16 - Application Metadata & Documentation Updates
