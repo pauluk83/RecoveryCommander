@@ -12,5 +12,6 @@
     <RepositoryUrl>https://github.com/pauluk83/RecoveryCommander.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>recovery, windows, system-prep, management</PackageTags>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 </Project>

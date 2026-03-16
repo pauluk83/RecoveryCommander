@@ -6,6 +6,7 @@
     <OutputType>Library</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <NoWarn>$(NoWarn);NU1510</NoWarn>
+    <DebugType>embedded</DebugType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Zane Stanton</Authors>
     <Company>RecoveryCommander Project</Company>
@@ -22,7 +23,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Management" Version="10.0.3" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
