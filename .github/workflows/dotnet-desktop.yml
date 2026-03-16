@@ -52,6 +52,10 @@ jobs:
 
     runs-on: windows-latest
 
+    permissions:
+      contents: write
+      packages: write
+
     env:
       Solution_Name: RecoveryCommander.sln
 
