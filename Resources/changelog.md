@@ -11,7 +11,8 @@
 - **Embedded PDB Symbols** — Added `<DebugType>embedded</DebugType>` to all projects to embed debug symbols and eliminate stray `.pdb` files from the publish output.
 - **ModuleLoader & Warm-Up Fix** — Implemented a "Warm-Up" phase in `Program.cs` that explicitly references a type from each module. This is the most reliable way to ensure that the .NET linker does not prune the module assemblies during single-file publishing and that they are correctly loaded into the `AppDomain` for discovery by the `ModuleLoader`.
 - **WinREWizards Nullability** — Fixed CS8600, CS8602 nullable reference warnings in `Core/WinREWizards.cs`.
-- **Single-File Bundling Optimization** — Enabled `IncludeAllContentForSelfContained` to further consolidate resources into the executable.
+- **Wix Script Support** — Enhanced `AsyncHelpers` to support downloading `.txt` files from restricted hosts like Wix and executing them locally as `.ps1` PowerShell scripts.
+- **UtilitiesModule Modernization** — Refactored script actions to use the improved `DownloadAndExecuteAsync` system, removing hundreds of lines of redundant code and adding support for custom Wix-hosted endpoints.
 
 
 ## 2026-03-16 - Application Metadata & Documentation Updates
