@@ -19,11 +19,15 @@ namespace RecoveryCommander
 
             var iRecoveryModuleType = typeof(IRecoveryModule);
 
-            // First, load modules from the current assembly (built-in modules)
+            // Scan all assemblies loaded in the current AppDomain.
+            // When using PublishSingleFile, referenced module DLLs are bundled but still
+            // load as separate assemblies — GetExecutingAssembly() alone won't find them.
             try
             {
-                var builtInTypes = Assembly.GetExecutingAssembly().GetTypes()
-                    .Where(t => !t.IsInterface && !t.IsAbstract && (typeof(IRecoveryModule).IsAssignableFrom(t) || t.GetInterface("IRecoveryModule") != null))
+                var builtInTypes = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a => !a.IsDynamic)
+                    .SelectMany(a => { try { return a.GetTypes(); } catch { return Array.Empty<Type>(); } })
+                    .Where(t => !t.IsInterface && !t.IsAbstract && typeof(IRecoveryModule).IsAssignableFrom(t))
                     .ToList();
 
                 foreach (var type in builtInTypes)
@@ -34,7 +38,7 @@ namespace RecoveryCommander
                         if (!modules.Any(m => m.Name == module.Name))
                         {
                             modules.Add(module);
-                            logger.Invoke($"✓ Loaded built-in module: {module.Name}");
+                            logger.Invoke($"✓ Loaded module: {module.Name}");
                         }
                     }
                     catch { }
