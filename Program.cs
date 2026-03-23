@@ -23,6 +23,8 @@ namespace RecoveryCommander
             _ = typeof(RecoveryCommander.Module.SystemPrepModule);
             _ = typeof(UtilitiesModule.UtilitiesModule);
             _ = typeof(DiagnosticsModule.DiagnosticsModule);
+            _ = typeof(RecoveryCommander.Module.DriverManagerModule);
+            _ = typeof(RecoveryCommander.Module.CloudRecoveryModule);
 
             try
             {
