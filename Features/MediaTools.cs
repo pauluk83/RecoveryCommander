@@ -8,6 +8,8 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.Diagnostics;
 using RecoveryCommander.Core;
+using RecoveryCommander.Core.Services;
+using RecoveryCommander.Contracts;
 using RecoveryCommander.UI;
 
 namespace RecoveryCommander.Forms
@@ -25,13 +27,15 @@ namespace RecoveryCommander.Forms
         private CheckBox copyApp;
         private CheckBox useWinRE;
         private CheckBox backupRecovery;
+        private CheckBox includeDrivers;
         private Label driveInfoLabel;
+        private DriverService _driverService = new();
 
         public BootMediaCreator()
         {
-            Text = "Bootable Recovery Media";
+            Text = "Bootable Recovery Drive (Advanced)";
             StartPosition = FormStartPosition.CenterParent;
-            Size = new Size(1000, 800);
+            Size = Size.Add(new Size(1000, 800), new Size(0, 50)); // Slightly taller
             FormBorderStyle = FormBorderStyle.Sizable;
             MinimizeBox = true;
             MaximizeBox = true;
@@ -48,11 +52,11 @@ namespace RecoveryCommander.Forms
             // Title
             var titleLabel = new Label 
             { 
-                Text = "Create Bootable Recovery Drive",
+                Text = "Advanced Recovery Drive Creation",
                 Font = new Font("Segoe UI", 16, FontStyle.Bold),
                 ForeColor = Color.White,
                 Location = new Point(30, 30),
-                Size = new Size(400, 40)
+                Size = new Size(600, 40)
             };
             
             // Drive selection
@@ -86,32 +90,41 @@ namespace RecoveryCommander.Forms
             { 
                 Text = "Copy RecoveryCommander to drive",
                 Location = new Point(30, 220),
-                Size = new Size(200, 25),
+                Size = new Size(250, 25),
                 ForeColor = Color.White
             };
             
             useWinRE = new CheckBox 
             { 
-                Text = "Include Windows RE",
+                Text = "Include Windows RE (WIM)",
                 Location = new Point(30, 250),
-                Size = new Size(200, 25),
+                Size = new Size(250, 25),
                 ForeColor = Color.White
             };
             
             backupRecovery = new CheckBox 
             { 
-                Text = "Backup existing recovery",
+                Text = "Backup existing recovery data",
                 Location = new Point(30, 280),
-                Size = new Size(200, 25),
+                Size = new Size(250, 25),
                 ForeColor = Color.White
+            };
+
+            includeDrivers = new CheckBox 
+            { 
+                Text = "Export & Include Drivers (Recommended)",
+                Location = new Point(30, 310),
+                Size = new Size(300, 25),
+                ForeColor = Color.White,
+                Checked = true
             };
             
             // Build button
             buildButton = new ModernButton 
             { 
-                Text = "Create Recovery Drive",
-                Location = new Point(30, 330),
-                Size = new Size(240, 48),
+                Text = "Create Advanced Recovery Drive",
+                Location = new Point(30, 350),
+                Size = new Size(300, 48),
                 ButtonStyle = Theme.ButtonStyle.Secondary,
                 CornerRadius = 10,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -134,7 +147,7 @@ namespace RecoveryCommander.Forms
             mainPanel.Controls.AddRange(new Control[] 
             {
                 titleLabel, driveList, refreshButton, driveInfoLabel,
-                copyApp, useWinRE, backupRecovery, buildButton, logBox
+                copyApp, useWinRE, backupRecovery, includeDrivers, buildButton, logBox
             });
             
             Controls.Add(mainPanel);
@@ -268,6 +281,17 @@ namespace RecoveryCommander.Forms
                 {
                     LogMessage("Copying RecoveryCommander...");
                     await CopyApplicationAsync(recoveryPath);
+                }
+
+                // Export drivers if requested
+                if (includeDrivers.Checked)
+                {
+                    LogMessage("Exporting third-party drivers (this may take a few minutes)...");
+                    var driverPath = Path.Combine(recoveryPath, "Drivers");
+                    Directory.CreateDirectory(driverPath);
+                    
+                    var progress = new Progress<ProgressReport>(report => LogMessage($"{report.PercentComplete}%: {report.StatusMessage}"));
+                    await _driverService.BackupDriversAsync(driverPath, progress, msg => LogMessage(msg), CancellationToken.None);
                 }
                 
                 // Create boot configuration

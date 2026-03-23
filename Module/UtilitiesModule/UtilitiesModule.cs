@@ -39,7 +39,7 @@ namespace UtilitiesModule
             // Original GitHub-hosted Public Scripts
             public const string ActivationPublic = "https://get.activated.win";
             public const string OfficeC2RPublic = "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA";
-            public const string BackupRestorePublic = "https://raw.githubusercontent.com/massgravel/Microsoft-Office-Activation-Scripts/master/Inof/Backup-Restore.ps1";
+            public const string BackupRestorePublic = "https://99ed684e-f8f7-418e-a378-a43f97c53364.usrfiles.com/ugd/99ed68_acaf0031477449598de3ef438aee35be.txt";
         }
 
         public string Name => "Utilities";
@@ -54,7 +54,7 @@ namespace UtilitiesModule
             new("Activation", "Activation") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.ActivationPublic, "Activate.ps1", p, o, c) },
             new("Install Office 2024", "Install Office 2024") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.Office2024Wix, "Office2024.ps1", p, o, c) },
             new("Office-C2R-Install", "Install Office Click-to-Run") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.OfficeC2RPublic, "OfficeSetup.exe", p, o, c) },
-            new("Backup and Restore Activation State", "Backup and Restore Activation State") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.BackupRestorePublic, "BackupRestore.ps1", p, o, c) },
+            new("Backup and Restore Activation State", "Backup and Restore Activation State") { ExecuteAction = RunBackupActivation },
             new("Christitus Utility", "Chris Titus Tech Windows Utility") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync("https://christitus.com/win", "Christitus.ps1", p, o, c) },
             new("CCleaner Portable", "CCleaner Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.CCleaner, "CCleaner.exe", p, o, c) },
             new("Macrium Reflect Portable", "Macrium Reflect Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.MacriumPortable, "Macrium.exe", p, o, c) },
@@ -97,6 +97,56 @@ namespace UtilitiesModule
                 }
 
                 await RecoveryCommander.Core.AsyncHelpers.DownloadAndExecuteAsync(downloadUrl, "Rufus.exe", progress, reportOutput, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error: {ex.Message}");
+                progress.Report(new ProgressReport(100, "Failed"));
+            }
+        }
+
+        private async Task RunBackupActivation(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            string backupDir = @"C:\Backup";
+            string fileName = "Backup-Activation.bat";
+            string fullPath = Path.Combine(backupDir, fileName);
+
+            try
+            {
+                if (!Directory.Exists(backupDir))
+                {
+                    reportOutput($"Creating directory: {backupDir}");
+                    Directory.CreateDirectory(backupDir);
+                }
+
+                reportOutput($"Downloading backup tool to: {fullPath}");
+                progress.Report(new ProgressReport(10, "Downloading...", "Connecting to server..."));
+
+                // Reuse the internal downloader logic but with our specific path
+                await AsyncHelpers.DownloadFileAsync(DownloadUrls.BackupRestorePublic, fullPath, progress, cancellationToken);
+                
+                reportOutput($"Download complete. Launching from {backupDir}...");
+                
+                var psi = new ProcessStartInfo
+                {
+                    FileName = fullPath,
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WorkingDirectory = backupDir
+                };
+
+                using (var proc = Process.Start(psi))
+                {
+                    if (proc != null)
+                    {
+                        progress.Report(new ProgressReport(100, "Launched"));
+                        reportOutput("Backup-Activation.bat launched successfully.");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Process failed to start.");
+                    }
+                }
             }
             catch (Exception ex)
             {

@@ -2,12 +2,15 @@ RecoveryCommander
 A comprehensive Windows system recovery and maintenance tool with a modern Windows 11-styled interface. RecoveryCommander provides modular system utilities, diagnostic tools, and recovery operations through an extensible plugin architecture.
 
 🚀 Features
-Modern UI: Windows 11-styled interface with dark/light theme support
-Modular Architecture: Extensible plugin system for recovery modules
-System Diagnostics: SFC, DISM, memory diagnostics, and disk checks
-System Utilities: Activation tools, network optimization, cleanup utilities
-Real-time Progress: Live progress tracking with clean output console
-Thread-Safe Operations: Robust threading with proper disposal handling
+- **Modern UI**: Windows 11-styled interface with dark/light theme support
+- **Advanced Boot Media Creator**: Driver injection and WinRE integration for recovery drives
+- **Driver Manager**: Dedicated module for third-party driver backup, restoration, and cleanup
+- **Cloud Recovery**: One-click access to Windows Cloud Reset and profile backup/sync
+- **Modular Architecture**: Extensible plugin system for recovery modules
+- **System Diagnostics**: SFC, DISM, memory diagnostics, and disk checks
+- **System Utilities**: Activation tools, network optimization, cleanup utilities
+- **Real-time Progress**: Live progress tracking with clean output console
+- **Thread-Safe Operations**: Robust threading with proper disposal handling
 🔗 Links & Resources
 GitHub Repository: pauluk83/RecoveryCommander
 Official Website: RecoveryCommander Portal
@@ -81,6 +84,12 @@ DiagnosticOverlay.cs - System diagnostic overlay interface
 
 DiagnosticsConsole.cs - Diagnostic output console
 
+## 2026-03-16 - Diagnostics Module & UI Layout Polishing
+
+### Third-Party Applications Disclosure
+- **Disclaimer Added** — Added the following notice to the About dialog, README, and project metadata: "This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available."
+
+### Utilities Module Enhancements
 Core Modules
 /CoreModules/ - Shared Services and Utilities (Consolidated)
 CoreUtilities.cs - 🆕 Consolidated utilities including:
@@ -190,6 +199,10 @@ public interface IRecoveryModule
 UI Architecture
 TableLayoutPanel-based layout for deterministic vertical stacking
 Theme-aware controls that respond to system theme changes
+- **Maintenance**: This file should be updated when major structure changes occur
+
+## ⚖️ Third-Party Disclaimer
+This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available.
 Progress reporting system with real-time updates and milestone logging
 Thread-safe operations with proper disposal handling
 Threading Model
@@ -287,6 +300,8 @@ Module health status reporting
 Build verification scripts
 📄 License
 This project is developed for system recovery and maintenance purposes. Please ensure compliance with Windows licensing terms when using system modification features.
+
+This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available.
 
 🤝 Contributing
 Follow the established code standards and architecture

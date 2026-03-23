@@ -45,14 +45,15 @@ namespace RecoveryCommander.Forms
             }
             catch { }
 
-            string info = $"RecoveryCommander\nVersion: {version}\nBuild Date: {buildDate}\nAuthor: Zane Stanton\n" +
-                          "© 2025 RecoveryCommander™\nAll rights reserved.\n\n" +
-                          "This code and all files are open source.";
+            string info = $"Win Recovery\nVersion: {version}\nBuild Date: {buildDate}\nAuthor: Zane Stanton\n" +
+                          "© 2025 Win Recovery™\nAll rights reserved.\n\n" +
+                          "This project is developed for system recovery and maintenance purposes. Please ensure compliance with Windows licensing terms when using system modification features.\n\n" +
+                          "This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available.";
 
             // Create themed About dialog instead of MessageBox
             using var form = new Form()
             {
-                Text = "About RecoveryCommander",
+                Text = "About Win Recovery",
                 Size = new Size(450, 350),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.Sizable,

@@ -1,9 +1,9 @@
 # RecoveryCommander Project Manifest
-*Auto-generated on 2026-03-16 00:44*
+*Auto-generated on 2026-03-23 16:38*
 
 ## 📊 Project Overview
 
-**Total Directories**: 7  
+**Total Directories**: 9  
 **Root Files**: 9  
 **Project Type**: Windows Forms Application (.NET 10.0)
 
@@ -23,7 +23,7 @@ Files:
 - `PlatformCompatibility.cs` - Windows platform compatibility
 - `RecoveryCommander.Core.csproj` - Core project file
 
-### 📂 `Module/` (5 modules)
+### 📂 `Module/` (7 modules)
 **Recovery Modules - Pluggable system recovery and maintenance modules**
 
 Modules:
@@ -32,6 +32,8 @@ Modules:
 - `SFCModule/` - System File Checker operations
 - `SystemPrepModule/` - System preparation and maintenance tools
 - `UtilitiesModule/` - System utilities and activation tools
+- `DriverManagerModule/` - Driver backup, restore, and cleanup
+- `CloudRecoveryModule/` - Cloud reset and profile sync
 
 ### 📂 `RecoveryCommander.Contracts/` (35 files)
 **Public API - Interfaces and contracts for module development**
@@ -82,6 +84,9 @@ Files: changelog.txt, system icons, embedded resources
 - **Purpose**: Quick project structure reference
 - **Note**: For comprehensive documentation, see README.md
 - **Maintenance**: This file should be updated when major structure changes occur
+
+## ⚖️ Third-Party Disclaimer
+This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available.
 
 ---
 *This manifest provides a quick overview of the current project state after major consolidation efforts.*

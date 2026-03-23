@@ -1,4 +1,4 @@
-// MainForm.cs - Primary UI form for Recovery Commander
+// MainForm.cs - Primary UI form for Win Recovery
 // Implements the main application window with module display and navigation
 
 using System;
@@ -104,7 +104,7 @@ namespace RecoveryCommander.Forms
         public MainForm()
         {
             // Set window properties with better initial sizing
-            this.Text = "Recovery Commander";
+            this.Text = "Win Recovery";
             this.WindowState = FormWindowState.Maximized; // Launch maximized for better experience
             this.MinimumSize = new Size(1024, 768);
             this.Size = new Size(1500, 950);
@@ -265,7 +265,7 @@ namespace RecoveryCommander.Forms
                 Dock = DockStyle.Fill,
                 RowCount = 2,
                 ColumnCount = 1,
-                RowStyles = { new RowStyle(SizeType.Absolute, 220f), new RowStyle(SizeType.Percent, 100f) },
+                RowStyles = { new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.Percent, 100f) },
                 BackColor = Color.Transparent
             };
 
@@ -284,18 +284,20 @@ namespace RecoveryCommander.Forms
             this.heroDetailLabel = new Label
             {
                 Text = "Select a module from the navigation list to reveal tools.",
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                AutoSize = true,
                 TextAlign = ContentAlignment.TopLeft,
                 Font = Theme.Typography.Subtitle,
                 ForeColor = Color.FromArgb(220, Theme.Colors.Text),
                 BackColor = Color.Transparent,
-                AutoEllipsis = true
+                AutoEllipsis = false, // Disable ellipsis to allow height growth
+                Padding = new Padding(0, 5, 0, 10)
             };
 
             this.heroPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = 200,
+                AutoSize = true,
                 Margin = new Padding(0, 0, 0, ProfessionalDesignSystem.Spacing.MD),
                 Padding = ProfessionalDesignSystem.Spacing.Spacious,
                 BackColor = Color.Transparent
@@ -325,13 +327,14 @@ namespace RecoveryCommander.Forms
             };
 
             this.welcomeLabel = new Label();
-            this.welcomeLabel.Text = "Recovery Commander";
+            this.welcomeLabel.Text = "Win Recovery";
             this.welcomeLabel.TextAlign = ContentAlignment.MiddleLeft;
             this.welcomeLabel.Dock = DockStyle.Top;
-            this.welcomeLabel.Height = 52;
+            this.welcomeLabel.AutoSize = true;
             this.welcomeLabel.Font = Theme.Typography.Display;
             this.welcomeLabel.ForeColor = Theme.Colors.Text;
             this.welcomeLabel.BackColor = Color.Transparent;
+            this.welcomeLabel.Padding = new Padding(0, 0, 0, 5);
 
             var heroDivider = new Panel 
             { 
@@ -372,7 +375,7 @@ namespace RecoveryCommander.Forms
             this.progressPanel.Dock = DockStyle.Top;
             this.progressPanel.Visible = true;
             this.progressPanel.Padding = ProfessionalDesignSystem.Spacing.Standard;
-
+            
             // Create progress info panel
             var progressInfoPanel = new Panel
             {
@@ -1438,7 +1441,7 @@ namespace RecoveryCommander.Forms
         {
             moduleContentPanel.Controls.Clear();
             welcomeLabel.Text = "Recovery Dashboard";
-            heroDetailLabel.Text = "Welcome to Recovery Commander. Select a module below to begin system maintenance or use the diagnostics suite for a full check.";
+            heroDetailLabel.Text = "Welcome to Win Recovery. Select a module below to begin system maintenance or use the diagnostics suite for a full check.";
             currentModule = null;
             selectedActions.Clear();
 
@@ -1559,9 +1562,7 @@ namespace RecoveryCommander.Forms
             if (module.Name == "Diagnostics")
             {
                 welcomeLabel.Text = "Diagnostic Dashboard";
-                welcomeLabel.Height = 35; // Tighter header
                 heroDetailLabel.Text = "Technician toolkit for comprehensive system health analysis and troubleshooting.";
-                heroDetailLabel.Height = 25; // Tighter subheader
             }
             else
             {

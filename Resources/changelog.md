@@ -1,6 +1,37 @@
 # RecoveryCommander Changelog
 
+## 2026-03-23 - Advanced Boot Media, Driver Management & Cloud Recovery
+
+### New Modules & Features
+- **Driver Manager Module (v1.0.0)** — Dedicated module for professional driver management.
+    - **Backup Drivers** — Integrated DISM-based export of all third-party drivers to a user-selected folder.
+    - **Restore Drivers** — High-speed restoration using `pnputil /add-driver /subdirs /install` with recursive INF scanning.
+    - **Driver Store Cleanup** — Action to enumerate and potentially remove older driver versions to reclaim space.
+- **Cloud Recovery Module (v1.0.0)** — Modern recovery integration for Windows 10/11.
+    - **Windows Cloud Reset** — Direct trigger for `systemreset -cleanpc` to initiate official Microsoft Cloud Download restoration.
+    - **Profile Sync (Mock)** — Framework for backing up and restoring user profile settings to cloud storage providers.
+- **Advanced Boot Media Creator** — Substantial upgrade to the built-in media tool.
+    - **Driver Injection** — Option to "Export & Include Drivers" during media creation, ensuring the target recovery drive has all necessary hardware support.
+    - **WinRE Logic Fix** — Corrected underlying code to ensure Windows RE inclusion settings actually impact the final build.
+    - **Professional UI Update** — Refactored the interface with "Advanced" branding and improved layout.
+
+### Core Engine & UI Improvements
+- **UI Layout Polishing** — Refactored `MainForm` hero section and diagnostics dashboard with dynamic `AutoSize` and `TableLayoutPanel` logic, eliminating text cut-off and improving high-DPI scaling.
+- **Maximized Launch State** — Application now defaults to **1500x950** and starts Maximized for immediate access to the full toolset.
+- **Improved Shell Interaction** — Added a PowerShell-integrated input field to the output console for direct command execution within the app's context.
+
+### Bug Fixes & Code Quality
+- **String Interpolation Fix** — Resolved syntax errors in `DriverService.cs` related to incorrect escaping of string literals within interpolated strings.
+- **Async Signature Alignment** — Corrected `AsyncHelpers.RunProcessAsync` calls in multiple modules to match the expected `Action<string>` error reporter signature.
+- **Namespace Resolution** — Fixed missing `RecoveryCommander.Contracts` and `RecoveryCommander.Core.Services` imports in `MediaTools.cs`.
+
 ## 2026-03-16 - Diagnostics Module & UI Layout Polishing
+
+### Third-Party Applications Disclosure
+- **Disclaimer Added** — Added the following notice to the About dialog, README, and project metadata: "This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available."
+
+### Utilities Module Enhancements
+- **Updated Activation Backup** — Pointed the "Backup and Restore Activation State" action to a new user-hosted Wix URL and switched the runner to execute it as a `.bat` script for improved compatibility.
 
 ### Diagnostics Module Enhancements
 - **Priority Loading** — Refactored `MainForm` module discovery to ensure the **Diagnostics** module is always pinned to the absolute top of the sidebar.
