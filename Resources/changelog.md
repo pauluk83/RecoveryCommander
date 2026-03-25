@@ -3,8 +3,7 @@
 ## 2026-03-25 - Framework Upgrade & UI Refinement
 
 ### Infrastructure & Core Changes
-- **Framework Upgrade to .NET 11 Preview 2** — Migrated the entire solution to the latest .NET 11.0 infrastructure. Updated all projects to `net11.0-windows` and refreshed dependencies to version `11.0.0-preview.2.26159.112`.
-- **Pre-Release Version Alignment** — Added `<Version>11.0.0-preview.2</Version>` to `RecoveryCommander.Core` and `RecoveryCommander.Contracts` to resolve `NU5104` build warnings caused by stable packages referencing pre-release `.NET 11` dependencies.
+- **Framework Rollback to .NET 10** — Rolled back the entire solution to `net10.0-windows` and downgraded dependencies to `10.0.0` due to automated build failures on GitHub Actions runner environments lacking the .NET 11 preview SDK.
 - **System Prep Cleanup** — Removed the redundant "Backup Drivers" action from the System Prep module as it is now fully handled by the dedicated Driver Manager Module.
 - **Utilities Module Addition** — Added "IObit Driver Booster" to the Utilities module. It downloads the executable and silently installs it for efficient driver updates.
 - **Driver Manager Update** — Added the identical "IObit Driver Booster" download logic to the Driver Manager module for streamlined hardware management.

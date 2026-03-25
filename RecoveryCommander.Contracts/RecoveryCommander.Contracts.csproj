@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net11.0-windows</TargetFramework>
-    <Version>11.0.0-preview.2</Version>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Version>10.0.0</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
