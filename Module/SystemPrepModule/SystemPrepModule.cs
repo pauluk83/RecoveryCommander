@@ -17,7 +17,6 @@ namespace RecoveryCommander.Module
         private readonly UpdateService _updateService = new();
         private readonly CleanupService _cleanupService = new();
         private readonly SystemTweakService _tweakService = new();
-        private readonly DriverService _driverService = new();
 
         public string Name => "System Prep";
         public string Description => "Performs various system preparation and cleanup tasks using modular services.";
@@ -29,7 +28,6 @@ namespace RecoveryCommander.Module
             new ModuleAction("Upgrade Winget Packages", "Updates programs via Winget", _updateService.UpgradeWingetPackagesAsync),
             new ModuleAction("Update Store Apps", "Updates Microsoft Store packages", _updateService.UpdateStoreAppsAsync),
             new ModuleAction("Scan for Windows Updates", "Check for OS updates", _updateService.ScanForWindowsUpdatesAsync),
-            new ModuleAction("Backup Drivers", "Exports third-party drivers to a folder", ExecuteBackupDriversAsync),
             new ModuleAction("Clear All Caches", "Removes browser caches and temp files", ExecuteClearCachesAsync) { IsDestructive = true },
             new ModuleAction("Deep Clean WinSxS", "Component store cleanup (resetbase)", _cleanupService.DeepCleanWinSxSAsync) { IsDestructive = true },
             new ModuleAction("Apply Privacy Tweaks", "Disable telemetry and web search in Start", ExecuteApplyTweaksAsync) { IsDestructive = true },
@@ -54,15 +52,6 @@ namespace RecoveryCommander.Module
         {
             await _cleanupService.ClearTempFilesAsync(progress, reportOutput, cancellationToken);
             await _cleanupService.ClearBrowserCachesAsync(progress, reportOutput, cancellationToken);
-        }
-
-        private async Task ExecuteBackupDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
-        {
-            using var fbd = new FolderBrowserDialog { Description = "Select driver backup destination" };
-            if (fbd.ShowDialog() == DialogResult.OK)
-            {
-                await _driverService.BackupDriversAsync(fbd.SelectedPath, progress, reportOutput, cancellationToken);
-            }
         }
 
         private async Task ExecuteApplyTweaksAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

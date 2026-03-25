@@ -32,6 +32,7 @@ namespace UtilitiesModule
             public const string Win11DebloatZip = "https://github.com/Raphire/Win11Debloat/archive/refs/heads/master.zip";
             public const string VCRedistApi = "https://api.github.com/repos/abbodi1406/vcredist/releases/latest";
             public const string PCRepairSuite = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_97245b3f1c08429db4201b1cbd33e992.txt?dn=PCRepairSuite.txt";
+            public const string IObitDriverBooster = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_48f95a7f0dab475cbe429f9db9bce1cd.txt?dn=IObitDriverBooster.txt";
 
             // User-hosted Office 2024 (Wix .txt file)
             public const string Office2024Wix = "https://99ed684e-f8f7-418e-a378-a43f97c53364.usrfiles.com/ugd/99ed68_c4c183f52c6442d1930577246c5ae215.txt";
@@ -63,7 +64,8 @@ namespace UtilitiesModule
             new("Ninite Installer", "Ninite Installer") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.Ninite, "Ninite.exe", p, o, c) },
             new("Rufus", "Rufus") { ExecuteAction = DownloadRufus },
             new("Visual C++ AIO", "Visual C++ AIO Redistributable") { ExecuteAction = DownloadVCRedist },
-            new("PC Repair Suite", "PC Repair Suite") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.PCRepairSuite, "PCRepairSuite.exe", p, o, c) }
+            new("PC Repair Suite", "PC Repair Suite") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.PCRepairSuite, "PCRepairSuite.exe", p, o, c) },
+            new("IObit Driver Booster", "IObit Driver Booster") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "IObitDriverBooster.exe", p, o, c) }
         };
 
 

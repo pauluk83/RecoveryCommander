@@ -16,6 +16,11 @@ namespace RecoveryCommander.Module
     {
         private readonly DriverService _driverService = new();
 
+        private static class DownloadUrls
+        {
+            public const string IObitDriverBooster = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_48f95a7f0dab475cbe429f9db9bce1cd.txt?dn=IObitDriverBooster.txt";
+        }
+
         public string Name => "Driver Manager";
         public string Description => "Comprehensive driver backup, restoration, and optimization tools.";
         public string BuildInfo => "Driver Manager v1.0.0 - Focused driver management.";
@@ -28,7 +33,8 @@ namespace RecoveryCommander.Module
             new ModuleAction("Backup Drivers", "Exports all third-party drivers to a selected folder", ExecuteBackupDriversAsync) { Highlight = true },
             new ModuleAction("Restore Drivers", "Installs drivers from a folder (pnputil)", ExecuteRestoreDriversAsync),
             new ModuleAction("List Drivers", "Enumerate all installed third-party drivers", _driverService.OptimizeDriverStoreAsync),
-            new ModuleAction("Cleanup Driver Store", "Removes redundant and old driver versions", ExecuteOptimizeDriversAsync) { IsDestructive = true }
+            new ModuleAction("Cleanup Driver Store", "Removes redundant and old driver versions", ExecuteOptimizeDriversAsync) { IsDestructive = true },
+            new ModuleAction("IObit Driver Booster", "IObit Driver Booster", (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "IObitDriverBooster.exe", p, o, c))
         };
 
         private async Task ExecuteBackupDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

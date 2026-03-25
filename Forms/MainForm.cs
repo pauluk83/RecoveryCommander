@@ -214,6 +214,7 @@ namespace RecoveryCommander.Forms
             this.statusLabel = new ToolStripStatusLabel();
             this.mainSplitContainer = new SplitContainer();
             this.moduleButtonsPanel = new FlowLayoutPanel();
+            this.moduleButtonsPanel.HandleCreated += (s, e) => Theme.DarkScrollBar.ApplyDarkTheme(this.moduleButtonsPanel);
             this.moduleDisplayPanel = new Panel();
             this.modulesPanel = new FlowLayoutPanel();
             this.scrollPanel = new Panel();
@@ -236,7 +237,7 @@ namespace RecoveryCommander.Forms
             this.moduleButtonsPanel.FlowDirection = FlowDirection.TopDown;
             this.moduleButtonsPanel.WrapContents = false;
             this.moduleButtonsPanel.AutoScroll = true;
-            this.moduleButtonsPanel.Padding = ProfessionalDesignSystem.Spacing.Spacious;
+            this.moduleButtonsPanel.Padding = ProfessionalDesignSystem.Spacing.Standard;
 
             this.moduleDisplayPanel.Dock = DockStyle.Fill;
             this.moduleDisplayPanel.Padding = new Padding(0);
@@ -553,8 +554,9 @@ namespace RecoveryCommander.Forms
             this.mainSplitContainer.Panel1.Controls.Add(this.moduleButtonsPanel);
             this.mainSplitContainer.Panel2.Controls.Add(this.moduleDisplayPanel);
 
-            this.contentPanel.Controls.Add(this.mainSplitContainer);
+            // Add bottomPanel first so it claims the bottom edge, then mainSplitContainer fills the remainder
             this.contentPanel.Controls.Add(bottomPanel);
+            this.contentPanel.Controls.Add(this.mainSplitContainer);
 
             this.Controls.Add(this.contentPanel);
             this.Controls.Add(this.mainMenu);
@@ -1382,8 +1384,8 @@ namespace RecoveryCommander.Forms
             var moduleButton = new ModernButton
             {
                 Text = $"{module.Name}\nv{module.Version}",
-                Height = 72,
-                Margin = new Padding(0, 0, 0, 10),
+                Height = 60,
+                Margin = new Padding(0, 0, 0, 6),
                 Tag = module,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = Theme.Typography.BodyStrong,
@@ -1398,9 +1400,11 @@ namespace RecoveryCommander.Forms
             moduleButton.Width = optimalWidth;
 
             moduleButton.Click += (s, e) => {
-                foreach (ModernButton btn in moduleButtonsPanel.Controls)
+                foreach (Control ctrl in moduleButtonsPanel.Controls)
                 {
-                    btn.Width = moduleButtonsPanel.ClientSize.Width - 20;
+                    if (ctrl is ModernButton btn) {
+                        btn.Width = moduleButtonsPanel.ClientSize.Width - 20;
+                    }
                 }
                 if (s is ModernButton button && button.Tag is IRecoveryModule selectedModule)
                 {
@@ -1414,9 +1418,11 @@ namespace RecoveryCommander.Forms
 
         private void UpdateModuleButtonStyles(FlowLayoutPanel moduleButtonsPanel, ModernButton selectedButton)
         {
-            foreach (ModernButton btn in moduleButtonsPanel.Controls)
+            foreach (Control ctrl in moduleButtonsPanel.Controls)
             {
-                btn.ButtonStyle = btn == selectedButton ? Theme.ButtonStyle.Primary : Theme.ButtonStyle.Secondary;
+                if (ctrl is ModernButton btn) {
+                    btn.ButtonStyle = btn == selectedButton ? Theme.ButtonStyle.Primary : Theme.ButtonStyle.Secondary;
+                }
             }
         }
         
@@ -1736,7 +1742,8 @@ namespace RecoveryCommander.Forms
                 return actionContainer;
             }
 
-            var actionsPanelFlowDefault = new Theme.DarkFlowLayoutPanel(enableScroll: false) { Dock = DockStyle.Fill };
+            var actionsPanelFlowDefault = new FlowLayoutPanel { Dock = DockStyle.Fill };
+            actionsPanelFlowDefault.HandleCreated += (s, e) => Theme.DarkScrollBar.ApplyDarkTheme(actionsPanelFlowDefault);
             actionsPanelFlowDefault.FlowDirection = FlowDirection.LeftToRight;
             actionsPanelFlowDefault.WrapContents = true;
             actionsPanelFlowDefault.Padding = new Padding(8);

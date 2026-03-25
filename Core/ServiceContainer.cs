@@ -59,6 +59,9 @@ namespace RecoveryCommander.Core
                 builder.AddDebug();
             });
 
+            // Register non-generic ILogger for classes that use service location
+            services.AddSingleton(sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger("RecoveryCommander"));
+
             // Register other services as needed
             services.AddSingleton<GlobalExceptionHandler>();
 
