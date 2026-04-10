@@ -1,6 +1,6 @@
 # RecoveryCommander Changelog
 
-## 2026-04-10 - v1.2.4 - Auto-Update System & Polish
+## 2026-04-10 - v1.2.5 - Stable Release Update
 
 ### New Features
 - **Date-Based Update Logic** — The auto-update system now compares the GitHub "published_at" date with the local build date as a fail-safe. If the version numbers match but a newer build has been uploaded, it will be detected as an update.
