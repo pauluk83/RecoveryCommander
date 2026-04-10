@@ -63,8 +63,8 @@ namespace RecoveryCommander.Core
                 if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                     return false;
                 
-                // Only allow HTTP/HTTPS
-                if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                // Only allow HTTPS
+                if (uri.Scheme != Uri.UriSchemeHttps)
                     return false;
                 
                 // Block localhost and private IP ranges (including IPv6)

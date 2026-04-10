@@ -24,9 +24,9 @@ namespace RecoveryCommander.Module
         public IEnumerable<ModuleAction> Actions => new List<ModuleAction>
         {
             new ModuleAction("Trigger Cloud Reset", "Initiate Windows Cloud Download and Reset", ExecuteCloudResetAsync) { Highlight = true, IsDestructive = true },
-            new ModuleAction("Backup Profile to Cloud", "Sync user profile settings to cloud storage", ExecuteCloudBackupAsync),
-            new ModuleAction("Restore Profile from Cloud", "Downalod and apply profile settings from cloud", ExecuteCloudRestoreAsync),
-            new ModuleAction("Configure Cloud Account", "Set up OneDrive/GitHub integration for backups", ExecuteConfigureCloudAsync)
+            new ModuleAction("Sync Profile & Settings", "Sync personal files and system settings to cloud storage") { ExecuteActionExtended = ExecuteCloudBackupAsync },
+            new ModuleAction("Restore from Cloud", "Download and apply profile + settings from cloud") { ExecuteActionExtended = ExecuteCloudRestoreAsync },
+            new ModuleAction("Configure Cloud Account", "Set up OneDrive/Google Drive integration") { ExecuteActionExtended = ExecuteConfigureCloudAsync }
         };
 
         private async Task ExecuteCloudResetAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
@@ -44,34 +44,85 @@ namespace RecoveryCommander.Module
             }
         }
 
-        private async Task ExecuteCloudBackupAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private async Task ExecuteCloudBackupAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
-            progress.Report(new ProgressReport(10, "Preparing profile backup..."));
-            await Task.Delay(1000); // Simulation
-            reportOutput?.Invoke("Scanning user profile: " + Environment.UserName);
-            progress.Report(new ProgressReport(50, "Compressing settings..."));
-            await Task.Delay(1000);
-            reportOutput?.Invoke("Archive created: Profile_Backup_" + DateTime.Now.ToString("yyyyMMdd") + ".zip");
-            progress.Report(new ProgressReport(80, "Uploading to Cloud (Mock)..."));
-            await Task.Delay(1500);
-            reportOutput?.Invoke("SUCCESS: Backup uploaded to secure cloud storage.");
-            progress.Report(new ProgressReport(100, "Cloud backup completed."));
+            var service = new CloudProfileSyncService(progress, reportOutput);
+            var providers = service.DetectAvailableProviders();
+
+            if (!providers.Any())
+            {
+                MessageBox.Show("No supported cloud sync clients (OneDrive or Google Drive) detected.\n\nPlease install and sign in to OneDrive or Google Drive to use this feature.", "Cloud Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string provider = providers.First();
+            if (providers.Count > 1)
+            {
+                // Simple picker if multiple found
+                string choices = string.Join("\n", providers.Select((p, idx) => $"{idx + 1}. {p}"));
+                var dialogResult = MessageBox.Show($"Multiple cloud providers detected:\n\n{choices}\n\nUse {provider} for backup?\n(Click No to use {providers[1]})", 
+                    "Select Provider", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                
+                if (dialogResult == DialogResult.Cancel) return;
+                if (dialogResult == DialogResult.No)
+                {
+                    provider = providers[1];
+                }
+            }
+
+            var confirm = MessageBox.Show($"This will back up the following to your {provider} folder:\n" +
+                "• Personal Libraries (Desktop, Documents, Pictures)\n" +
+                "• System Settings (Desktop config, Start Menu)\n" +
+                "• Critical Registry Mappings\n\n" +
+                "Continue?", 
+                "Start Sync", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+
+            if (confirm == DialogResult.Yes)
+            {
+                await service.BackupProfileAsync(provider, cancellationToken);
+            }
+        }
+ 
+        private async Task ExecuteCloudRestoreAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
+        {
+            var service = new CloudProfileSyncService(progress, reportOutput);
+            var providers = service.DetectAvailableProviders();
+
+            if (!providers.Any())
+            {
+                MessageBox.Show("No supported cloud sync clients detected.", "Cloud Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string provider = providers.First();
+            if (providers.Count > 1)
+            {
+                var dialogResult = MessageBox.Show($"Detecting backups on {provider}. Use this provider?", 
+                    "Select Provider", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                
+                if (dialogResult == DialogResult.No)
+                {
+                    provider = providers[1];
+                }
+            }
+
+            var confirm = MessageBox.Show($"This will restore the latest backup found in your {provider} folder. Existing files may be updated. Continue?", 
+                "Start Restore", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (confirm == DialogResult.Yes)
+            {
+                await service.RestoreProfileAsync(provider, cancellationToken);
+            }
         }
 
-        private async Task ExecuteCloudRestoreAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private async Task ExecuteConfigureCloudAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
-            progress.Report(new ProgressReport(20, "Connecting to cloud storage..."));
-            await Task.Delay(1000);
-            reportOutput?.Invoke("Fetching latest backup metadata...");
-            progress.Report(new ProgressReport(60, "Downloading profile archive..."));
-            await Task.Delay(1500);
-            reportOutput?.Invoke("Applying settings to user: " + Environment.UserName);
-            progress.Report(new ProgressReport(100, "Profile restored from cloud."));
-        }
+            var service = new CloudProfileSyncService(progress, reportOutput);
+            var providers = service.DetectAvailableProviders();
 
-        private async Task ExecuteConfigureCloudAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
-        {
-            MessageBox.Show("Cloud Configuration Wizard:\n\n1. Select Provider (OneDrive/GitHub/Gist)\n2. Authenticate\n3. Set Sync Frequency\n\n(Feature coming soon in v1.1)", 
+            string status = providers.Any() ? $"Detected: {string.Join(", ", providers)}" : "No providers detected.";
+            
+            MessageBox.Show($"Cloud Configuration Status:\n\n{status}\n\nRecoveryCommander automatically leverages your installed OneDrive and Google Drive clients for zero-setup profile protection.", 
                 "Cloud Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
             await Task.CompletedTask;
         }

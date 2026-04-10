@@ -189,56 +189,6 @@ public sealed class ReagentcModule : IRecoveryModule
         }
     }
 
-    private async Task ExecutePbrSetupWizardAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
-    {
-        progress.Report(new ProgressReport(0, "Configuring OEM Restore Image..."));
-
-        using var ofd = new OpenFileDialog
-        {
-            Filter = "Windows Image (install.wim)|install.wim|WIM Files (*.wim)|*.wim|All Files (*.*)|*.*",
-            Title = "Select the Custom Windows Image (WIM) to use for Factory Reset",
-            CheckFileExists = true
-        };
-
-        if (ofd.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(ofd.FileName))
-        {
-            string wimPath = ofd.FileName;
-            string oemDir = @"C:\Recovery\OEM";
-            if (!Directory.Exists(oemDir)) Directory.CreateDirectory(oemDir);
-
-            string xmlPath = Path.Combine(oemDir, "ResetConfig.xml");
-            
-            string xmlContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<Reset>
-  <Run>
-    <Phase>FactoryReset_AfterDiskFormat</Phase>
-    <Path>scripts\PreparePartitions.cmd</Path>
-    <Duration>2</Duration>
-  </Run>
-  <SystemDisk>
-    <MinSize>60000</MinSize>
-  </SystemDisk>
-</Reset>";
-            
-            try
-            {
-                await File.WriteAllTextAsync(xmlPath, xmlContent, System.Text.Encoding.UTF8, cancellationToken);
-                reportOutput($"SUCCESS: Created {xmlPath}. Note: You must also place your custom WIM and any necessary scripts in {oemDir}.");
-                progress.Report(new ProgressReport(100, "OEM Image Registration (Config) Complete."));
-            }
-            catch (Exception ex)
-            {
-                reportOutput($"Failed to create ResetConfig.xml: {ex.Message}");
-                progress.Report(new ProgressReport(100, "Registration failed."));
-            }
-        }
-        else
-        {
-            reportOutput("Registration cancelled.");
-            progress.Report(new ProgressReport(100, "Cancelled."));
-        }
-    }
-
     private async Task ExecutePbrSetupWizardAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
     {
         progress.Report(new ProgressReport(0, "Launching Push-Button Reset Setup Wizard..."));

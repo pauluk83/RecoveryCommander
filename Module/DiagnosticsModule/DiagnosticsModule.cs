@@ -187,19 +187,30 @@ namespace DiagnosticsModule
 
         private async Task<string> RunDiagnosticCommandFromAction(ModuleAction action, IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
-            // This is a helper to run individual commands without showing their popups during full diagnostic
-            if (action.DisplayName == "System Hardware Info") return await RunDiagnosticCommand("systeminfo", "", "Gathering system info...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "CPU & Processor Details") return await RunDiagnosticCommand("wmic", "cpu get name,NumberOfCores,NumberOfLogicalProcessors", "CPU info...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Memory (RAM) Modules") return await RunDiagnosticCommand("wmic", "memorychip get capacity,speed", "RAM info...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Disk Health (SMART)") return await RunDiagnosticCommand("wmic", "diskdrive get model,status,size", "Disk health...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Free Storage Space") return await RunDiagnosticCommand("wmic", "logicaldisk get caption,freespace,size,filesystem", "Storage space...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Network Configuration") return await RunDiagnosticCommand("ipconfig", "/all", "Network config...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Active Connections") return await RunDiagnosticCommand("netstat", "-ano", "Network connections...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Startup Programs") return await RunDiagnosticCommand("wmic", "startup get caption,command", "Startup items...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "Running Processes") return await RunDiagnosticCommand("tasklist", "", "Processes...", progress, reportOutput, dialogService, cancellationToken, false);
-            if (action.DisplayName == "System File Integrity") return await RunDiagnosticCommand("sfc", "/verifyonly", "File integrity...", progress, reportOutput, dialogService, cancellationToken, false);
+            // Extract command and arguments from the action's display name or description mapping
+            // In a better design, ModuleAction would have these as properties.
+            // For now, we'll use a cleaner mapping or just call the direct ones.
             
-            return "Command execution failed.";
+            var commandMap = new Dictionary<string, (string File, string Args)>
+            {
+                { "System Hardware Info", ("systeminfo", "") },
+                { "CPU & Processor Details", ("wmic", "cpu get name,NumberOfCores,NumberOfLogicalProcessors") },
+                { "Memory (RAM) Modules", ("wmic", "memorychip get capacity,speed") },
+                { "Disk Health (SMART)", ("wmic", "diskdrive get model,status,size") },
+                { "Free Storage Space", ("wmic", "logicaldisk get caption,freespace,size,filesystem") },
+                { "Network Configuration", ("ipconfig", "/all") },
+                { "Active Connections", ("netstat", "-ano") },
+                { "Startup Programs", ("wmic", "startup get caption,command") },
+                { "Running Processes", ("tasklist", "") },
+                { "System File Integrity", ("sfc", "/verifyonly") }
+            };
+
+            if (commandMap.TryGetValue(action.DisplayName ?? action.Name, out var cmd))
+            {
+                return await RunDiagnosticCommand(cmd.File, cmd.Args, $"{action.DisplayName}...", progress, reportOutput, dialogService, cancellationToken, false);
+            }
+            
+            return $"Command execution for {action.DisplayName} failed: No command mapping found.";
         }
     }
 }

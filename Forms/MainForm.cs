@@ -1,4 +1,4 @@
-// MainForm.cs - Primary UI form for Win Recovery
+// MainForm.cs - Primary UI form for Recovery Commander
 // Implements the main application window with module display and navigation
 
 using System;
@@ -104,7 +104,7 @@ namespace RecoveryCommander.Forms
         public MainForm()
         {
             // Set window properties with better initial sizing
-            this.Text = "Win Recovery";
+            this.Text = "Recovery Commander";
             this.WindowState = FormWindowState.Maximized; // Launch maximized for better experience
             this.MinimumSize = new Size(1024, 768);
             this.Size = new Size(1500, 950);
@@ -182,6 +182,9 @@ namespace RecoveryCommander.Forms
                 this.BackColor = Theme.Colors.Background;
                 this.ForeColor = Theme.Colors.Text;
             }
+
+            // Background update check — silent, non-blocking, only shows UI if update available
+            _ = RecoveryCommander.Features.AutoUpdateDialog.CheckForUpdateOnStartupAsync(this);
         }
 
                 
@@ -328,7 +331,7 @@ namespace RecoveryCommander.Forms
             };
 
             this.welcomeLabel = new Label();
-            this.welcomeLabel.Text = "Win Recovery";
+            this.welcomeLabel.Text = "Recovery Commander";
             this.welcomeLabel.TextAlign = ContentAlignment.MiddleLeft;
             this.welcomeLabel.Dock = DockStyle.Top;
             this.welcomeLabel.AutoSize = true;
@@ -1447,7 +1450,7 @@ namespace RecoveryCommander.Forms
         {
             moduleContentPanel.Controls.Clear();
             welcomeLabel.Text = "Recovery Dashboard";
-            heroDetailLabel.Text = "Welcome to Win Recovery. Select a module below to begin system maintenance or use the diagnostics suite for a full check.";
+            heroDetailLabel.Text = "Welcome to Recovery Commander. Select a module below to begin system maintenance or use the diagnostics suite for a full check.";
             currentModule = null;
             selectedActions.Clear();
 

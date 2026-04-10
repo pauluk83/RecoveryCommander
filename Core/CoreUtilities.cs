@@ -46,6 +46,20 @@ namespace RecoveryCommander.Core
             catch { }
             return "Unknown";
         }
+
+        public static DateTime GetBuildDateUtc()
+        {
+            try
+            {
+                string? exePath = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
+                {
+                    return File.GetLastWriteTimeUtc(exePath);
+                }
+            }
+            catch { }
+            return DateTime.MinValue;
+        }
         #endregion
 
         #region File Operations

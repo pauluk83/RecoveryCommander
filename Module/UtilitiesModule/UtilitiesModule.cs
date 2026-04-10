@@ -109,7 +109,7 @@ namespace UtilitiesModule
 
         private async Task RunBackupActivation(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            string backupDir = @"C:\Backup";
+            string backupDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recovery_Backup");
             string fileName = "Backup-Activation.bat";
             string fullPath = Path.Combine(backupDir, fileName);
 

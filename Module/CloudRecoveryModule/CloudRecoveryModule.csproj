@@ -17,11 +17,15 @@
 
   <ItemGroup>
     <Compile Include="CloudRecoveryModule.cs" />
+    <Compile Include="CloudProfileSyncService.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
+    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
     <PackageReference Include="System.Management" Version="10.0.0" />
   </ItemGroup>
 </Project>

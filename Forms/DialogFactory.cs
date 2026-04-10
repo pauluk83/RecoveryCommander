@@ -36,24 +36,17 @@ namespace RecoveryCommander.Forms
         public static void ShowAboutDialog(Form? parent)
         {
             string buildDate = CoreUtilities.GetBuildDate();
-            string version = "0.0.0";
-            try
-            {
-                var asm = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-                var infoAttr = asm.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>();
-                version = infoAttr?.InformationalVersion ?? asm.GetName().Version?.ToString() ?? version;
-            }
-            catch { }
+            string version = CoreUtilities.GetApplicationVersion();
 
-            string info = $"Win Recovery\nVersion: {version}\nBuild Date: {buildDate}\nAuthor: Zane Stanton\n" +
-                          "© 2025 Win Recovery™\nAll rights reserved.\n\n" +
+            string info = $"Recovery Commander\nVersion: {version}\nBuild Date: {buildDate}\nAuthor: Zane Stanton\n" +
+                          "© 2026 Recovery Commander™\nAll rights reserved.\n\n" +
                           "This project is developed for system recovery and maintenance purposes. Please ensure compliance with Windows licensing terms when using system modification features.\n\n" +
                           "This project incorporates third-party applications, which remain the property of their respective owners. All trademarks and copyrights belong to their owners, and I thank them for making their work available.";
 
             // Create themed About dialog instead of MessageBox
             using var form = new Form()
             {
-                Text = "About Win Recovery",
+                Text = "About Recovery Commander",
                 Size = new Size(450, 350),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.Sizable,

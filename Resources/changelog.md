@@ -1,5 +1,54 @@
 # RecoveryCommander Changelog
 
+## 2026-04-10 - v1.2.4 - Auto-Update System & Polish
+
+### New Features
+- **Date-Based Update Logic** — The auto-update system now compares the GitHub "published_at" date with the local build date as a fail-safe. If the version numbers match but a newer build has been uploaded, it will be detected as an update.
+- **GitHub Auto-Update Service** — Added a complete self-updating system that checks the GitHub Releases API (`pauluk83/RecoveryCommander`) for newer versions.
+- **Startup Update Check** — On application launch, a silent background check runs after a 3-second delay. If a newer release is found, a themed update dialog is shown. If the app is already current, nothing happens — zero user interruption.
+- **Manual Update Check** — Added **Help → Check for Updates** menu item for on-demand version checking with a wait cursor and explicit "up to date" feedback.
+- **Themed Update Dialog** — Professional update-available dialog showing current vs. new version, release notes from GitHub, file size, and a live download progress bar with MB counter.
+- **Self-Replace Updater** — Downloads the new `.exe` to a temp folder, generates a batch script that waits for the current process to exit, backs up the old executable, replaces it, and relaunches. If the replacement fails, the backup is automatically restored.
+- **Version Comparison** — Uses `System.Version` semantic parsing with fallback to string comparison. Handles version tags with `v` prefix and `+metadata` suffixes.
+
+### Architecture
+- **`AutoUpdateService`** (`Core/Services/AutoUpdateService.cs`) — UI-independent core logic: GitHub API integration, version comparison, streaming download with progress, and batch script generation. Uses the shared `ServiceContainer.GetHttpClient()` to prevent socket exhaustion.
+- **`AutoUpdateDialog`** (`Features/AutoUpdateDialog.cs`) — Themed dialog UI leveraging `Theme.RoundedRichTextBox`, `Theme.RoundedProgressBar`, and `ModernButton` controls. Separated from Core to respect the project's layered architecture.
+
+### Files Modified
+- **`MenuManager.cs`** — Added "Check for Updates" item to Help menu.
+- **`MainForm.cs`** — Added silent startup update check in `MainForm_Load`.
+
+## 2026-04-10 - Cloud Profile Sync Implementation
+
+### New Features
+- **Cloud Profile Backup** — Fully implemented the profile backup engine in the `CloudRecoveryModule`.
+- **OneDrive & Google Drive Support** — Added automatic detection and support for major cloud providers via local sync client integration.
+- **Secure Archiving** — Integrated `System.IO.Compression` to create timestamped ZIP archives of Desktop, Documents, and Pictures.
+- **One-Click Restore** — Added functionality to discover and restore the latest profile backups from the cloud with merge support.
+- **Provider Selection UI** — Enhanced the module interface to allow users to choose between multiple detected cloud providers.
+- **Real-time Progress** — Integrated granular progress reporting for compression, copy, and restore operations.
+
+## 2026-04-09 - Production Optimization & Security Audit
+
+### Security Hardening
+- **HTTPS Enforcement** — Updated `SecurityHelpers.IsValidDownloadUrl` to strictly enforce HTTPS for all external resources. Any attempt to download via HTTP is now blocked to prevent man-in-the-middle attacks.
+- **Secure URL Migration** — Migrated download URLs for Comodo Cleaning Essentials and the winget installer to secure HTTPS endpoints.
+- **Temp Path Validation** — Enhanced `AsyncHelpers.DownloadAndExecuteAsync` with mandatory temp directory validation and filename sanitization to prevent path traversal and arbitrary file execution.
+- **Improved Backup Portability** — Moved system activation backups from the root `C:\` directory to user-specific folders (`%USERPROFILE%\Recovery_Backup`) to adhere to Windows security and permission best practices.
+
+### Performance & UI Optimizations
+- **Browser Cache Cleanup** — Fully implemented functional cache clearing for **Chrome, Edge, Brave, and Firefox**. The engine now safely handles profile discovery and file lock exceptions.
+- **Diagnostics Command Refactor** — Replaced the legacy if-else action mapping in `DiagnosticsModule` with a high-performance `Dictionary` lookup, improving execution speed and code maintainability.
+- **Asynchronous Stream Consumption** — Modernized `AsyncHelpers.RunProcessAsync` to use character-by-character stream consumption, enabling real-time percentage updates from legacy CLI tools like DISM and SFC without blocking the UI thread.
+- **Production Polish** — Removed all residual `[DEBUG]` console logs and diagnostic message boxes from `MainForm.cs` to ensure a clean, professional command feed for end-users.
+
+### Code Quality & Maintenance
+- **Dead Code Purge** — Conducted a solution-wide audit and removed redundant methods in `DismModule`, `DismHelper`, and `ReagentcModule` that were superseded by centralized core utilities.
+- **Project Structure Cleanup** — Removed the obsolete `DismReagentcModule` project reference from the solution and `.csproj` file.
+- **Cloud Recovery Module Refine** — Replaced "mock simulation" placeholders in the Cloud Recovery module with a clear "Feature Not Implemented" state to prevent accidental execution of unfinished cloud sync logic.
+- **Duplicate Action Resolution** — Consolidated overlapping `ExecutePbrSetupWizardAsync` implementations in the `ReagentcModule` to resolve method ambiguity and improve reliability.
+
 ## 2026-03-25 - Framework Upgrade & UI Refinement
 
 ### Infrastructure & Core Changes

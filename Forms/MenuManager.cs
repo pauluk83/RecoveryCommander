@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using RecoveryCommander.UI;
+using RecoveryCommander.Features;
 using static RecoveryCommander.UI.Theme;
 
 namespace RecoveryCommander.Forms
@@ -30,6 +31,7 @@ namespace RecoveryCommander.Forms
 
             var helpMenu = new ToolStripMenuItem("Help");
             helpMenu.DropDownItems.Add("About", null, (s, e) => DialogFactory.ShowAboutDialog(parent));
+            helpMenu.DropDownItems.Add("Check for Updates", null, async (s, e) => await AutoUpdateDialog.ShowUpdateDialogAsync(host));
             helpMenu.DropDownItems.Add(new ToolStripSeparator());
             helpMenu.DropDownItems.Add("View README", null, (s, e) => DialogFactory.ShowHelpWindow(host, README_PATH, "README"));
             helpMenu.DropDownItems.Add("View Project Manifest", null, (s, e) => DialogFactory.ShowHelpWindow(host, PROJECT_MANIFEST_PATH, "Project Manifest"));

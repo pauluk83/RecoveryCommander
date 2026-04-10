@@ -47,18 +47,6 @@ namespace RecoveryCommander.Module
         public bool SupportsAsync => true;
 
 
-        private void RunDism(string args, Action<string> reportOutput, Func<bool> isCancelled)
-        {
-            var psi = RecoveryCommander.Core.CoreUtilities.CreateProcessInfo("dism.exe", args);
-            RunProcessAndReport(psi, reportOutput, isCancelled);
-        }
-
-        // Use consolidated RunProcessAndReport from Core/AsyncHelpers
-        private static void RunProcessAndReport(ProcessStartInfo psi, Action<string> reportOutput, Func<bool> isCancelled)
-        {
-            RecoveryCommander.Core.AsyncHelpers.RunProcessAndReport(psi, reportOutput, isCancelled);
-        }
-
         private async Task ExecuteActionSafeAsync(string actionName, string args, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress?.Report(new ProgressReport(1, $"Starting DISM: {actionName}..."));

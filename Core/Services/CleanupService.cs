@@ -13,15 +13,70 @@ namespace RecoveryCommander.Core.Services
     {
         public async Task ClearBrowserCachesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            var apps = new[] { "chrome", "msedge", "brave", "firefox" };
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var appPaths = new Dictionary<string, string>
+            {
+                { "Chrome", Path.Combine(appData, @"Google\Chrome\User Data\Default\Cache") },
+                { "Edge", Path.Combine(appData, @"Microsoft\Edge\User Data\Default\Cache") },
+                { "Brave", Path.Combine(appData, @"BraveSoftware\Brave-Browser\User Data\Default\Cache") },
+                { "Firefox", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Mozilla\Firefox\Profiles") }
+            };
+
             int i = 0;
-            foreach (var app in apps)
+            foreach (var kvp in appPaths)
             {
                 if (cancellationToken.IsCancellationRequested) break;
-                float p = 10 + (i++ * 20);
-                progress.Report(new ProgressReport((int)p, $"Cleaning {app} cache..."));
-                // logic here
+                
+                int p = 10 + (i++ * 20);
+                progress.Report(new ProgressReport(p, $"Cleaning {kvp.Key} cache..."));
+                
+                try
+                {
+                    if (kvp.Key == "Firefox")
+                    {
+                        // Firefox cache is in Local appdata, profiles are in Roaming
+                        var firefoxLocal = Path.Combine(appData, @"Mozilla\Firefox\Profiles");
+                        if (Directory.Exists(firefoxLocal))
+                        {
+                            foreach (var profile in Directory.GetDirectories(firefoxLocal))
+                            {
+                                var cacheDir = Path.Combine(profile, "cache2");
+                                if (Directory.Exists(cacheDir))
+                                {
+                                    reportOutput($"Cleaning Firefox cache: {cacheDir}");
+                                    await Task.Run(() => SafeDeleteDirectoryContents(cacheDir), cancellationToken);
+                                }
+                            }
+                        }
+                    }
+                    else if (Directory.Exists(kvp.Value))
+                    {
+                        reportOutput($"Cleaning {kvp.Key} cache: {kvp.Value}");
+                        await Task.Run(() => SafeDeleteDirectoryContents(kvp.Value), cancellationToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    reportOutput($"Warning: Failed to clean {kvp.Key} cache: {ex.Message}");
+                }
             }
+        }
+
+        private void SafeDeleteDirectoryContents(string path)
+        {
+            try
+            {
+                if (!Directory.Exists(path)) return;
+                foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+                {
+                    try { File.Delete(file); } catch { }
+                }
+                foreach (var dir in Directory.GetDirectories(path))
+                {
+                    try { Directory.Delete(dir, true); } catch { }
+                }
+            }
+            catch { }
         }
 
         public async Task ClearTempFilesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
