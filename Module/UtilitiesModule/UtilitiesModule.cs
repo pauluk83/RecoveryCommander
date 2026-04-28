@@ -24,25 +24,25 @@ namespace UtilitiesModule
         private static class DownloadUrls
         {
             public const string CompactGuiLatest = "https://github.com/IridiumIO/CompactGUI/releases/latest/download/CompactGUI.exe";
-            public const string CCleaner = "https://recoverycommander.free.nf/files/CCleaner%206.40.115.62.txt";
+            public const string CCleaner = "https://www.dropbox.com/scl/fi/7op61jbtwy3nc50i3qu0v/CCleaner-6.40.115.62.txt?rlkey=4vel6tocnd3hmpucb1lsmu8s9&st=l1ox1unw&raw=1";
             public const string Defragger = "https://drive.google.com/uc?export=download&id=1y-kGi-voJGMaT0KP8nzJ6Y5nuM9rIj4l";
             public const string Ninite = "https://drive.google.com/uc?export=download&id=1qIF8HXRBi7fdxI-ryOxJwG5UioROfMgx";
             public const string Rufus = "https://api.github.com/repos/pbatard/rufus/releases/latest";
-            public const string MacriumPortable = "https://recoverycommander.free.nf/files/Macrium.txt";
+            public const string MacriumPortable = "https://www.dropbox.com/scl/fi/qj5pa6ykrara7jcb8m3k1/Macrium.txt?rlkey=9gl0l7pgsuniits2gmovb44oi&st=escodys6&raw=1";
             public const string Win11DebloatZip = "https://github.com/Raphire/Win11Debloat/archive/refs/heads/master.zip";
             public const string VCRedistApi = "https://api.github.com/repos/abbodi1406/vcredist/releases/latest";
-            public const string PCRepairSuite = "https://recoverycommander.free.nf/files/PCRepairSuite.txt";
-            public const string IObitDriverBooster = "https://recoverycommander.free.nf/files/DriverBoosterPortable.txt";
+            public const string PCRepairSuite = "https://www.dropbox.com/scl/fi/77a4s205yz7qjocfmev9r/PCRepairSuite.txt?rlkey=us4dw96qvw0bpqhemrghs5ru8&st=q6d07jhd&raw=1";
+            public const string IObitDriverBooster = "https://www.dropbox.com/scl/fi/2paq4t1yevyprkw5jrp0a/DriverBoosterPortable.txt?rlkey=p6j6ofauo26tp5xnunqhc3pxb&st=bvyegici&raw=1";
             public const string DellOSRecoveryTool = "https://recoverycommander.free.nf/files/Dell%20OS%20Recovery%20Toolv2.3.4.3569.txt";
 
             // User-hosted Office 2024 (Wix .txt file)
-            public const string Office2024Wix = "https://99ed684e-f8f7-418e-a378-a43f97c53364.usrfiles.com/ugd/99ed68_c4c183f52c6442d1930577246c5ae215.txt";
+            public const string Office2024Wix = "https://www.dropbox.com/scl/fi/i6ds50lst2edbuc2ildlv/office2024..txt?rlkey=dbhl2bo5y3tj5a7sfjnadeu9y&st=oesmjnyr&raw=1";
             
             // Original GitHub-hosted Public Scripts
             public const string ActivationPublic = "https://get.activated.win";
             public const string OfficeC2RPublic = "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA";
-            public const string BackupRestorePublic = "https://99ed684e-f8f7-418e-a378-a43f97c53364.usrfiles.com/ugd/99ed68_acaf0031477449598de3ef438aee35be.txt";
-            public const string CleanMyPc = "https://recoverycommander.free.nf/files/CleanMyPC.txt";
+            public const string BackupRestorePublic = "https://www.dropbox.com/scl/fi/y3a8j6osto9rpip7buveh/Backup-Activation.txt?rlkey=dd1ms4f8wjz3iav9g13ewnzbw&st=6ex79f52&raw=1";
+            public const string CleanMyPc = "https://www.dropbox.com/scl/fi/bowosjzxmkr16qw5zcfnc/CleanMyPC.txt?rlkey=sz2tafebh67sp6aod6hxjd0pp&st=2be8vsyw&raw=1";
             public const string ChrisTitusUtility = "https://christitus.com/win";
         }
 

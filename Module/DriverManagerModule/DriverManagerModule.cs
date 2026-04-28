@@ -18,7 +18,7 @@ namespace RecoveryCommander.Module
 
         private static class DownloadUrls
         {
-            public const string IObitDriverBooster = "https://recoverycommander.free.nf/files/DriverBoosterPortable.txt";
+            public const string IObitDriverBooster = "https://www.dropbox.com/scl/fi/2paq4t1yevyprkw5jrp0a/DriverBoosterPortable.txt?rlkey=p6j6ofauo26tp5xnunqhc3pxb&st=bvyegici&raw=1";
         }
 
         public string Name => "Driver Manager";

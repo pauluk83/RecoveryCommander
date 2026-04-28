@@ -1200,393 +1200,80 @@ namespace RecoveryCommander.UI
             }
         }
 
-        public class RoundedRichTextBox : Control
+        public class RoundedRichTextBox : RichTextBox
         {
             private const int CornerRadius = 12;
-            private const int ScrollBarWidth = 17;
-            private readonly List<string> _originalLines = new List<string>();
-            private readonly List<string> _displayLines = new List<string>();
-            private readonly List<Color> _lineColors = new List<Color>();
-            private readonly CustomScrollBar _scrollBar;
-            private int _scrollPosition = 0;
-            private int _visibleLines = 0;
-            private Font _font = new Font("Consolas", 9.5f);
-            private bool _wordWrap = true;
-
-            [Category("Appearance")]
-            [DefaultValue(true)]
-            public bool WordWrap
-            {
-                get => _wordWrap;
-                set
-                {
-                    if (_wordWrap != value)
-                    {
-                        _wordWrap = value;
-                        ReWrapAll();
-                    }
-                }
-            }
-
-            #pragma warning disable CS8764, CS8765 // Nullability mismatch warnings for overridden properties
-            public override Font Font
-            {
-                get => _font;
-                set
-                {
-                    _font = value ?? new Font("Consolas", 9.5f);
-                    ReWrapAll();
-                }
-            }
-            
-            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-            public bool ReadOnly { get; set; } = true;
-            
-            public override Color ForeColor { get; set; } = Colors.Text;
-            public override Color BackColor { get; set; } = Colors.Surface;
-#pragma warning restore CS8764, CS8765
+            private readonly ContextMenuStrip _contextMenu;
 
             public RoundedRichTextBox()
             {
-                SetStyle(ControlStyles.AllPaintingInWmPaint |
-                         ControlStyles.UserPaint |
-                         ControlStyles.DoubleBuffer |
-                         ControlStyles.ResizeRedraw, true);
-
-                BackColor = Colors.Surface;
-                ForeColor = Colors.Text;
-
-                _scrollBar = new CustomScrollBar
-                {
-                    Dock = DockStyle.Right,
-                    Width = ScrollBarWidth,
-                    Visible = false,
-                    Minimum = 0
-                };
+                // Native selection and copying requires the base control to handle most things
+                this.SetStyle(ControlStyles.DoubleBuffer | ControlStyles.OptimizedDoubleBuffer, true);
                 
-                _scrollBar.Scroll += OnScrollBarScroll;
-                Controls.Add(_scrollBar);
+                this.BackColor = Colors.Surface;
+                this.ForeColor = Colors.Text;
+                this.BorderStyle = BorderStyle.None;
+                this.Font = new Font("Consolas", 9.5f);
+                this.ReadOnly = true;
                 
-                Resize += OnResize;
+                // Set up professional context menu
+                _contextMenu = new ContextMenuStrip();
+                var copyItem = new ToolStripMenuItem("Copy", null, (s, e) => { if (!string.IsNullOrEmpty(SelectedText)) Clipboard.SetText(SelectedText); });
+                var copyAllItem = new ToolStripMenuItem("Copy All", null, (s, e) => { if (!string.IsNullOrEmpty(Text)) Clipboard.SetText(Text); });
+                var clearItem = new ToolStripMenuItem("Clear", null, (s, e) => Clear());
+                var selectAllItem = new ToolStripMenuItem("Select All", null, (s, e) => SelectAll());
                 
-                // Add mouse wheel support for scrolling
-                MouseWheel += OnMouseWheel;
+                _contextMenu.Items.Add(copyItem);
+                _contextMenu.Items.Add(selectAllItem);
+                _contextMenu.Items.Add(new ToolStripSeparator());
+                _contextMenu.Items.Add(copyAllItem);
+                _contextMenu.Items.Add(new ToolStripSeparator());
+                _contextMenu.Items.Add(clearItem);
                 
-                // Enable double buffering for smoother rendering
-                SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
-            }
+                this.ContextMenuStrip = _contextMenu;
 
-            public void Clear()
-            {
-                _originalLines.Clear();
-                _displayLines.Clear();
-                _lineColors.Clear();
-                _scrollPosition = 0;
-                UpdateScrollBar();
-                Invalidate();
-            }
-
-            private void ReWrapAll()
-            {
-                _displayLines.Clear();
-                _lineColors.Clear();
-
-                if (_originalLines.Count == 0)
-                {
-                    UpdateScrollBar();
-                    Invalidate();
-                    return;
-                }
-
-                int maxWidth = Width - 32 - (_scrollBar.Visible ? ScrollBarWidth : 0);
-                if (maxWidth <= 0) maxWidth = 100;
-
-                using var g = IsHandleCreated ? CreateGraphics() : null;
-                
-                foreach (var line in _originalLines)
-                {
-                    var highlightedColor = ApplySyntaxHighlighting(line);
-                    if (!_wordWrap || g == null)
-                    {
-                        _displayLines.Add(line);
-                        _lineColors.Add(highlightedColor);
-                    }
-                    else
-                    {
-                        var wrapped = WrapLine(g, line, maxWidth);
-                        foreach (var w in wrapped)
-                        {
-                            _displayLines.Add(w);
-                            _lineColors.Add(highlightedColor);
-                        }
-                    }
-                }
-                UpdateScrollBar();
-                Invalidate();
-            }
-
-            private List<string> WrapLine(Graphics g, string line, int maxWidth)
-            {
-                var result = new List<string>();
-                if (string.IsNullOrEmpty(line))
-                {
-                    result.Add("");
-                    return result;
-                }
-
-                // Simple word wrap
-                var words = line.Split(' ');
-                var currentLine = "";
-
-                foreach (var word in words)
-                {
-                    var testLine = string.IsNullOrEmpty(currentLine) ? word : currentLine + " " + word;
-                    var size = g.MeasureString(testLine, _font);
-
-                    if (size.Width > maxWidth && !string.IsNullOrEmpty(currentLine))
-                    {
-                        result.Add(currentLine);
-                        currentLine = word;
-                    }
-                    else
-                    {
-                        currentLine = testLine;
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(currentLine))
-                    result.Add(currentLine);
-
-                return result;
+                // Handle transparency/rounded corners through the parent or by drawing in a specific way
+                // RichTextBox is a heavy control, so we'll use standard scrollbars but theme them via the parent if possible
             }
 
             public void AppendText(string text, Color color)
             {
-                var lines = text.Split('\n');
-                using var g = IsHandleCreated ? CreateGraphics() : null;
-                int maxWidth = Width - 32 - (_scrollBar.Visible ? ScrollBarWidth : 0);
-                if (maxWidth <= 0) maxWidth = 100;
-
-                foreach (var line in lines)
+                if (this.InvokeRequired)
                 {
-                    var cleanLine = line.TrimEnd('\r');
-                    _originalLines.Add(cleanLine);
-                    
-                    var highlightedColor = color == ForeColor ? ApplySyntaxHighlighting(cleanLine) : color;
-
-                    if (!_wordWrap || g == null)
-                    {
-                        _displayLines.Add(cleanLine);
-                        _lineColors.Add(highlightedColor);
-                    }
-                    else
-                    {
-                        var wrapped = WrapLine(g, cleanLine, maxWidth);
-                        foreach (var w in wrapped)
-                        {
-                            _displayLines.Add(w);
-                            _lineColors.Add(highlightedColor);
-                        }
-                    }
+                    this.Invoke(new Action<string, Color>(AppendText), text, color);
+                    return;
                 }
-                UpdateScrollBar();
-                Invalidate();
+
+                int start = this.TextLength;
+                base.AppendText(text);
+                int end = this.TextLength;
+
+                // Apply color to the newly added text
+                this.Select(start, end - start);
+                this.SelectionColor = color;
+                this.SelectionStart = this.TextLength;
+                this.SelectionLength = 0;
+                this.SelectionColor = this.ForeColor;
+                
+                // Auto-scroll to bottom
+                this.ScrollToCaret();
             }
-            
-            private Color ApplySyntaxHighlighting(string line)
+
+            // ScrollToCaret is already inherited from RichTextBox
+
+            public void BeginUpdate() { SendMessage(this.Handle, 0x000B, (IntPtr)0, IntPtr.Zero); }
+            public void EndUpdate() { SendMessage(this.Handle, 0x000B, (IntPtr)1, IntPtr.Zero); this.Invalidate(); }
+
+            [DllImport("user32.dll")]
+            private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+            protected override void OnHandleCreated(EventArgs e)
             {
-                var lowerLine = line.ToLowerInvariant();
-                
-                // Error patterns
-                if (lowerLine.Contains("[error]") || lowerLine.Contains("error:") || 
-                    lowerLine.Contains("failed") || lowerLine.Contains("exception") ||
-                    lowerLine.Contains("✗") || lowerLine.StartsWith("error"))
-                {
-                    return Color.FromArgb(255, 100, 100); // Red
-                }
-                
-                // Success patterns
-                if (lowerLine.Contains("[success]") || lowerLine.Contains("success:") ||
-                    lowerLine.Contains("completed") || lowerLine.Contains("succeeded") ||
-                    lowerLine.Contains("✓") || lowerLine.Contains("done"))
-                {
-                    return Color.FromArgb(100, 255, 100); // Green
-                }
-                
-                // Warning patterns
-                if (lowerLine.Contains("[warning]") || lowerLine.Contains("warning:") ||
-                    lowerLine.Contains("⚠") || lowerLine.Contains("caution"))
-                {
-                    return Color.FromArgb(255, 200, 100); // Orange
-                }
-                
-                // Info patterns
-                if (lowerLine.Contains("[info]") || lowerLine.Contains("info:"))
-                {
-                    return Color.FromArgb(150, 200, 255); // Light blue
-                }
-                
-                // Timestamp patterns (make them more subtle)
-                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\[\d{2}:\d{2}:\d{2}\]"))
-                {
-                    return Color.FromArgb(140, 140, 150); // Gray
-                }
-                
-                // Command patterns
-                if (line.StartsWith(">") || line.StartsWith("$") || line.StartsWith("PS "))
-                {
-                    return Color.FromArgb(200, 200, 255); // Light purple
-                }
-                
-                // Default color
-                return ForeColor;
+                base.OnHandleCreated(e);
+                // Apply subtle padding/margins if needed through EM_SETRECT
             }
-
-            public void AppendText(string text)
-            {
-                AppendText(text, ForeColor);
-            }
-
-            public void BeginUpdate() { }
-            public void EndUpdate() { Invalidate(); }
-            public new void SuspendLayout() { }
-            public new void ResumeLayout() { }
-
-            public void ScrollToCaret()
-            {
-                if (_displayLines.Count > _visibleLines)
-                {
-                    _scrollPosition = Math.Max(0, _displayLines.Count - _visibleLines);
-                    _scrollBar.Value = _scrollPosition;
-                    Invalidate();
-                }
-                else if (_displayLines.Count > 0)
-                {
-                    _scrollPosition = 0;
-                    _scrollBar.Value = 0;
-                    Invalidate();
-                }
-            }
-
-            #pragma warning disable CS8764, CS8765 // Nullability mismatch warnings for overridden properties
-            public override string Text
-            {
-                get => string.Join(Environment.NewLine, _originalLines);
-                set
-                {
-                    _originalLines.Clear();
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        var lines = value!.Split('\n');
-                        foreach (var line in lines)
-                        {
-                            _originalLines.Add(line.TrimEnd('\r'));
-                        }
-                    }
-                    ReWrapAll();
-                }
-            }
-#pragma warning restore CS8764, CS8765
-
-            private void OnScrollBarScroll(object? sender, ScrollEventArgs e)
-            {
-                _scrollPosition = e.NewValue;
-                Invalidate();
-            }
-
-            private void OnResize(object? sender, EventArgs e)
-            {
-                ReWrapAll();
-            }
-
-            private void UpdateScrollBar()
-            {
-                _visibleLines = Math.Max(1, Height / _font.Height);
-                
-                if (_displayLines.Count > _visibleLines)
-                {
-                    _scrollBar.Visible = true;
-                    _scrollBar.Maximum = Math.Max(0, _displayLines.Count - 1);
-                    _scrollBar.LargeChange = Math.Max(1, _visibleLines);
-                    _scrollBar.SmallChange = 1;
-                    
-                    if (_scrollPosition > _scrollBar.Maximum)
-                    {
-                        _scrollPosition = _scrollBar.Maximum;
-                    }
-                    _scrollBar.Value = _scrollPosition;
-                }
-                else
-                {
-                    _scrollBar.Visible = false;
-                    _scrollPosition = 0;
-                }
-            }
-
-            protected override void OnPaint(PaintEventArgs e)
-            {
-                var g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-                var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-                using (var path = GetRoundedRectPath(bounds, CornerRadius))
-                {
-                    using (var brush = new SolidBrush(BackColor))
-                        g.FillPath(brush, path);
-                    
-                    using (var borderPen = new Pen(Color.FromArgb(60, 60, 70), 1.5f))
-                        g.DrawPath(borderPen, path);
-                }
-
-                var textBounds = new Rectangle(8, 8, Width - 16 - (_scrollBar.Visible ? ScrollBarWidth : 0), Height - 16);
-                using (var clipPath = GetRoundedRectPath(textBounds, CornerRadius - 4))
-                {
-                    g.SetClip(clipPath);
-                }
-
-                var y = 8;
-                var maxLineIndex = Math.Max(0, _displayLines.Count - _visibleLines);
-                var actualScrollPosition = Math.Min(_scrollPosition, maxLineIndex);
-                
-                if (actualScrollPosition >= _displayLines.Count)
-                    actualScrollPosition = Math.Max(0, _displayLines.Count - _visibleLines);
-                
-                var linesToDraw = Math.Min(_visibleLines, _displayLines.Count - actualScrollPosition);
-
-                for (int i = 0; i < linesToDraw && actualScrollPosition + i < _displayLines.Count; i++)
-                {
-                    var line = _displayLines[actualScrollPosition + i];
-                    var baseColor = actualScrollPosition + i < _lineColors.Count ? _lineColors[actualScrollPosition + i] : ForeColor;
-                    
-                    if (y + _font.Height <= Height - 8)
-                    {
-                        using (var brush = new SolidBrush(baseColor))
-                            g.DrawString(line, _font, brush, 8, y);
-                    }
-                    y += _font.Height;
-                }
-            }
-
-            private void OnMouseWheel(object? sender, MouseEventArgs e)
-            {
-                if (!_scrollBar.Visible) return;
-                
-                var delta = e.Delta / 120;
-                var newValue = _scrollPosition - (delta * _scrollBar.SmallChange);
-                newValue = Math.Max(0, Math.Min(_scrollBar.Maximum - _visibleLines + 1, newValue));
-                
-                if (newValue != _scrollPosition)
-                {
-                    _scrollPosition = newValue;
-                    _scrollBar.Value = _scrollPosition;
-                    Invalidate();
-                }
-            }
-
-            protected override void OnPaintBackground(PaintEventArgs e) { }
-
         }
+
 
         public class RoundedPanel : Panel
         {

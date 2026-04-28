@@ -339,6 +339,67 @@ namespace RecoveryCommander.Core
             }
         }
 
+        private static string SanitizeUrlForReport(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return "N/A";
+            
+            // Mask sensitive cloud storage links
+            if (url.Contains("dropbox.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Content Delivery (Dropbox)]";
+            if (url.Contains("drive.google.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Content Delivery (Google Drive)]";
+            if (url.Contains("usrfiles.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Content Delivery (Wix)]";
+            
+            return url;
+        }
+
+        /// <summary>
+        /// Resolves the actual download URL if the provided URL points to a .txt file
+        /// </summary>
+        public static async Task<string> ResolveDownloadUrlAsync(string url, Action<string>? reportOutput, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(url) || !url.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            {
+                return url;
+            }
+
+            try
+            {
+                var http = ServiceContainer.GetHttpClient();
+                // Use HeadersRead to check size first
+                using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                // If the file is large, it's likely the actual installer (renamed to .txt)
+                // We only treat small files as URL pointers/redirects.
+                if (response.Content.Headers.ContentLength > 10240) // > 10KB
+                {
+                    return url;
+                }
+
+                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                
+                // Detection for InfinityFree/free.nf security challenge
+                if (content.Contains("aes.js") && content.Contains("__test") && content.Contains("slowAES"))
+                {
+                    throw new InvalidOperationException("The download host (InfinityFree) is blocking the application. Please host your renamed .txt files on a service like Google Drive or Discord.");
+                }
+
+                var resolvedUrl = content.Trim();
+                if (Uri.TryCreate(resolvedUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                {
+                    reportOutput?.Invoke($"Resolved redirect URL: {SanitizeUrlForReport(resolvedUrl)}");
+                    return resolvedUrl;
+                }
+
+                // If it's not a URL, it might be a script content (handled by the caller)
+                return url;
+            }
+            catch (Exception ex)
+            {
+                reportOutput?.Invoke($"Warning: Failed to resolve URL from {SanitizeUrlForReport(url)}: {ex.Message}");
+                return url;
+            }
+        }
+
         /// <summary>
         /// Download a file to a specific path with progress reporting and optional hash verification
         /// </summary>
@@ -349,6 +410,17 @@ namespace RecoveryCommander.Core
             {
                 resp.EnsureSuccessStatusCode();
                 
+                // Double check for InfinityFree challenge even in direct download
+                if (resp.Content.Headers.ContentType?.MediaType == "text/html")
+                {
+                    // Peek at the content if it's suspiciously small or HTML
+                    var peek = await resp.Content.ReadAsStringAsync(cancellationToken);
+                    if (peek.Contains("aes.js") || peek.Contains("JavaScript to work"))
+                    {
+                        throw new InvalidOperationException("The download was blocked by the host's security challenge (InfinityFree).");
+                    }
+                }
+
                 // Ensure parent directory exists
                 var dir = Path.GetDirectoryName(destinationPath);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
@@ -402,7 +474,7 @@ namespace RecoveryCommander.Core
             string[]? allowedExtensions = null,
             string? expectedHash = null)
         {
-            reportOutput?.Invoke($"Starting download from: {url}");
+            reportOutput?.Invoke($"Starting download from: {SanitizeUrlForReport(url)}");
             progress?.Report(new ProgressReport(0, $"Downloading {fileName}...", "Connecting..."));
             try
             {
@@ -441,8 +513,11 @@ namespace RecoveryCommander.Core
                     return;
                 }
 
+                // Resolve the actual URL if it's a .txt redirect
+                var resolvedUrl = await ResolveDownloadUrlAsync(url, reportOutput, cancellationToken);
+
                 // Download the file (includes hash verification)
-                await DownloadFileAsync(url, validatedPath!, progress, cancellationToken, expectedHash);
+                await DownloadFileAsync(resolvedUrl, validatedPath!, progress, cancellationToken, expectedHash);
                 
                 reportOutput?.Invoke($"Downloaded to: {validatedPath}");
                 progress?.Report(new ProgressReport(85, "Download complete"));

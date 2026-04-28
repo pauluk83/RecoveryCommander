@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             title: 'MacPaw CleanMyPC', 
             description: 'MacPaw CleanMyPC Portable', 
-            fileUrl: '/files/CleanMyPC.txt', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/bowosjzxmkr16qw5zcfnc/CleanMyPC.txt?rlkey=sz2tafebh67sp6aod6hxjd0pp&st=2be8vsyw&dl=1', 
             fileSize: '80.4 MB', 
             category: 'Utilities',
             lastUpdated: '17/03/2026',
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             title: 'Driver Booster PRO', 
             description: 'Driver Booster PRO Portable', 
-            fileUrl: '/files/DriverBoosterPortable.txt', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/2paq4t1yevyprkw5jrp0a/DriverBoosterPortable.txt?rlkey=p6j6ofauo26tp5xnunqhc3pxb&st=bvyegici&dl=1', 
             fileSize: '32.6 MB', 
             category: 'Utilities',
             lastUpdated: '17/03/2026',
@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             title: 'PC Repair Suite', 
             description: 'PC Repair Suite Portable', 
-            fileUrl: '/files/PCRepairSuite.txt', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/77a4s205yz7qjocfmev9r/PCRepairSuite.txt?rlkey=us4dw96qvw0bpqhemrghs5ru8&st=q6d07jhd&dl=1', 
             fileSize: '53.4 MB', 
             category: 'Utilities',
             lastUpdated: '16/03/2026',
@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             title: 'Macrium Reflect X', 
             description: 'Macrium Reflect X Portable', 
-            fileUrl: '/files/Macrium.txt', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/qj5pa6ykrara7jcb8m3k1/Macrium.txt?rlkey=9gl0l7pgsuniits2gmovb44oi&st=escodys6&dl=1', 
             fileSize: '18.6 MB', 
             category: 'Utilities',
             lastUpdated: '16/03/2026',
@@ -302,11 +302,29 @@ document.addEventListener('DOMContentLoaded', () => {
         { 
             title: 'CCleaner', 
             description: 'CCleaner portable', 
-            fileUrl: '/files/CCleaner%206.40.115.62.txt', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/7op61jbtwy3nc50i3qu0v/CCleaner-6.40.115.62.txt?rlkey=4vel6tocnd3hmpucb1lsmu8s9&st=l1ox1unw&dl=1', 
             fileSize: '54.6 MB', 
             category: 'Utilities',
             lastUpdated: '26/04/2026',
             buildNumber: '6.40.115.62'
+        },
+        { 
+            title: 'Office 2024', 
+            description: 'Microsoft Office 2024 Deployment', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/i6ds50lst2edbuc2ildlv/office2024..txt?rlkey=dbhl2bo5y3tj5a7sfjnadeu9y&st=oesmjnyr&dl=1', 
+            fileSize: '4.2 MB', 
+            category: 'Utilities',
+            lastUpdated: '28/04/2026',
+            buildNumber: '2024'
+        },
+        { 
+            title: 'Backup & Restore Activation', 
+            description: 'Windows License State Management', 
+            fileUrl: 'https://www.dropbox.com/scl/fi/y3a8j6osto9rpip7buveh/Backup-Activation.txt?rlkey=dd1ms4f8wjz3iav9g13ewnzbw&st=6ex79f52&dl=1', 
+            fileSize: '1.2 MB', 
+            category: 'Utilities',
+            lastUpdated: '28/04/2026',
+            buildNumber: '1.0.0'
         }
     ];
 

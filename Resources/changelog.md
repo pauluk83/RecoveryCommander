@@ -1,13 +1,23 @@
 # RecoveryCommander Changelog
 
-## 2026-04-28 - Utilities Module Refinement
+## 2026-04-28 - Dropbox Migration & Interactive UI Enhancements
 
-### Utilities Module Updates
-- **Tool Version Sync** — Updated the names and versions for multiple portable tools (MacPaw CleanMyPC, Driver Booster PRO, Dell OS Recovery Tool, PC Repair Suite, Macrium Reflect X, and CCleaner) to reflect the latest build numbers and portable availability.
-- **Wix to InfinityFree Migration** — Updated all download URLs in the Utilities and Driver Manager modules to point away from the obsolete Wix endpoints and towards the new `recoverycommander.free.nf` static file hosting directory.
+### Hosting & Infrastructure
+- **Migration to Dropbox** — Finalized transition of all file hosting from InfinityFree to Dropbox direct-download links (`raw=1`). This resolves the "Access Denied" and "Corrupted File" errors caused by InfinityFree's anti-bot security challenges.
+- **Resilient Downloader (AsyncHelpers)** — Implemented `ResolveDownloadUrlAsync` to support following URLs hosted inside `.txt` files. Added explicit security challenge detection to prevent the application from downloading "JS-Challenge" HTML as binary installers.
 
-### UI & Core Architecture
-- **About Section Migration** — Updated the "Website" button link in the Help/About dialog to launch the new InfinityFree domain instead of the old Wix site.
+### UI & UX Enhancements
+- **Interactive Command Feed** — Refactored the output box from a custom-drawn control to a native `RichTextBox` wrapper. This enables full text selection, character-level copying, and native keyboard shortcuts (`Ctrl+C`, `Ctrl+A`).
+- **Rich Context Menu** — Integrated a professional right-click menu in the output box with "Copy", "Select All", "Copy All", and "Clear" functionality.
+- **Privacy Masking** — Implemented automatic URL sanitization in the output logs. Sensitive Dropbox and cloud storage IDs are now masked as `[Secure Content Delivery]` to protect infrastructure privacy.
+- **Compiler Cleanup** — Resolved all inheritance warnings in the UI theme engine by removing redundant member overrides.
+
+### Website Updates
+- **Synced Web Downloads** — Updated `Website/script.js` with new Dropbox direct-links.
+- **Expanded Tool Catalog** — Added **Office 2024** and **Backup & Restore Activation** to the public website download grid.
+
+### Build
+- Verified stability: **0 errors, 0 warnings**.
 
 ## 2026-04-26 - Utilities Updates
 
