@@ -13,12 +13,12 @@ using System.Runtime.Versioning;
 namespace RecoveryCommander.Module;
 
 [SupportedOSPlatform("windows")]
-[RecoveryModuleAttribute("SfcModule", "1.1.0")]
+[RecoveryModuleAttribute("SfcModule")]
 public sealed class SfcModule : IRecoveryModule
 {
     public string Name => "System File Checker";
     public string Description => "Verifies and repairs system file integrity using SFC (System File Checker).";
-    public string Version => "1.1.0";
+    public string Version => GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0";
     public string HealthStatus => "Healthy";
     public string BuildInfo => "SFCModule - System File Checker (Modernized)";
     public bool SupportsAsync => true;

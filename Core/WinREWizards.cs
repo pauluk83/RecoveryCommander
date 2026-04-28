@@ -886,6 +886,7 @@ namespace RecoveryCommander.Core
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             cts.Cancel();
+            cts.Dispose();
             base.OnFormClosing(e);
         }
 

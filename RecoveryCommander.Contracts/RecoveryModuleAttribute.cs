@@ -6,9 +6,9 @@ namespace RecoveryCommander.Contracts
     public class RecoveryModuleAttribute : Attribute
     {
         public string Name { get; }
-        public string Version { get; }
+        public string? Version { get; }
 
-        public RecoveryModuleAttribute(string name, string version)
+        public RecoveryModuleAttribute(string name, string? version = null)
         {
             Name = name;
             Version = version;

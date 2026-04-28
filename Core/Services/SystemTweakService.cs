@@ -11,8 +11,9 @@ namespace RecoveryCommander.Core.Services
     [SupportedOSPlatform("windows")]
     public class SystemTweakService
     {
-        public Task DisableTelemetryAsync(IProgress<ProgressReport> progress, Action<string> reportOutput)
+        public Task DisableTelemetryAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
             progress.Report(new ProgressReport(10, "Disabling telemetry..."));
             SetRegistryValue(Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowTelemetry", 0, RegistryValueKind.DWord);
             SetRegistryValue(Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection", "AllowTelemetry", 0, RegistryValueKind.DWord);
@@ -20,8 +21,9 @@ namespace RecoveryCommander.Core.Services
             return Task.CompletedTask;
         }
 
-        public Task DisableWebSearchAsync(IProgress<ProgressReport> progress, Action<string> reportOutput)
+        public Task DisableWebSearchAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
             progress.Report(new ProgressReport(50, "Disabling Bing search in Start..."));
             SetRegistryValue(Registry.CurrentUser, @"Software\Policies\Microsoft\Windows\Explorer", "DisableSearchBoxSuggestions", 1, RegistryValueKind.DWord);
             reportOutput("Web search disabled in Explorer policies.");

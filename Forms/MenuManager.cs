@@ -29,6 +29,22 @@ namespace RecoveryCommander.Forms
             toolsMenu.DropDownItems.Add("Network Repair & Optimization", null, (s, e) => DialogFactory.ShowNetworkOptimizer(host));
             toolsMenu.DropDownItems.Add("Media Tools", null, (s, e) => DialogFactory.ShowMediaTools(host));
 
+            var viewMenu = new ToolStripMenuItem("View");
+            var materialMenu = new ToolStripMenuItem("Material");
+            
+            foreach (Theme.BackdropType type in Enum.GetValues(typeof(Theme.BackdropType)))
+            {
+                var backdropItem = new ToolStripMenuItem(type.ToString()) { Tag = type };
+                backdropItem.Click += (s, e) =>
+                {
+                    Theme.CurrentPreferences.PreferredBackdrop = (Theme.BackdropType)type;
+                    Theme.UpdatePreferences(Theme.CurrentPreferences);
+                    Theme.ApplyBackdropEffect(parent, (Theme.BackdropType)type);
+                };
+                materialMenu.DropDownItems.Add(backdropItem);
+            }
+            viewMenu.DropDownItems.Add(materialMenu);
+
             var helpMenu = new ToolStripMenuItem("Help");
             helpMenu.DropDownItems.Add("About", null, (s, e) => DialogFactory.ShowAboutDialog(parent));
             helpMenu.DropDownItems.Add("Check for Updates", null, async (s, e) => await AutoUpdateDialog.ShowUpdateDialogAsync(host));
@@ -37,9 +53,10 @@ namespace RecoveryCommander.Forms
             helpMenu.DropDownItems.Add("View Project Manifest", null, (s, e) => DialogFactory.ShowHelpWindow(host, PROJECT_MANIFEST_PATH, "Project Manifest"));
             helpMenu.DropDownItems.Add("View Changelog", null, (s, e) => DialogFactory.ShowHelpWindow(host, CHANGELOG_PATH, "Changelog"));
 
-            ApplyMenuColors(fileMenu, toolsMenu, helpMenu);
+            ApplyMenuColors(fileMenu, viewMenu, toolsMenu, helpMenu);
 
             yield return fileMenu;
+            yield return viewMenu;
             yield return toolsMenu;
             yield return helpMenu;
         }

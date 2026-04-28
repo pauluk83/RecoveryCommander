@@ -286,8 +286,8 @@ namespace RecoveryCommander.Core
                 }
                 
                 // Use arguments as-is safely with Process.Start (CreateProcess)
-                // Sanitization is not applied automatically to avoid breaking complex arguments (URLs, etc.)
-                // Callers constructing shell commands (cmd /c) must handle their own sanitization.
+                // Sanitization is not applied automatically here to avoid breaking complex arguments (URLs, etc.)
+                // however, we now provide a dedicated EscapeProcessArgument helper in SecurityHelpers for caller use.
                 var sanitizedArguments = arguments;
                 
                 using var process = new Process();
@@ -353,7 +353,7 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static System.Diagnostics.ProcessStartInfo CreateProcessInfo(string fileName, string arguments, bool useShellExecute = false)
         {
-            return new System.Diagnostics.ProcessStartInfo
+            var psi = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = fileName,
                 Arguments = arguments,
@@ -362,6 +362,14 @@ namespace RecoveryCommander.Core
                 RedirectStandardError = !useShellExecute,
                 CreateNoWindow = true
             };
+
+            // If using ShellExecute, we must be extra careful with arguments as they are parsed by the shell
+            if (useShellExecute)
+            {
+                // Note: Callers should have escaped their arguments using EscapeProcessArgument
+            }
+
+            return psi;
         }
         #endregion
     }

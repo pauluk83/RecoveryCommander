@@ -18,10 +18,9 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
-    <IncludeNativeLibrariesForSelfContained>true</IncludeNativeLibrariesForSelfContained>
-    <IncludeAllContentForSelfContained>true</IncludeAllContentForSelfContained>
     <NoWarn>$(NoWarn);NU1510</NoWarn>
     <DebugType>embedded</DebugType>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Website\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

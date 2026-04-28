@@ -100,6 +100,13 @@ namespace RecoveryCommander.Forms
         
         // Enhanced systems
         private EnhancedProgressSystem? enhancedProgressSystem;
+
+        // Pre-compiled regex for performance
+        private static readonly System.Text.RegularExpressions.Regex ProgressRegex = 
+            new System.Text.RegularExpressions.Regex(@"(\d+)(?:\.\d+)?%", 
+                System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.RightToLeft);
+
+        private const int MaxOutputHistory = 5000;
         
         public MainForm()
         {
@@ -188,18 +195,6 @@ namespace RecoveryCommander.Forms
         }
 
                 
-        private void SetWindowRoundedCorners()
-        {
-            try
-            {
-                // This would require additional Windows API calls for true rounded corners
-                // For now, we'll rely on the Mica effect to provide the modern appearance
-            }
-            catch
-            {
-                // Ignore if not supported
-            }
-        }
         
         private void InitializeComponent()
         {
@@ -241,6 +236,10 @@ namespace RecoveryCommander.Forms
             this.moduleButtonsPanel.WrapContents = false;
             this.moduleButtonsPanel.AutoScroll = true;
             this.moduleButtonsPanel.Padding = ProfessionalDesignSystem.Spacing.Standard;
+            this.moduleButtonsPanel.BackColor = Color.Transparent;
+
+            this.mainSplitContainer.Panel1.BackColor = Color.Transparent;
+            this.mainSplitContainer.Panel2.BackColor = Color.Transparent;
 
             this.moduleDisplayPanel.Dock = DockStyle.Fill;
             this.moduleDisplayPanel.Padding = new Padding(0);
@@ -925,8 +924,8 @@ namespace RecoveryCommander.Forms
                 // Clean the text: remove nulls and normalize spaces for matching
                 string cleanText = text.Replace("\0", "").Replace(" ", "");
                 
-                // Try to match percentage in cleaned text
-                var match = System.Text.RegularExpressions.Regex.Match(cleanText, @"(\d+)(?:\.\d+)?%", System.Text.RegularExpressions.RegexOptions.RightToLeft);
+                // Try to match percentage in cleaned text using pre-compiled regex
+                var match = ProgressRegex.Match(cleanText);
                 if (match.Success)
                 {
                     var percentStr = match.Groups[1].Value;
@@ -957,6 +956,12 @@ namespace RecoveryCommander.Forms
 
             var entry = new OutputEntry(DateTime.Now, text, level);
             outputHistory.Add(entry);
+
+            // Cap output history to prevent memory leaks
+            if (outputHistory.Count > MaxOutputHistory)
+            {
+                outputHistory.RemoveRange(0, outputHistory.Count - MaxOutputHistory);
+            }
 
             UpdateOutputHeaderStats();
 
@@ -1006,10 +1011,7 @@ namespace RecoveryCommander.Forms
         {
             if (outputBox == null) return;
 
-            if (ensureLayout)
-            {
-                outputBox.SuspendLayout();
-            }
+            if (outputBox == null) return;
 
             // Get color based on output level
             Color textColor = entry.Level switch
@@ -1034,7 +1036,8 @@ namespace RecoveryCommander.Forms
 
             if (ensureLayout)
             {
-                outputBox.ResumeLayout();
+                // Use a throttled update approach or let the system handle standard drawing
+                // Suspend/Resume on every line is expensive
             }
         }
 
@@ -1289,25 +1292,6 @@ namespace RecoveryCommander.Forms
             return chip;
         }
 
-        private void UpdateHeroMetrics(string status)
-        {
-            // Hero metrics removed - keeping method for compatibility
-            _ = status;
-        }
-        
-        // Color table for Windows 11 style ToolStrip
-        private class Win11ColorTable : ProfessionalColorTable
-        {
-            public override Color ToolStripGradientBegin => Theme.Colors.Background;
-        public override Color ToolStripGradientMiddle => Theme.Colors.Background;
-        public override Color ToolStripGradientEnd => Theme.Colors.Background;
-        public override Color ToolStripBorder => Theme.Colors.Border;
-        public override Color ButtonSelectedBorder => Theme.Colors.Primary;
-        public override Color ButtonSelectedHighlight => Theme.Colors.Primary;
-        public override Color ButtonSelectedGradientBegin => Color.FromArgb(30, Theme.Colors.Primary);
-        public override Color ButtonSelectedGradientMiddle => Color.FromArgb(30, Theme.Colors.Primary);
-        public override Color ButtonSelectedGradientEnd => Color.FromArgb(30, Theme.Colors.Primary);
-        }
         
         private void LoadModules()
         {
@@ -1753,29 +1737,7 @@ namespace RecoveryCommander.Forms
             actionsPanelFlowDefault.Margin = new Padding(0);
             Theme.ApplyPanelStyle(actionsPanelFlowDefault);
 
-            ModernButton? runSelectedButton = null;
-            if (module.Name == "System Prep")
-            {
-                runSelectedButton = new ModernButton
-                {
-                    Text = "Run Selected Actions",
-                    Dock = DockStyle.Bottom,
-                    Height = 40,
-                    Margin = new Padding(10),
-                    Visible = false,
-                    ButtonStyle = Theme.ButtonStyle.Primary,
-                    Font = Theme.Typography.BodyStrong,
-                    CornerRadius = 8
-                };
-                runSelectedButton.Click += (s, e) => RunSelectedActions();
-            }
-
-            BuildAndAddActionTiles(module, actionsPanelFlowDefault, runSelectedButton);
-
-            if (runSelectedButton != null)
-            {
-                actionContainer.Controls.Add(runSelectedButton);
-            }
+            BuildAndAddActionTiles(module, actionsPanelFlowDefault, null);
             actionContainer.Controls.Add(actionsPanelFlowDefault);
 
             return actionContainer;
@@ -1889,11 +1851,7 @@ namespace RecoveryCommander.Forms
 
             void HandleTileInteraction()
             {
-                if (isSystemPrepModule)
-                {
-                    if (runSelectedButton != null) ToggleActionSelection(action, tile, runSelectedButton);
-                }
-                else if (!isOperationRunning)
+                if (!isOperationRunning)
                 {
                     _ = ExecuteActionSafelyAsync(module, action);
                 }
@@ -1990,154 +1948,7 @@ namespace RecoveryCommander.Forms
             return overviewShell;
         }
         
-        private void DisplayAction(ModuleAction action)
-        {
-            try
-            {
-                UpdateStatus($"Executing {action.Name}...");
 
-                // Show progress bar and output panel
-                progressPanel.Visible = true;
-                progressBar.Value = 0;
-                statusLabel.Text = $"Starting {action.Name}...";
-
-                outputPanel.Visible = true;
-                outputBox.Clear();
-                outputBox.AppendText($"Executing action: {action.DisplayName ?? action.Name}\r\n", Color.White);
-                outputBox.AppendText($"Description: {GetActionDescription(action.Name)}\r\n", Color.White);
-                outputBox.AppendText($"Started at: {DateTime.Now}\r\n\r\n", Color.White);
-
-                // Resize bottom panel to show both progress and output
-                Panel? bottomPanel = outputPanel.Parent as Panel;
-                if (bottomPanel != null)
-                {
-                    bottomPanel.Height = 280; // 45 for progress + 235 for output
-                }
-
-                // Simulate action execution
-                SimulateActionExecution(action.Name);
-
-                UpdateStatus($"Executed {action.Name} successfully");
-                outputBox.AppendText($"\r\nAction completed successfully at {DateTime.Now}\r\n", Color.LimeGreen);
-                statusLabel.Text = "Completed";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error executing action: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                UpdateStatus("Error executing action");
-                outputBox.AppendText($"Error: {ex.Message}\r\n", Color.Red);
-            }
-        }
-
-        private void ToggleActionSelection(ModuleAction action, Panel tile, Button runSelectedButton)
-        {
-            if (selectedActions.Contains(action))
-            {
-                selectedActions.Remove(action);
-                tile.BackColor = Theme.IsModernTheme ? Theme.Colors.SurfaceVariant : Color.FromArgb(30, 30, 40);
-            }
-            else
-            {
-                selectedActions.Add(action);
-                var baseColor = Theme.IsModernTheme ? Theme.Colors.Surface : Color.FromArgb(40, 40, 50);
-                int r = Math.Min(255, baseColor.R + 10);
-                int g = Math.Min(255, baseColor.G + 10);
-                int b = Math.Min(255, baseColor.B + 10);
-                tile.BackColor = Color.FromArgb(baseColor.A, r, g, b);
-            }
-            
-            // Show/hide run selected button (only if it exists)
-            if (runSelectedButton != null)
-            {
-                runSelectedButton.Visible = selectedActions.Count > 0;
-                runSelectedButton.Text = $"Run Selected ({selectedActions.Count})";
-            }
-        }
-
-        private void RunSelectedActions()
-        {
-            if (currentModule == null || selectedActions.Count == 0) return;
-            
-            // Use the safe async execution method
-            _ = RunSelectedActionsSafelyAsync();
-        }
-
-        private async Task RunSelectedActionsSafelyAsync()
-        {
-            if (currentModule == null || selectedActions.Count == 0) return;
-            
-            // Prevent multiple simultaneous operations
-            if (isOperationRunning)
-            {
-                MessageBox.Show("Another operation is already running. Please wait for it to complete.", 
-                              "Operation in Progress", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-            
-            // Disable the run button during execution
-            var runSelectedButton = currentModulePanel?.Controls.OfType<Button>().FirstOrDefault(b => b.Text.Contains("Run Selected"));
-            if (runSelectedButton != null)
-            {
-                runSelectedButton.Enabled = false;
-            }
-            
-            try
-            {
-                // Set visual feedback
-                this.Cursor = Cursors.WaitCursor;
-
-                SetBusyState(true, $"Running {selectedActions.Count} action(s)...");
-
-                // Show progress indication
-                UpdateStatus($"Running {selectedActions.Count} selected actions...");
-                ShowToast("Batch running", $"Executing {selectedActions.Count} action(s)...", NotificationType.Info);
-                
-                // Run each selected action sequentially
-                foreach (var action in selectedActions.ToList())
-                {
-                    await RunModuleActionAsync(currentModule, action);
-                }
-                
-                // Clear selections after successful execution
-                selectedActions.Clear();
-                if (runSelectedButton != null)
-                {
-                    runSelectedButton.Visible = false;
-                }
-                
-                // Reset tile colors
-                var actionsPanelFlow = currentModulePanel?.Controls.OfType<FlowLayoutPanel>().FirstOrDefault();
-                if (actionsPanelFlow != null)
-                {
-                    foreach (Control control in actionsPanelFlow.Controls)
-                    {
-                        if (control is Panel tile)
-                        {
-                            tile.BackColor = Theme.IsDarkMode ? Theme.Colors.SurfaceVariant : Theme.Colors.Surface;
-                        }
-                    }
-                }
-                
-                UpdateStatus($"Completed {selectedActions.Count} actions successfully");
-                ShowToast("Actions completed", "All selected actions finished.", NotificationType.Success);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error running selected actions: {ex.Message}", "Error", 
-                              MessageBoxButtons.OK, MessageBoxIcon.Error);
-                UpdateStatus($"Error: {ex.Message}");
-                ShowToast("Batch failed", ex.Message, NotificationType.Error);
-            }
-            finally
-            {
-                this.Cursor = Cursors.Default;
-                if (runSelectedButton != null)
-                {
-                    runSelectedButton.Enabled = true;
-                }
-                SetBusyState(false, string.Empty);
-            }
-        }
 
         private async Task RunModuleActionAsync(IRecoveryModule module, ModuleAction action)
         {
@@ -2381,7 +2192,6 @@ namespace RecoveryCommander.Forms
                 }
 
                 // Force immediate visual update to overcome any message queue lag
-                progressBar.Value = progressBar.Value; // Trigger internal setter logic
                 progressBar.Invalidate();
                 progressBar.Update();
                 
@@ -2628,22 +2438,6 @@ namespace RecoveryCommander.Forms
             }
         }
 
-        private void SetControlsEnabled(Control parent, bool enabled)
-        {
-            foreach (Control control in parent.Controls)
-            {
-                if (control is Button || control is CheckBox || control is Panel panel && panel.Tag != null)
-                {
-                    control.Enabled = enabled;
-                }
-                
-                // Recursively enable/disable child controls
-                if (control.HasChildren)
-                {
-                    SetControlsEnabled(control, enabled);
-                }
-            }
-        }
         public void ShowContentDialog(string content, string title)
         {
             if (this.InvokeRequired)
@@ -2654,8 +2448,6 @@ namespace RecoveryCommander.Forms
             DialogFactory.ShowContentDialog(this, content, title);
         }
 
-        [DllImport("Gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
-        private static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
         
         // Cancel button and its click handler have been removed
         
@@ -2671,25 +2463,6 @@ namespace RecoveryCommander.Forms
             }
         }
 
-        private void SimulateActionExecution(string actionName)
-        {
-            // Simulate progress updates with cancellation support
-            for (int i = 0; i <= 100; i += 10)
-            {
-                // Check for cancellation
-                if (cancellationTokenSource != null && cancellationTokenSource.Token.IsCancellationRequested)
-                {
-                    outputBox.AppendText("Operation cancelled by user.\r\n", Color.Yellow);
-                    return;
-                }
-                
-                progressBar.Value = i;
-                statusLabel.Text = $"Executing {actionName}... {i}%";
-                outputBox.AppendText($"Progress: {i}%\r\n", Color.White);
-                System.Threading.Thread.Sleep(100); // Simulate work
-                Application.DoEvents(); // Keep UI responsive
-            }
-        }
         
         private void InitializeResponsiveDesign()
         {
@@ -2758,8 +2531,6 @@ namespace RecoveryCommander.Forms
                 mainSplitContainer.SplitterWidth = 4;
             }
             
-            // Adjust module tile sizes based on available space
-            UpdateModuleTileSizes();
             
             // Adjust font sizes for better readability
             UpdateFontSizes();
@@ -2768,11 +2539,6 @@ namespace RecoveryCommander.Forms
             UpdateControlSizes();
         }
         
-        private void UpdateModuleTileSizes()
-        {
-            // No longer needed since we're using a simple ListBox
-            // This method is kept for compatibility but does nothing
-        }
         
         private void AdjustTileControls(Panel tile)
         {
@@ -2858,12 +2624,12 @@ namespace RecoveryCommander.Forms
                 return;
             }
 
-            // Apply responsive layout on resize
-            ApplyResponsiveLayout();
-            RefreshLayout();
-            
-            // Update module button sizes
-            UpdateModuleButtonSizes();
+            // Only perform fast layout during continuous resize
+            if (this.WindowState == FormWindowState.Maximized || this.WindowState == FormWindowState.Normal)
+            {
+                // Basic responsiveness during live resize
+                mainSplitContainer.SplitterDistance = Math.Clamp(mainSplitContainer.SplitterDistance, 200, 400);
+            }
         }
         
         private void UpdateModuleButtonSizes()
@@ -2886,6 +2652,7 @@ namespace RecoveryCommander.Forms
         private void MainForm_ResizeEnd(object? sender, EventArgs e)
         {
             ApplyResponsiveLayout();
+            UpdateModuleButtonSizes();
             RefreshLayout();
             UpdateStatus($"Window resized to {this.Width}x{this.Height}");
         }
@@ -3033,90 +2800,6 @@ namespace RecoveryCommander.Forms
             base.Dispose(disposing);
         }
         
-        private async Task RunActionWithUiAsync(IRecoveryModule module, string actionName)
-        {
-            if (isOperationRunning)
-            {
-                MessageBox.Show("Another operation is currently running. Please wait for it to complete.",
-                    "Operation in Progress", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            isOperationRunning = true;
-            operationStartTime = DateTime.Now;
-            cancellationTokenSource = new CancellationTokenSource();
-
-            cancelButton.Visible = true;
-            cancelButton.Enabled = true;
-
-            outputBox.Clear();
-            outputBox.Visible = true;
-
-            progressBar.Value = 0;
-            statusLabel.Text = $"Running: {actionName}";
-            progressBar.Visible = true;
-            progressBar.IsIndeterminate = true;
-
-            ShowOutput($"[{DateTime.Now:HH:mm:ss}] Starting: {actionName}");
-            ShowOutput("");
-
-            var progressReporter = new Progress<ProgressReport>(report =>
-            {
-                if (this.InvokeRequired)
-                {
-                    this.BeginInvoke(new Action(() => UpdateProgressUI(report)));
-                }
-                else
-                {
-                    UpdateProgressUI(report);
-                }
-            });
-
-            try
-            {
-                await module.ExecuteActionAsync(actionName, progressReporter, output => ShowOutput(output), this, cancellationTokenSource.Token);
-
-                if (!cancellationTokenSource.Token.IsCancellationRequested)
-                {
-                    progressBar.Value = 100;
-                    statusLabel.Text = "Completed";
-                    ShowOutput($"[{DateTime.Now:HH:mm:ss}] Completed: {actionName}");
-                    ShowOutput("Operation completed successfully.");
-                }
-                else
-                {
-                    statusLabel.Text = "Cancelled";
-                    ShowOutput($"[{DateTime.Now:HH:mm:ss}] Operation cancelled by user.");
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                statusLabel.Text = "Cancelled";
-                ShowOutput($"[{DateTime.Now:HH:mm:ss}] Operation cancelled by user.");
-            }
-            catch (Exception ex)
-            {
-                statusLabel.Text = "Error occurred";
-                ShowOutput($"Error: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    ShowOutput($"Inner exception: {ex.InnerException.Message}");
-                }
-            }
-            finally
-            {
-                cancelButton.Visible = false;
-                progressBar.IsIndeterminate = false;
-                isOperationRunning = false;
-
-                var elapsed = DateTime.Now - operationStartTime;
-                ShowOutput(string.Empty);
-                ShowOutput($"Total execution time: {elapsed.TotalSeconds:F1} seconds");
-
-                cancellationTokenSource?.Dispose();
-                cancellationTokenSource = null;
-            }
-        }
     } // End of MainForm class
 
     // MenuRenderer for Windows 11 style

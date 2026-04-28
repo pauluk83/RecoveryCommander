@@ -225,19 +225,21 @@ namespace RecoveryCommander.Features
             if (adapterCombo.SelectedItem == null || dnsCombo.SelectedItem == null) return;
 
             var adapter = adapterCombo.SelectedItem.ToString();
+            if (string.IsNullOrWhiteSpace(adapter)) return;
+
             if (dnsCombo.SelectedItem is string dnsKey && dnsServers.TryGetValue(dnsKey, out var dnsValue))
             {
                 await RunOperationAsync("Applying DNS Settings", async () =>
                 {
                     if (string.IsNullOrEmpty(dnsValue))
                     {
-                        await ExecuteCommandAsync($"netsh interface ip set dns \"{adapter}\" dhcp");
+                        await ExecuteNetworkCommandAsync("netsh.exe", $"interface ip set dns \"{adapter}\" dhcp");
                         LogMessage($"DNS set to DHCP for {adapter}");
                     }
                     else
                     {
                         var primary = dnsValue.Split(',')[0];
-                        await ExecuteCommandAsync($"netsh interface ip set dns \"{adapter}\" static {primary}");
+                        await ExecuteNetworkCommandAsync("netsh.exe", $"interface ip set dns \"{adapter}\" static {primary}");
                         LogMessage($"DNS set to {dnsKey} for {adapter}");
                     }
                 });
@@ -248,7 +250,7 @@ namespace RecoveryCommander.Features
         {
             await RunOperationAsync("Flushing DNS Cache", async () =>
             {
-                await ExecuteCommandAsync("ipconfig /flushdns");
+                await ExecuteNetworkCommandAsync("ipconfig.exe", "/flushdns");
                 LogMessage("DNS cache flushed successfully");
             });
         }
@@ -262,9 +264,9 @@ namespace RecoveryCommander.Features
 
             await RunOperationAsync("Resetting Network", async () =>
             {
-                await ExecuteCommandAsync("netsh winsock reset");
-                await ExecuteCommandAsync("netsh int ip reset");
-                await ExecuteCommandAsync("ipconfig /flushdns");
+                await ExecuteNetworkCommandAsync("netsh.exe", "winsock reset");
+                await ExecuteNetworkCommandAsync("netsh.exe", "int ip reset");
+                await ExecuteNetworkCommandAsync("ipconfig.exe", "/flushdns");
                 LogMessage("Network reset completed");
             });
         }
@@ -274,8 +276,8 @@ namespace RecoveryCommander.Features
             await RunOperationAsync("Diagnosing Network", async () =>
             {
                 LogMessage("Starting network diagnosis...");
-                await ExecuteCommandAsync("ping -n 2 8.8.8.8");
-                await ExecuteCommandAsync("nslookup google.com");
+                await ExecuteNetworkCommandAsync("ping.exe", "-n 2 8.8.8.8");
+                await ExecuteNetworkCommandAsync("nslookup.exe", "google.com");
                 LogMessage("Network diagnosis completed");
             });
         }
@@ -339,27 +341,21 @@ namespace RecoveryCommander.Features
             }
         }
 
-        private async Task ExecuteCommandAsync(string command)
+        /// <summary>
+        /// Executes a network command directly without cmd.exe /c to avoid shell injection.
+        /// </summary>
+        private async Task ExecuteNetworkCommandAsync(string fileName, string arguments)
         {
             try
             {
-                var sanitizedCommand = RecoveryCommander.Core.SecurityHelpers.SanitizeCommandArguments(command);
-                if (string.IsNullOrWhiteSpace(sanitizedCommand))
-                {
-                    LogMessage("ERROR: Invalid or empty command after sanitization.");
-                    return;
-                }
-                
                 var startInfo = new ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {sanitizedCommand}",
+                    FileName = fileName,
+                    Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
-                    // Note: Verb="runas" has no effect when UseShellExecute=false
-                    // The app must already be running as admin for network commands to work
                 };
 
                 using var process = Process.Start(startInfo);

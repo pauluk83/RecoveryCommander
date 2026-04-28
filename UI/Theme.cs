@@ -46,6 +46,14 @@ namespace RecoveryCommander.UI
             Menu,
             StatusBar
         }
+
+        public enum BackdropType
+        {
+            None = 1,
+            Mica = 2,
+            Acrylic = 3,
+            MicaAlt = 4
+        }
         #endregion
 
         #region Consolidated Interfaces (from CommonInterfaces.cs)
@@ -331,10 +339,10 @@ namespace RecoveryCommander.UI
 
         public static void ApplyMicaEffect(Form form)
         {
-            ApplyMicaEffect(form, true);
+            ApplyBackdropEffect(form, CurrentPreferences.PreferredBackdrop);
         }
 
-        public static void ApplyMicaEffect(Form form, bool enabled)
+        public static void ApplyBackdropEffect(Form form, BackdropType type)
         {
             if (form == null || !form.IsHandleCreated) return;
 
@@ -345,16 +353,21 @@ namespace RecoveryCommander.UI
 
                 if (Environment.OSVersion.Version.Build >= 22000) // Windows 11
                 {
-                    int backdropType = enabled ? 2 : 0; // 2 = Mica
+                    int backdropType = (int)type;
                     DwmSetWindowAttribute(form.Handle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
+                    
+                    // Required for transparency to function correctly with DWM backdrops
+                    if (type != BackdropType.None)
+                    {
+                        form.BackColor = Color.Black;
+                    }
                 }
-                else if (Environment.OSVersion.Version.Major >= 10 && enabled) // Windows 10
+                else if (Environment.OSVersion.Version.Major >= 10 && type == BackdropType.Mica) // Windows 10 Mica Fallback
                 {
                     int trueValue = 1;
                     DwmSetWindowAttribute(form.Handle, DWMWA_MICA_EFFECT, ref trueValue, sizeof(int));
+                    form.BackColor = Color.Black;
                 }
-                
-                form.BackColor = Color.Black; // Required for Mica to show through
             }
             catch { }
         }
@@ -397,8 +410,6 @@ namespace RecoveryCommander.UI
         {
             OnThemeChanged?.Invoke(theme);
         }
-
-
 
         #endregion
 
@@ -449,7 +460,11 @@ namespace RecoveryCommander.UI
 
             protected override void Dispose(bool disposing)
             {
-                if (disposing) _animationTimer?.Dispose();
+                if (disposing)
+                {
+                    _cachedFont?.Dispose();
+                    _animationTimer?.Dispose();
+                }
                 base.Dispose(disposing);
             }
 
@@ -514,6 +529,8 @@ namespace RecoveryCommander.UI
                     Invalidate();
                 }
             }
+
+            private Font? _cachedFont;
 
             protected override void OnPaint(PaintEventArgs e)
             {
@@ -581,34 +598,34 @@ namespace RecoveryCommander.UI
                 // Text centered and bold
                 if (!string.IsNullOrEmpty(_statusText))
                 {
-                    using (var font = new Font(Typography.DefaultFontFamily, 12f, FontStyle.Bold))
+                    if (_cachedFont == null || !_cachedFont.FontFamily.Equals(Typography.DefaultFontFamily))
                     {
-                        var textSize = g.MeasureString(_statusText, font);
-                        var textPos = new PointF(
-                            (Width - textSize.Width) / 2,
-                            (Height - textSize.Height) / 2);
+                        _cachedFont?.Dispose();
+                        _cachedFont = new Font(Typography.DefaultFontFamily, 12f, FontStyle.Bold);
+                    }
 
-                        // Draw shadow for readability if it's over the progress chunk
-                        using (var shadowBrush = new SolidBrush(Color.FromArgb(100, Color.Black)))
-                        {
-                            g.DrawString(_statusText, font, shadowBrush, new PointF(textPos.X + 1, textPos.Y + 1));
-                        }
-                        
-                        using (var brush = new SolidBrush(Color.White)) // Always white for best contrast on primary colors
-                        {
-                            g.DrawString(_statusText, font, brush, textPos);
-                        }
+                    var font = _cachedFont;
+                    var textSize = g.MeasureString(_statusText, font);
+                    var textPos = new PointF(
+                        (Width - textSize.Width) / 2,
+                        (Height - textSize.Height) / 2);
+
+                    // Draw shadow for readability if it's over the progress chunk
+                    using (var shadowBrush = new SolidBrush(Color.FromArgb(100, Color.Black)))
+                    {
+                        g.DrawString(_statusText, font, shadowBrush, new PointF(textPos.X + 1, textPos.Y + 1));
+                    }
+                    
+                    using (var brush = new SolidBrush(Color.White)) // Always white for best contrast on primary colors
+                    {
+                        g.DrawString(_statusText, font, brush, textPos);
                     }
                 }
             }
+
         }
 
-
-
-
         #endregion
-
-
 
         public static void DrawElevatedShadow(Graphics g, Rectangle bounds, int elevation)
         {
@@ -742,9 +759,6 @@ namespace RecoveryCommander.UI
                         button.BackColor = Colors.Surface;
                 };
             }
-
-
-
 
         #region Responsive Design System (from ResponsiveDesignManager.cs)
         public static class ResponsiveDesign
@@ -1968,7 +1982,7 @@ namespace RecoveryCommander.UI
             form.BackColor = Colors.Background;
             form.ForeColor = Colors.Text;
             form.Font = Typography.Body;
-            ApplyMicaEffect(form, IsDarkMode);
+            ApplyBackdropEffect(form, CurrentPreferences.PreferredBackdrop);
         }
 
         public static void ApplySplitContainerStyle(SplitContainer splitContainer)
@@ -2158,42 +2172,6 @@ namespace RecoveryCommander.UI
             path.AddArc(bounds.X, bounds.Y + bounds.Height - radius, radius, radius, 90, 90);
             path.CloseFigure();
             return path;
-        }
-        #endregion
-
-        #region Error Handling
-        /// <summary>
-        /// Centralized error handling for the application
-        /// </summary>
-        public static class ErrorHandler
-        {
-            public static void HandleError(Exception ex, string context = "")
-            {
-                var message = string.IsNullOrEmpty(context) 
-                    ? ex.Message 
-                    : $"{context}: {ex.Message}";
-                
-                Console.WriteLine($"ERROR: {message}");
-                
-                if (System.Windows.Forms.Application.OpenForms.Count > 0)
-                {
-                    System.Windows.Forms.MessageBox.Show(
-                        System.Windows.Forms.Application.OpenForms[0], 
-                        message, 
-                        "Error", 
-                        System.Windows.Forms.MessageBoxButtons.OK, 
-                        System.Windows.Forms.MessageBoxIcon.Error);
-                }
-            }
-
-            public static void HandleWarning(string message, string context = "")
-            {
-                var fullMessage = string.IsNullOrEmpty(context) 
-                    ? message 
-                    : $"{context}: {message}";
-                
-                Console.WriteLine($"WARNING: {fullMessage}");
-            }
         }
         #endregion
 
@@ -2469,6 +2447,7 @@ namespace RecoveryCommander.UI
             };
 
             public ThemeMode PreferredTheme { get; set; } = ThemeMode.System;
+            public BackdropType PreferredBackdrop { get; set; } = BackdropType.Mica;
             public bool UseSystemAccent { get; set; } = true;
             public bool ReduceMotion { get; set; } = false;
             public bool HighContrast { get; set; } = false;
@@ -2529,6 +2508,7 @@ namespace RecoveryCommander.UI
                 return new ThemePreferences
                 {
                     PreferredTheme = PreferredTheme,
+                    PreferredBackdrop = PreferredBackdrop,
                     UseSystemAccent = UseSystemAccent,
                     ReduceMotion = ReduceMotion,
                     HighContrast = HighContrast,

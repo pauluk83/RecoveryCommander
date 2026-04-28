@@ -14,12 +14,12 @@ using RecoveryCommander.Core;
 namespace RecoveryCommander.Module;
 
 [SupportedOSPlatform("windows")]
-[RecoveryModuleAttribute("ReagentcModule", "1.2.0")]
+[RecoveryModuleAttribute("ReagentcModule")]
 public sealed class ReagentcModule : IRecoveryModule
 {
     public string Name => "REAgentc";
     public string Description => "Manages the Windows Recovery Environment (WinRE) including status and linkage repair.";
-    public string Version => "1.2.0";
+    public string Version => GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0";
     public string HealthStatus => "Healthy";
     public string BuildInfo => "REAgentc Module - Windows Recovery Environment Manager (Modernized)";
     public bool SupportsAsync => true;

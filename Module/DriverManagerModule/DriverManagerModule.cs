@@ -10,7 +10,7 @@ using RecoveryCommander.Core.Services;
 
 namespace RecoveryCommander.Module
 {
-    [RecoveryModule("DriverManagerModule", "1.0.0")]
+    [RecoveryModule("DriverManagerModule")]
     [SupportedOSPlatform("windows")]
     public class DriverManagerModule : IRecoveryModule
     {
@@ -18,13 +18,13 @@ namespace RecoveryCommander.Module
 
         private static class DownloadUrls
         {
-            public const string IObitDriverBooster = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_48f95a7f0dab475cbe429f9db9bce1cd.txt?dn=IObitDriverBooster.txt";
+            public const string IObitDriverBooster = "https://recoverycommander.free.nf/files/DriverBoosterPortable.txt";
         }
 
         public string Name => "Driver Manager";
         public string Description => "Comprehensive driver backup, restoration, and optimization tools.";
         public string BuildInfo => "Driver Manager v1.0.0 - Focused driver management.";
-        public string Version => "1.0.0";
+        public string Version => GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0";
         public string HealthStatus => "Healthy";
         public bool SupportsAsync => true;
 
@@ -34,7 +34,7 @@ namespace RecoveryCommander.Module
             new ModuleAction("Restore Drivers", "Installs drivers from a folder (pnputil)", ExecuteRestoreDriversAsync),
             new ModuleAction("List Drivers", "Enumerate all installed third-party drivers", _driverService.OptimizeDriverStoreAsync),
             new ModuleAction("Cleanup Driver Store", "Removes redundant and old driver versions", ExecuteOptimizeDriversAsync) { IsDestructive = true },
-            new ModuleAction("IObit Driver Booster", "IObit Driver Booster", (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "IObitDriverBooster.exe", p, o, c))
+            new ModuleAction("Driver Booster PRO 13.4.0.234", "Driver Booster PRO Portable", (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "Driver Booster PRO 13.4.0.234.exe", p, o, c))
         };
 
         private async Task ExecuteBackupDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

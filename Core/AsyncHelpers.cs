@@ -28,7 +28,7 @@ namespace RecoveryCommander.Core
 
         public static async Task CopyToAsyncWithProgress(Stream source, Stream destination, long? totalBytes, IProgress<ProgressReport> progress, CancellationToken cancellationToken)
         {
-            var buffer = new byte[81920]; // 80KB buffer
+            var buffer = new byte[262144]; // 256KB buffer
             long totalRead = 0;
             int bytesRead;
             var stopwatch = Stopwatch.StartNew();
@@ -79,22 +79,6 @@ namespace RecoveryCommander.Core
                  progress.Report(new ProgressReport(100, "Download complete", $"{FormatBytes(totalRead)} / {FormatBytes(totalRead)}"));
             }
         }
-        /// <summary>
-        /// Run a synchronous operation on a background thread
-        /// </summary>
-        public static Task<T> RunOnBackgroundThread<T>(Func<T> operation)
-        {
-            return Task.Run(operation);
-        }
-
-        /// <summary>
-        /// Run a synchronous operation on a background thread
-        /// </summary>
-        public static Task RunOnBackgroundThread(Action operation)
-        {
-            return Task.Run(operation);
-        }
-
         /// <summary>
         /// Execute operation with timeout
         /// </summary>
@@ -356,14 +340,22 @@ namespace RecoveryCommander.Core
         }
 
         /// <summary>
-        /// Download a file to a specific path with progress reporting
+        /// Download a file to a specific path with progress reporting and optional hash verification
         /// </summary>
-        public static async Task DownloadFileAsync(string url, string destinationPath, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+        public static async Task DownloadFileAsync(string url, string destinationPath, IProgress<ProgressReport>? progress, CancellationToken cancellationToken, string? expectedHash = null)
         {
             var http = ServiceContainer.GetHttpClient();
             using (var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 resp.EnsureSuccessStatusCode();
+                
+                // Ensure parent directory exists
+                var dir = Path.GetDirectoryName(destinationPath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
                 using (var fs = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     var contentLength = resp.Content.Headers.ContentLength;
@@ -379,11 +371,27 @@ namespace RecoveryCommander.Core
                         }
                     }
                 }
+
+                // Verify hash if provided
+                if (!string.IsNullOrWhiteSpace(expectedHash))
+                {
+                    progress?.Report(new ProgressReport(95, "Verifying integrity..."));
+                    using var sha256 = System.Security.Cryptography.SHA256.Create();
+                    using var stream = File.OpenRead(destinationPath);
+                    byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
+                    string actualHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+
+                    if (!actualHash.Equals(expectedHash.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        try { File.Delete(destinationPath); } catch { }
+                        throw new System.Security.SecurityException($"Hash mismatch! Expected: {expectedHash}, Actual: {actualHash}");
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// Download a file and execute it (with validation, temp file logic, and extension safety)
+        /// Download a file and execute it (with validation, unique temp paths, and extension safety)
         /// </summary>
         public static async Task DownloadAndExecuteAsync(
             string url,
@@ -391,7 +399,8 @@ namespace RecoveryCommander.Core
             IProgress<ProgressReport>? progress,
             Action<string>? reportOutput,
             CancellationToken cancellationToken,
-            string[]? allowedExtensions = null)
+            string[]? allowedExtensions = null,
+            string? expectedHash = null)
         {
             reportOutput?.Invoke($"Starting download from: {url}");
             progress?.Report(new ProgressReport(0, $"Downloading {fileName}...", "Connecting..."));
@@ -419,7 +428,12 @@ namespace RecoveryCommander.Core
                     progress?.Report(new ProgressReport(100, "Failed"));
                     return;
                 }
-                var tempPath = Path.Combine(Path.GetTempPath(), sanitizedFileName);
+
+                // Use a dedicated, unique subdirectory for this specific download to prevent race conditions
+                var uniqueId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                var downloadRoot = Path.Combine(Path.GetTempPath(), "RecoveryCommander_Downloads", uniqueId);
+                var tempPath = Path.Combine(downloadRoot, sanitizedFileName);
+                
                 if (!SecurityHelpers.IsValidFilePath(tempPath, out var validatedPath))
                 {
                     reportOutput?.Invoke("Invalid temp file path.");
@@ -427,31 +441,11 @@ namespace RecoveryCommander.Core
                     return;
                 }
 
-                // Delete existing file if it exists to avoid corruption/lock issues
-                try { if (File.Exists(validatedPath!)) File.Delete(validatedPath!); } catch { }
-
-                var http = ServiceContainer.GetHttpClient();
-                using (var resp = await http.GetAsync(validUri!, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
-                {
-                    resp.EnsureSuccessStatusCode();
-                    progress?.Report(new ProgressReport(1, $"Downloading {fileName}...", "Server responded, starting transfer..."));
-                    
-                    using var fs = new FileStream(validatedPath!, FileMode.Create, FileAccess.Write, FileShare.None);
-                    
-                    var contentLength = resp.Content.Headers.ContentLength;
-                    using var stream = await resp.Content.ReadAsStreamAsync(cancellationToken);
-                    
-                    if (progress != null)
-                    {
-                        await CopyToAsyncWithProgress(stream, fs, contentLength, progress, cancellationToken);
-                    }
-                    else
-                    {
-                        await stream.CopyToAsync(fs, cancellationToken);
-                    }
-                }
+                // Download the file (includes hash verification)
+                await DownloadFileAsync(url, validatedPath!, progress, cancellationToken, expectedHash);
+                
                 reportOutput?.Invoke($"Downloaded to: {validatedPath}");
-                progress?.Report(new ProgressReport(80, "Download complete"));
+                progress?.Report(new ProgressReport(85, "Download complete"));
                 
                 // Small delay to allow antivirus/SmartScreen to release the file handle lock after closing
                 await Task.Delay(500, cancellationToken);
@@ -461,10 +455,12 @@ namespace RecoveryCommander.Core
 
                 if (extension == ".ps1")
                 {
+                    // Securely quote and escape path for PowerShell
+                    var escapedPath = SecurityHelpers.EscapePowerShellArgument(validatedPath!);
                     psi = new ProcessStartInfo
                     {
                         FileName = "powershell.exe",
-                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{validatedPath}\"",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -File {escapedPath}",
                         UseShellExecute = true,
                         Verb = "runas",
                         WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
@@ -480,6 +476,9 @@ namespace RecoveryCommander.Core
                         WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
                     };
                 }
+
+                // Log the launch attempt
+                reportOutput?.Invoke($"Launching: {psi.FileName} {psi.Arguments}");
 
                 using (var proc = Process.Start(psi))
                 {

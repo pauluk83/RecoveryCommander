@@ -41,6 +41,26 @@ namespace RecoveryCommander.Core.Services
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
+        public async Task UpgradeWingetPackageAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements");
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+        }
+
+        public async Task UpdateStoreAppAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            // Try winget first for Store apps as it is more reliable for specific versions
+            var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements --source msstore");
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+        }
+
+        public async Task UpdatePSModuleAsync(string moduleName, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            string script = $"Update-Module -Name \"{moduleName}\" -Force -ErrorAction SilentlyContinue";
+            var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script}\"");
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+        }
+
         public async Task ScanForWindowsUpdatesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(5, "Initializing Windows Update Agent..."));
@@ -83,7 +103,10 @@ namespace RecoveryCommander.Core.Services
         private async Task InstallWingetAsync(Action<string> reportOutput, CancellationToken cancellationToken)
         {
             string url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle";
-            string temp = Path.Combine(Path.GetTempPath(), "winget_installer.msixbundle");
+            // Use unique temp directory to prevent pre-population attacks
+            string tempDir = Path.Combine(Path.GetTempPath(), $"winget_install_{Guid.NewGuid():N}"[..16]);
+            Directory.CreateDirectory(tempDir);
+            string temp = Path.Combine(tempDir, "winget_installer.msixbundle");
             try
             {
                 await AsyncHelpers.DownloadFileAsync(url, temp, null, cancellationToken);
@@ -92,7 +115,7 @@ namespace RecoveryCommander.Core.Services
             }
             finally
             {
-                try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+                try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
             }
         }
     }

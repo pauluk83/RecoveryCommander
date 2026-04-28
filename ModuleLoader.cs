@@ -15,14 +15,10 @@ namespace RecoveryCommander
         public static List<IRecoveryModule> LoadModules(Action<string> logger)
         {
             var modules = new List<IRecoveryModule>();
+            var loadedModuleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             logger.Invoke("Starting module discovery...");
 
-            var iRecoveryModuleType = typeof(IRecoveryModule);
-
             // Scan all assemblies loaded in the current AppDomain.
-            // When using PublishSingleFile, referenced module DLLs are bundled but still
-            // load as separate assemblies. They might not be loaded yet! 
-            // Explicitly try to load our known modules to ensure they are in the AppDomain.
             try
             {
                 string[] knownModules = { "DiagnosticsModule", "SFCModule", "DismModule", "ReagentcModule", "MalwareRemovalModule", "SystemPrepModule", "UtilitiesModule", "DriverManagerModule", "CloudRecoveryModule" };
@@ -46,7 +42,7 @@ namespace RecoveryCommander
                     try
                     {
                         var module = (IRecoveryModule)Activator.CreateInstance(type)!;
-                        if (!modules.Any(m => m.Name == module.Name))
+                        if (loadedModuleNames.Add(module.Name))
                         {
                             modules.Add(module);
                             logger.Invoke($"✓ Loaded module: {module.Name}");
@@ -70,13 +66,12 @@ namespace RecoveryCommander
                 
                 if (Directory.Exists(moduleDir))
                 {
-                    logger.Invoke($"Scanning and searching for plugins in: {moduleDir}");
-                    
                     // Get all DLL files recursively
                     var allDlls = Directory.GetFiles(moduleDir, "*.dll", SearchOption.AllDirectories);
                     
                     if (allDlls.Length > 0)
                     {
+                        logger.Invoke($"Scanning and searching for plugins in: {moduleDir}");
                         foreach (var dllPath in allDlls)
                         {
                             try
@@ -91,7 +86,7 @@ namespace RecoveryCommander
                                     try
                                     {
                                         var module = (IRecoveryModule)Activator.CreateInstance(type)!;
-                                        if (!modules.Any(m => m.Name == module.Name))
+                                        if (loadedModuleNames.Add(module.Name))
                                         {
                                             modules.Add(module);
                                             logger.Invoke($"✓ Loaded plugin: {module.Name} v{module.Version} from {Path.GetFileName(dllPath)}");
@@ -99,11 +94,14 @@ namespace RecoveryCommander
                                     }
                                     catch (Exception ex)
                                     {
-                                        logger.Invoke($"✗ Error initializing {type.Name}: {ex.Message}");
+                                        logger.Invoke($"✗ Error initializing {type.Name} from {Path.GetFileName(dllPath)}: {ex.Message}");
                                     }
                                 }
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                logger.Invoke($"✗ Error loading assembly {Path.GetFileName(dllPath)}: {ex.Message}");
+                            }
                         }
                     }
                 }

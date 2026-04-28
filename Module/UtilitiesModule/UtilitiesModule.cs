@@ -13,7 +13,7 @@ using System.IO.Compression;
 
 namespace UtilitiesModule
 {
-    [RecoveryModule("UtilitiesModule", "1.0.0")]
+    [RecoveryModule("UtilitiesModule")]
     [SupportedOSPlatform("windows")]
     public class UtilitiesModule : IRecoveryModule
     {
@@ -24,15 +24,16 @@ namespace UtilitiesModule
         private static class DownloadUrls
         {
             public const string CompactGuiLatest = "https://github.com/IridiumIO/CompactGUI/releases/latest/download/CompactGUI.exe";
-            public const string CCleaner = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_1badceab0a0c4c65902f587b36b8d3be.txt?dn=ccleaner.txt";
+            public const string CCleaner = "https://recoverycommander.free.nf/files/CCleaner%206.40.115.62.txt";
             public const string Defragger = "https://drive.google.com/uc?export=download&id=1y-kGi-voJGMaT0KP8nzJ6Y5nuM9rIj4l";
             public const string Ninite = "https://drive.google.com/uc?export=download&id=1qIF8HXRBi7fdxI-ryOxJwG5UioROfMgx";
             public const string Rufus = "https://api.github.com/repos/pbatard/rufus/releases/latest";
-            public const string MacriumPortable = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_008a1fe1988b4d48afb25371d743c596.txt?dn=Macrium.txt";
+            public const string MacriumPortable = "https://recoverycommander.free.nf/files/Macrium.txt";
             public const string Win11DebloatZip = "https://github.com/Raphire/Win11Debloat/archive/refs/heads/master.zip";
             public const string VCRedistApi = "https://api.github.com/repos/abbodi1406/vcredist/releases/latest";
-            public const string PCRepairSuite = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_97245b3f1c08429db4201b1cbd33e992.txt?dn=PCRepairSuite.txt";
-            public const string IObitDriverBooster = "https://a33b356a-b835-4066-889e-3d5811408855.filesusr.com/ugd/99ed68_48f95a7f0dab475cbe429f9db9bce1cd.txt?dn=IObitDriverBooster.txt";
+            public const string PCRepairSuite = "https://recoverycommander.free.nf/files/PCRepairSuite.txt";
+            public const string IObitDriverBooster = "https://recoverycommander.free.nf/files/DriverBoosterPortable.txt";
+            public const string DellOSRecoveryTool = "https://recoverycommander.free.nf/files/Dell%20OS%20Recovery%20Toolv2.3.4.3569.txt";
 
             // User-hosted Office 2024 (Wix .txt file)
             public const string Office2024Wix = "https://99ed684e-f8f7-418e-a378-a43f97c53364.usrfiles.com/ugd/99ed68_c4c183f52c6442d1930577246c5ae215.txt";
@@ -41,11 +42,13 @@ namespace UtilitiesModule
             public const string ActivationPublic = "https://get.activated.win";
             public const string OfficeC2RPublic = "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA";
             public const string BackupRestorePublic = "https://99ed684e-f8f7-418e-a378-a43f97c53364.usrfiles.com/ugd/99ed68_acaf0031477449598de3ef438aee35be.txt";
+            public const string CleanMyPc = "https://recoverycommander.free.nf/files/CleanMyPC.txt";
+            public const string ChrisTitusUtility = "https://christitus.com/win";
         }
 
         public string Name => "Utilities";
         public string Description => "Collection of utility tools for system maintenance and software installation";
-        public string Version => "1.5.0";
+        public string Version => GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0";
         public string HealthStatus => "Healthy";
         public string BuildInfo => "UtilitiesModule (Activation button)";
         public bool SupportsAsync => true;
@@ -56,16 +59,18 @@ namespace UtilitiesModule
             new("Install Office 2024", "Install Office 2024") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.Office2024Wix, "Office2024.ps1", p, o, c) },
             new("Office-C2R-Install", "Install Office Click-to-Run") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.OfficeC2RPublic, "OfficeSetup.exe", p, o, c) },
             new("Backup and Restore Activation State", "Backup and Restore Activation State") { ExecuteAction = RunBackupActivation },
-            new("Christitus Utility", "Chris Titus Tech Windows Utility") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync("https://christitus.com/win", "Christitus.ps1", p, o, c) },
-            new("CCleaner Portable", "CCleaner Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.CCleaner, "CCleaner.exe", p, o, c) },
-            new("Macrium Reflect Portable", "Macrium Reflect Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.MacriumPortable, "Macrium.exe", p, o, c) },
+            new("Christitus Utility", "Chris Titus Tech Windows Utility") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.ChrisTitusUtility, "Christitus.ps1", p, o, c) },
+            new("CCleaner 6.40.115.62", "CCleaner portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.CCleaner, "CCleaner 6.40.115.62.exe", p, o, c) },
+            new("Macrium Reflect X 10.0.8843", "Macrium Reflect X Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.MacriumPortable, "Macrium Reflect X 10.0.8843.exe", p, o, c) },
             new("CompactGUI", "CompactGUI") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.CompactGuiLatest, "CompactGUI.exe", p, o, c) },
             new("Defragger", "Defragger") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.Defragger, "Defragger.exe", p, o, c) },
             new("Ninite Installer", "Ninite Installer") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.Ninite, "Ninite.exe", p, o, c) },
             new("Rufus", "Rufus") { ExecuteAction = DownloadRufus },
             new("Visual C++ AIO", "Visual C++ AIO Redistributable") { ExecuteAction = DownloadVCRedist },
-            new("PC Repair Suite", "PC Repair Suite") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.PCRepairSuite, "PCRepairSuite.exe", p, o, c) },
-            new("IObit Driver Booster", "IObit Driver Booster") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "IObitDriverBooster.exe", p, o, c) }
+            new("PC Repair Suite 2.0.0", "PC Repair Suite Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.PCRepairSuite, "PC Repair Suite 2.0.0.exe", p, o, c) },
+            new("Driver Booster PRO 13.4.0.234", "Driver Booster PRO Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "Driver Booster PRO 13.4.0.234.exe", p, o, c) },
+            new("Dell OS Recovery Tool 2.3.4.3569", "Dell OS Recovery Tool Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.DellOSRecoveryTool, "Dell OS Recovery Tool 2.3.4.3569.exe", p, o, c) },
+            new("MacPaw CleanMyPC 1.11.1.2079", "MacPaw CleanMyPC Portable") { ExecuteAction = (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.CleanMyPc, "MacPaw CleanMyPC 1.11.1.2079.exe", p, o, c) }
         };
 
 
@@ -109,52 +114,14 @@ namespace UtilitiesModule
 
         private async Task RunBackupActivation(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            string backupDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Recovery_Backup");
-            string fileName = "Backup-Activation.bat";
-            string fullPath = Path.Combine(backupDir, fileName);
-
-            try
-            {
-                if (!Directory.Exists(backupDir))
-                {
-                    reportOutput($"Creating directory: {backupDir}");
-                    Directory.CreateDirectory(backupDir);
-                }
-
-                reportOutput($"Downloading backup tool to: {fullPath}");
-                progress.Report(new ProgressReport(10, "Downloading...", "Connecting to server..."));
-
-                // Reuse the internal downloader logic but with our specific path
-                await AsyncHelpers.DownloadFileAsync(DownloadUrls.BackupRestorePublic, fullPath, progress, cancellationToken);
-                
-                reportOutput($"Download complete. Launching from {backupDir}...");
-                
-                var psi = new ProcessStartInfo
-                {
-                    FileName = fullPath,
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    WorkingDirectory = backupDir
-                };
-
-                using (var proc = Process.Start(psi))
-                {
-                    if (proc != null)
-                    {
-                        progress.Report(new ProgressReport(100, "Launched"));
-                        reportOutput("Backup-Activation.bat launched successfully.");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Process failed to start.");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                reportOutput($"Error: {ex.Message}");
-                progress.Report(new ProgressReport(100, "Failed"));
-            }
+            // Use the standard security-validated download-and-execute path with .bat in allowed extensions
+            await AsyncHelpers.DownloadAndExecuteAsync(
+                DownloadUrls.BackupRestorePublic,
+                "Backup-Activation.bat",
+                progress,
+                reportOutput,
+                cancellationToken,
+                allowedExtensions: new[] { "exe", "msi", "bat", "cmd", "ps1" });
         }
 
         private async Task DownloadVCRedist(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

@@ -10,13 +10,13 @@ using RecoveryCommander.Core;
 
 namespace DiagnosticsModule
 {
-    [RecoveryModule("DiagnosticsModule", "1.0.0")]
+    [RecoveryModule("DiagnosticsModule")]
     [SupportedOSPlatform("windows")]
     public class DiagnosticsModule : IRecoveryModule
     {
         public string Name => "Diagnostics";
         public string Description => "Comprehensive system diagnostic toolkit for identifying hardware and software issues.";
-        public string Version => "1.0.0";
+        public string Version => GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0";
         public string HealthStatus => "Healthy";
         public string BuildInfo => "DiagnosticsModule (Technician Toolkit)";
         public bool SupportsAsync => true;

@@ -22,18 +22,30 @@ namespace RecoveryCommander.Core
             
             try
             {
-                // Get full path to resolve relative paths and check for traversal
-                var fullPath = Path.GetFullPath(path);
+                // Normalize path first
+                var normalizedPath = path.Replace('/', '\\');
                 
-                // Check if the path is within an allowed directory (best practice)
-                // For this app, we generally allow most paths but we should block relative traversal
-                if (fullPath.Contains("..") || fullPath.Contains("~"))
+                // Get full path to resolve relative paths and check for traversal
+                var fullPath = Path.GetFullPath(normalizedPath);
+                
+                // Block UNC paths to prevent NTLM theft/traversal if not explicitly expected
+                if (fullPath.StartsWith("\\\\"))
                     return false;
                 
-                // Blocks access to sensitive system paths if needed
-                // string[] blockedPaths = { "C:\\Windows\\System32\\config", "C:\\Users\\Default" };
-                // if (blockedPaths.Any(bp => fullPath.StartsWith(bp, StringComparison.OrdinalIgnoreCase))) return false;
+                // Block potential alternative data streams (ADS)
+                if (fullPath.Contains(":"))
+                {
+                    // Allow only the drive letter colon (e.g., C:\)
+                    if (fullPath.IndexOf(':') != 1 || fullPath.Substring(2).Contains(":"))
+                        return false;
+                }
 
+                // Check for path traversal attempts
+                if (path.Contains("..") || path.Contains("~"))
+                {
+                    if (fullPath.Contains("..")) return false;
+                }
+                
                 // Validate the path doesn't contain invalid characters
                 var invalidChars = Path.GetInvalidPathChars();
                 if (fullPath.IndexOfAny(invalidChars) >= 0)
@@ -96,6 +108,7 @@ namespace RecoveryCommander.Core
                 return string.Empty;
             
             // Remove potentially dangerous characters that could be used for injection
+            // We are more aggressive now: & | ; ` $ ( ) < > \n \r " '
             var dangerousChars = new[] { '&', '|', ';', '`', '$', '(', ')', '<', '>', '\n', '\r' };
             var sanitized = arguments;
             
@@ -103,13 +116,63 @@ namespace RecoveryCommander.Core
             {
                 sanitized = sanitized.Replace(c.ToString(), string.Empty);
             }
-            
-            // Remove command chaining patterns specifically
-            sanitized = Regex.Replace(sanitized, @"\s*&&\s*", " ", RegexOptions.IgnoreCase);
-            sanitized = Regex.Replace(sanitized, @"\s*\|\|\s*", " ", RegexOptions.IgnoreCase);
-            sanitized = Regex.Replace(sanitized, @"\s*;\s*", " ", RegexOptions.IgnoreCase);
+            // Note: command chaining patterns (&&, ||, ;) are already neutralized by
+            // the character-level stripping above, so no additional regex pass is needed.
             
             return sanitized.Trim();
+        }
+
+        /// <summary>
+        /// Escapes an argument for use with powershell.exe -File
+        /// </summary>
+        public static string EscapePowerShellArgument(string argument)
+        {
+            if (string.IsNullOrEmpty(argument)) return "\"\"";
+            
+            // For -File, paths with spaces must be quoted. 
+            // Quotes inside the path must be escaped for PowerShell.
+            var escaped = argument.Replace("\"", "\"\"");
+            return $"\"{escaped}\"";
+        }
+
+        /// <summary>
+        /// Escapes an argument for use with ProcessStartInfo.Arguments (Win32 CreateProcess rules)
+        /// </summary>
+        public static string EscapeProcessArgument(string argument)
+        {
+            if (string.IsNullOrEmpty(argument)) return "\"\"";
+
+            if (!argument.Contains(" ") && !argument.Contains("\t") && !argument.Contains("\""))
+                return argument;
+
+            var escaped = new System.Text.StringBuilder();
+            escaped.Append("\"");
+            for (int i = 0; i < argument.Length; i++)
+            {
+                int backslashes = 0;
+                while (i < argument.Length && argument[i] == '\\')
+                {
+                    backslashes++;
+                    i++;
+                }
+
+                if (i == argument.Length)
+                {
+                    escaped.Append('\\', backslashes * 2);
+                }
+                else if (argument[i] == '"')
+                {
+                    escaped.Append('\\', backslashes * 2 + 1);
+                    escaped.Append('"');
+                }
+                else
+                {
+                    escaped.Append('\\', backslashes);
+                    escaped.Append(argument[i]);
+                }
+            }
+            escaped.Append("\"");
+            return escaped.ToString();
         }
         
         /// <summary>

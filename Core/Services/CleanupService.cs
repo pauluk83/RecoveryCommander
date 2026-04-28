@@ -67,13 +67,17 @@ namespace RecoveryCommander.Core.Services
             try
             {
                 if (!Directory.Exists(path)) return;
-                foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+
+                // Delete all files in the current directory
+                foreach (var file in Directory.GetFiles(path))
                 {
-                    try { File.Delete(file); } catch { }
+                    CoreUtilities.SafeDeleteFile(file);
                 }
+
+                // Delete all subdirectories recursively
                 foreach (var dir in Directory.GetDirectories(path))
                 {
-                    try { Directory.Delete(dir, true); } catch { }
+                    CoreUtilities.SafeDeleteDirectory(dir);
                 }
             }
             catch { }

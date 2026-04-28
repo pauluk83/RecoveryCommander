@@ -113,7 +113,11 @@ namespace RecoveryCommander.Core
                 _services.AddSingleton(module);
             }
 
-            // Rebuild service provider
+            // Dispose old provider before rebuilding to prevent memory leak
+            if (_serviceProvider is IDisposable oldProvider)
+            {
+                oldProvider.Dispose();
+            }
             _serviceProvider = _services.BuildServiceProvider();
         }
     }

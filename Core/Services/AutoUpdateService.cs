@@ -259,6 +259,16 @@ namespace RecoveryCommander.Core.Services
                     return false;
                 }
 
+                // Escape paths for batch script safety (% → %% to prevent env var expansion)
+                static string EscapeBatchPath(string path) => path.Replace("%", "%%");
+                // Sanitize version string to prevent injection via malicious release tags
+                static string SanitizeVersion(string ver) => new string(ver.Where(c => char.IsLetterOrDigit(c) || c == '.').ToArray());
+
+                var safeCurrentExe = EscapeBatchPath(currentExePath);
+                var safeDownloadPath = EscapeBatchPath(downloadPath);
+                var safeTempDir = EscapeBatchPath(tempDir);
+                var safeVersion = SanitizeVersion(updateInfo.LatestVersion);
+
                 // Create a batch script that waits for the current process to exit,
                 // replaces the exe, then launches the new version
                 var scriptPath = Path.Combine(tempDir, "update.bat");
@@ -268,7 +278,7 @@ namespace RecoveryCommander.Core.Services
                               echo.
                               echo =============================================
                               echo   RecoveryCommander Auto-Update
-                              echo   Updating to version {updateInfo.LatestVersion}
+                              echo   Updating to version {safeVersion}
                               echo =============================================
                               echo.
                               echo Waiting for RecoveryCommander to close...
@@ -284,15 +294,15 @@ namespace RecoveryCommander.Core.Services
                               timeout /t 1 /nobreak >NUL
                               
                               echo Backing up current version...
-                              copy /Y "{currentExePath}" "{currentExePath}.bak" >NUL 2>&1
+                              copy /Y "{safeCurrentExe}" "{safeCurrentExe}.bak" >NUL 2>&1
                               
                               echo Replacing executable...
-                              copy /Y "{downloadPath}" "{currentExePath}" >NUL 2>&1
+                              copy /Y "{safeDownloadPath}" "{safeCurrentExe}" >NUL 2>&1
                               if errorlevel 1 (
                                   echo.
                                   echo ERROR: Failed to replace executable.
                                   echo Restoring backup...
-                                  copy /Y "{currentExePath}.bak" "{currentExePath}" >NUL 2>&1
+                                  copy /Y "{safeCurrentExe}.bak" "{safeCurrentExe}" >NUL 2>&1
                                   echo.
                                   echo Update failed. Press any key to exit.
                                   pause >NUL
@@ -301,13 +311,13 @@ namespace RecoveryCommander.Core.Services
                               
                               echo Update applied successfully!
                               echo.
-                              echo Launching RecoveryCommander v{updateInfo.LatestVersion}...
-                              start "" "{currentExePath}"
+                              echo Launching RecoveryCommander v{safeVersion}...
+                              start "" "{safeCurrentExe}"
                               
                               echo Cleaning up...
                               timeout /t 3 /nobreak >NUL
-                              del /Q "{currentExePath}.bak" >NUL 2>&1
-                              rmdir /S /Q "{tempDir}" >NUL 2>&1
+                              del /Q "{safeCurrentExe}.bak" >NUL 2>&1
+                              rmdir /S /Q "{safeTempDir}" >NUL 2>&1
                               exit /b 0
                               """;
 

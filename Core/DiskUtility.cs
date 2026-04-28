@@ -98,7 +98,7 @@ namespace RecoveryCommander.Core
             {
                 if (!used.Contains(c)) return c;
             }
-            return 'R';
+            throw new InvalidOperationException("No available drive letters found (D-Z all in use).");
         }
     }
 }

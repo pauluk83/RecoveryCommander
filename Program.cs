@@ -53,17 +53,7 @@ namespace RecoveryCommander
                 ThemeProvider.BackgroundColor = Theme.Background;
                 ThemeProvider.ForegroundColor = Theme.Text;
                 
-                // Apply animations and transitions
-                try
-                {
-                    // Theme.Animations.AnimateForm(mainForm, Theme.Animations.AnimationType.Blend, show: true);
-                    mainForm.Show();
-                }
-                catch
-                {
-                    // Animation failed, continue without it
-                    mainForm.Show();
-                }
+                mainForm.Show();
                 
                 logger.LogInformation("Application started successfully");
                 
@@ -72,40 +62,22 @@ namespace RecoveryCommander
             }
             catch (Exception ex)
             {
-                // Last resort error handling
-                try
+                Console.WriteLine($"FATAL: {ex}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
                 {
-                    // GlobalExceptionHandler is static, can't be used as type parameter
-                    Console.WriteLine($"ERROR: {ex}");
-                }
-                catch
-                {
-                    // If even logging fails, write to console with full stack trace
-                    Console.WriteLine($"FATAL: {ex}");
-                    Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-                    if (ex.InnerException != null)
-                    {
-                        Console.WriteLine($"Inner Exception: {ex.InnerException}");
-                        Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
-                    }
+                    Console.WriteLine($"Inner Exception: {ex.InnerException}");
+                    Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
                 }
                 
-                try
-                {
-                    MessageBox.Show(
-                        "Failed to start Recovery Commander.\n\n" +
-                        $"Error: {ex.Message}\n\n" +
-                        "Please check the log files for more details.",
-                        "Startup Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error
-                    );
-                }
-                catch
-                {
-                    // If even MessageBox fails, write to console
-                    Console.WriteLine($"FATAL: {ex}");
-                }
+                MessageBox.Show(
+                    "Failed to start Recovery Commander.\n\n" +
+                    $"Error: {ex.Message}\n\n" +
+                    "Please check the log files for more details.",
+                    "Startup Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
             finally
             {

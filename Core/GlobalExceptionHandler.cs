@@ -41,29 +41,8 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static void Initialize()
         {
-            // Set up global exception handling directly
-            SetupGlobalExceptionHandling();
-        }
-
-        /// <summary>
-        /// Sets up global exception handling for application
-        /// </summary>
-        public static void SetupGlobalExceptionHandling()
-        {
-            AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
-            {
-                if (args.ExceptionObject is Exception exception)
-                {
-                    HandleException(exception);
-                }
-            };
-
-#if WINDOWS
-            System.Windows.Forms.Application.ThreadException += (sender, args) =>
-            {
-                HandleException(args.Exception);
-            };
-#endif
+            // Set up global exception handling via CoreUtilities
+            CoreUtilities.SetupGlobalExceptionHandling();
         }
     }
 }

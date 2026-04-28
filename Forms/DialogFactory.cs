@@ -84,7 +84,7 @@ namespace RecoveryCommander.Forms
             var webLogo = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(48, 48), Margin = new Padding(0, 0, 0, 0), Cursor = Cursors.Hand };
             var webLogoPath = Path.Combine(AppContext.BaseDirectory, @"Resources\website.jpg");
             if (File.Exists(webLogoPath)) webLogo.ImageLocation = webLogoPath;
-            webLogo.Click += (s, e) => { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://pauluk63.wixsite.com/pspage") { UseShellExecute = true }); };
+            webLogo.Click += (s, e) => { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://recoverycommander.free.nf/") { UseShellExecute = true }); };
             toolTip.SetToolTip(webLogo, "Website");
             
             linksFlow.Controls.Add(ghLogo);

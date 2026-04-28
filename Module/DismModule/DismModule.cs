@@ -15,7 +15,7 @@ using System.Text.RegularExpressions;
 namespace RecoveryCommander.Module
 {
     [SupportedOSPlatform("windows")]
-    [RecoveryModuleAttribute("DismModule", "1.0.0")]
+    [RecoveryModuleAttribute("DismModule")]
     public class DismModule : IRecoveryModule
     {
         public string Name => "DISM";
@@ -42,7 +42,7 @@ namespace RecoveryCommander.Module
             },
          };
 
-        public string Version => "1.0.0";
+        public string Version => GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0";
         public string HealthStatus => "Healthy";
         public bool SupportsAsync => true;
 
