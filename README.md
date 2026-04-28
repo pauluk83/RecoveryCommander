@@ -22,7 +22,7 @@ A professional Windows system recovery and maintenance tool with a modern Window
 ## 🔗 Links & Resources
 
 - **GitHub Repository**: [pauluk83/RecoveryCommander](https://github.com/pauluk83/RecoveryCommander)
-- **Official Website**: [RecoveryCommander Portal](https://pauluk83.github.io/RecoveryCommander/)
+- **Official Website**: [RecoveryCommander Portal](https://recoverycommander.free.nf/)
 
 ---
 
@@ -52,7 +52,6 @@ RecoveryCommander/
 ├── 📁 RecoveryCommander.Contracts/ # Public API & Interface Definitions
 ├── 📁 Scripts/                  # Build Tools & Maintenance Scripts
 ├── 📁 Resources/                # Assets, Icons & Documentation
-├── 📁 Website/                  # Companion Web Portal Source
 ├── 🔧 RecoveryCommander.sln     # Visual Studio Solution
 └── 🔧 RecoveryCommander.csproj  # Main Project Definition
 ```
@@ -114,7 +113,7 @@ public interface IRecoveryModule
 
 ### Prerequisites
 - **OS**: Windows 10 or 11
-- **Runtime**: .NET 11.0 or later
+- **Runtime**: .NET 9.0 or later
 - **IDE**: Visual Studio 2022 (recommended)
 - **Privileges**: Administrator rights required for most recovery operations.
 
