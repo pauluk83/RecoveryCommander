@@ -27,7 +27,7 @@ namespace RecoveryCommander.Core
 
         private static void ParseDismProgress(string output, IProgress<ProgressReport> progress, Action<int> setPercent, Func<int> getPercent)
         {
-            var lowerOutput = output.ToLower();
+            var lowerOutput = output.ToLowerInvariant();
             int currentPercent = getPercent();
             
             string cleanOutput = output.Replace("\0", "").Replace(" ", "");

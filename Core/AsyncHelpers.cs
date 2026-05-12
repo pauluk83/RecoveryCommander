@@ -35,9 +35,9 @@ namespace RecoveryCommander.Core
             long lastReportTime = 0;
             int lastPercentReported = -1;
 
-            while ((bytesRead = await source.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+            while ((bytesRead = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)) > 0)
             {
-                await destination.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
                 totalRead += bytesRead;
 
                 // Calculate percent if possible
@@ -451,7 +451,7 @@ namespace RecoveryCommander.Core
                     using var sha256 = System.Security.Cryptography.SHA256.Create();
                     using var stream = File.OpenRead(destinationPath);
                     byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
-                    string actualHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+                    string actualHash = Convert.ToHexStringLower(hashBytes);
 
                     if (!actualHash.Equals(expectedHash.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
                     {

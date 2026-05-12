@@ -29,19 +29,19 @@ namespace RecoveryCommander.Core
                 var fullPath = Path.GetFullPath(normalizedPath);
                 
                 // Block UNC paths to prevent NTLM theft/traversal if not explicitly expected
-                if (fullPath.StartsWith("\\\\"))
+                if (fullPath.StartsWith("\\\\", StringComparison.OrdinalIgnoreCase))
                     return false;
                 
                 // Block potential alternative data streams (ADS)
-                if (fullPath.Contains(":"))
+                if (fullPath.Contains(':'))
                 {
                     // Allow only the drive letter colon (e.g., C:\)
-                    if (fullPath.IndexOf(':') != 1 || fullPath.Substring(2).Contains(":"))
+                    if (fullPath.IndexOf(':') != 1 || fullPath.Substring(2).Contains(':'))
                         return false;
                 }
 
                 // Check for path traversal attempts
-                if (path.Contains("..") || path.Contains("~"))
+                if (path.Contains("..") || path.Contains('~'))
                 {
                     if (fullPath.Contains("..")) return false;
                 }

@@ -22,6 +22,9 @@ namespace RecoveryCommander.Core
     /// </summary>
     public static class CoreUtilities
     {
+        private static readonly Action<ILogger, string, Exception?> _logGlobalException = 
+            LoggerMessage.Define<string>(LogLevel.Error, new EventId(1, "GlobalException"), "Global exception handled: {Message}");
+
         #region Application Information
         public static string GetApplicationVersion()
         {
@@ -40,7 +43,7 @@ namespace RecoveryCommander.Core
                 string? exePath = Environment.ProcessPath;
                 if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
                 {
-                    return File.GetLastWriteTime(exePath).ToString("yyyy-MM-dd HH:mm");
+                    return File.GetLastWriteTime(exePath).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
                 }
             }
             catch { }
@@ -87,7 +90,10 @@ namespace RecoveryCommander.Core
             var logger = ServiceContainer.GetService<ILogger>();
             var message = string.IsNullOrEmpty(context) ? ex.Message : $"{context}: {ex.Message}";
             
-            logger?.LogError(ex, "Global exception handled: {Message}", message);
+            if (logger != null)
+            {
+                _logGlobalException(logger, message, ex);
+            }
             
             // Also write to debug output
             System.Diagnostics.Debug.WriteLine($"GLOBAL ERROR: {message}");

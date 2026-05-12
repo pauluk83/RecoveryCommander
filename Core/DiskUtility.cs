@@ -10,6 +10,8 @@ namespace RecoveryCommander.Core
 {
     public static class DiskUtility
     {
+        private static readonly string[] _lineSeparators = new[] { "\r\n", "\n" };
+
         public static async Task<bool> RunDiskpartScriptAsync(string script, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             string tmp = Path.Combine(Path.GetTempPath(), $"rc_diskpart_{Guid.NewGuid():N}.txt");
@@ -21,9 +23,9 @@ namespace RecoveryCommander.Core
                 await AsyncHelpers.RunProcessAsync(psi, (line) =>
                 {
                     reportOutput(line);
-                    if (line.IndexOf("DiskPart successfully", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        line.IndexOf("successfully assigned", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        line.IndexOf("successfully removed", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (line.Contains("DiskPart successfully", StringComparison.OrdinalIgnoreCase) ||
+                        line.Contains("successfully assigned", StringComparison.OrdinalIgnoreCase) ||
+                        line.Contains("successfully removed", StringComparison.OrdinalIgnoreCase))
                     {
                         success = true;
                     }
@@ -50,10 +52,10 @@ namespace RecoveryCommander.Core
                 var psi = CoreUtilities.CreateProcessInfo("diskpart.exe", $"/s \"{tmp}\"");
                 var sb = new StringBuilder();
                 await AsyncHelpers.RunProcessAsync(psi, (line) => { sb.AppendLine(line); }, null, cancellationToken);
-                foreach (var raw in sb.ToString().Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+                foreach (var raw in sb.ToString().Split(_lineSeparators, StringSplitOptions.RemoveEmptyEntries))
                 {
                     var line = raw.Trim();
-                    if (line.IndexOf(label, StringComparison.OrdinalIgnoreCase) >= 0 && line.StartsWith("Volume", StringComparison.OrdinalIgnoreCase))
+                    if (line.Contains(label, StringComparison.OrdinalIgnoreCase) && line.StartsWith("Volume", StringComparison.OrdinalIgnoreCase))
                     {
                         var m = Regex.Match(line, @"Volume\s+(\d+)", RegexOptions.IgnoreCase);
                         if (m.Success && int.TryParse(m.Groups[1].Value, out var vol))

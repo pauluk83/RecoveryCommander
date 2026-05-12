@@ -14,7 +14,7 @@ namespace RecoveryCommander.Core.Services
     [SupportedOSPlatform("windows")]
     public class UpdateService
     {
-        public async Task UpgradeWingetPackagesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task UpgradeWingetPackagesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(5, "Checking for winget..."));
             if (!IsWingetInstalled())
@@ -33,7 +33,7 @@ namespace RecoveryCommander.Core.Services
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
-        public async Task UpdateStoreAppsAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task UpdateStoreAppsAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(10, "Triggering Microsoft Store updates..."));
             string script = "Get-CimInstance -Namespace root/Microsoft/Windows/Appx -ClassName MSFT_AppxPackage | Foreach-Object { $_.Update() }";
@@ -41,34 +41,34 @@ namespace RecoveryCommander.Core.Services
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
-        public async Task UpgradeWingetPackageAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task UpgradeWingetPackageAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
-        public async Task UpdateStoreAppAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task UpdateStoreAppAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             // Try winget first for Store apps as it is more reliable for specific versions
             var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements --source msstore");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
-        public async Task UpdatePSModuleAsync(string moduleName, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task UpdatePSModuleAsync(string moduleName, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             string script = $"Update-Module -Name \"{moduleName}\" -Force -ErrorAction SilentlyContinue";
             var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script}\"");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
-        public async Task ScanForWindowsUpdatesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task ScanForWindowsUpdatesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(5, "Initializing Windows Update Agent..."));
             await Task.Run(() =>
             {
                 try
                 {
-                    Type type = Type.GetTypeFromProgID("Microsoft.Update.Session") ?? throw new Exception("Could not create WU Session.");
+                    Type type = Type.GetTypeFromProgID("Microsoft.Update.Session") ?? throw new InvalidOperationException("Could not create WU Session.");
                     dynamic session = Activator.CreateInstance(type)!;
                     dynamic searcher = session.CreateUpdateSearcher();
                     reportOutput("Scanning for updates (this may take a few minutes)...");
@@ -89,7 +89,7 @@ namespace RecoveryCommander.Core.Services
             }, cancellationToken);
         }
 
-        private bool IsWingetInstalled()
+        private static bool IsWingetInstalled()
         {
             try
             {
@@ -100,7 +100,7 @@ namespace RecoveryCommander.Core.Services
             catch { return false; }
         }
 
-        private async Task InstallWingetAsync(Action<string> reportOutput, CancellationToken cancellationToken)
+        private static async Task InstallWingetAsync(Action<string> reportOutput, CancellationToken cancellationToken)
         {
             string url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle";
             // Use unique temp directory to prevent pre-population attacks

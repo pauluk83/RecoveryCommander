@@ -23,6 +23,9 @@ namespace RecoveryCommander.Core
     [SupportedOSPlatform("windows")]
     public class GlobalExceptionHandler
     {
+        private static readonly Action<ILogger, Exception?> _logUnhandledException = 
+            LoggerMessage.Define(LogLevel.Error, new EventId(2, "UnhandledException"), "Unhandled exception occurred");
+
         private const string EventLogSource = "RecoveryCommander";
         private const string EventLogName = "Application";
         private static bool _eventLogReady;
@@ -31,7 +34,10 @@ namespace RecoveryCommander.Core
         public static void HandleException(Exception exception)
         {
             var logger = ServiceContainer.GetOptionalService<ILogger>();
-            logger?.LogError(exception, "Unhandled exception occurred");
+            if (logger != null)
+            {
+                _logUnhandledException(logger, exception);
+            }
 
             if (!_eventLogReady) return;
 

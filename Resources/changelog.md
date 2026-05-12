@@ -21,6 +21,9 @@
 - **Defense-in-Depth SSRF Validation** — Restored static loopback and private IP validation in `SecurityHelpers.IsValidDownloadUrl` as a fast-fail mechanism complementing the dynamic `SocketsHttpHandler` checks.
 - **Code Analysis Remediation (CA1805)** — Eliminated redundant explicit initializations of boolean members to `false` in `WinREWizards.cs` and `SimpleContracts.cs`.
 - **API Cross-Language Compatibility (CA1716)** — Renamed the `error` parameter in `IProgressReporter.ReportError` to avoid reserved keyword conflicts, ensuring library compatibility with VB.NET and other consumers.
+- **Performance & Modernization (CA1835, CA1848, CA1872)** — Implemented high-performance span-based async I/O in `AsyncHelpers.cs`, optimized logging with `LoggerMessage` delegates in `CoreUtilities.cs` and `GlobalExceptionHandler.cs`, and migrated to `Convert.ToHexStringLower` for efficient hash formatting.
+- **Code Quality & Readability (CA2249, CA1822, CA1861)** — Refactored `UpdateService.cs` to use static methods where applicable, migrated `DiskUtility.cs` to `string.Contains` for improved readability, and utilized `static readonly` fields for constant arrays to reduce heap allocations.
+- **Globalization & Culture Safety (CA1305, CA1310, CA1311)** — Hardened string operations in `SecurityHelpers.cs`, `DismHelper.cs`, and `CoreUtilities.cs` by explicitly specifying `StringComparison.OrdinalIgnoreCase` and `CultureInfo.InvariantCulture`, preventing locale-dependent behavior.
 
 ### Security & Hardening
 - **Content-Security-Policy (CSP) [Finding #1]** — Implemented a strict CSP meta tag in `index.html` to mitigate XSS risks. The policy restricts scripts to `'self'`, styles to `'self'` and Google Fonts, and images to `'self'` and trusted GitHub sources, while disabling dangerous features like `object-src`.
