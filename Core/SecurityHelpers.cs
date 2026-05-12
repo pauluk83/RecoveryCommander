@@ -79,8 +79,11 @@ namespace RecoveryCommander.Core
                 if (uri.Scheme != Uri.UriSchemeHttps)
                     return false;
                 
-                // SSRF protection is now handled at the network layer via SocketsHttpHandler.ConnectCallback
-                // in ServiceContainer.cs to protect against DNS rebinding and IP obfuscation.
+                // SSRF protection: Basic static check for loopback and private IPs.
+                // Note: Comprehensive protection is handled at the network layer in ServiceContainer.cs
+                // to mitigate DNS rebinding, but this provides a fast-fail for literal local URLs.
+                if (IsLocalOrPrivateHost(uri.Host))
+                    return false;
                 
                 validUri = uri;
                 return true;
@@ -89,6 +92,36 @@ namespace RecoveryCommander.Core
             {
                 return false;
             }
+        }
+
+        private static bool IsLocalOrPrivateHost(string host)
+        {
+            if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)) return true;
+            if (string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase)) return true;
+
+            if (System.Net.IPAddress.TryParse(host, out var ip))
+            {
+                if (System.Net.IPAddress.IsLoopback(ip)) return true;
+
+                if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    var bytes = ip.GetAddressBytes();
+                    if (bytes[0] == 10) return true; // 10.0.0.0/8
+                    if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return true; // 172.16.0.0/12
+                    if (bytes[0] == 192 && bytes[1] == 168) return true; // 192.168.0.0/16
+                    if (bytes[0] == 169 && bytes[1] == 254) return true; // 169.254.0.0/16 (Link-local)
+                }
+                else if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                {
+                    if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6Multicast) return true;
+                    // Unique Local Address (fc00::/7)
+                    var bytes = ip.GetAddressBytes();
+                    if ((bytes[0] & 0xfe) == 0xfc) return true;
+                }
+            }
+
+            return false;
         }
         
         /// <summary>

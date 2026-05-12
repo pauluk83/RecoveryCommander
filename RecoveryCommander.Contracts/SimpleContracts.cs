@@ -44,13 +44,13 @@ namespace RecoveryCommander.Contracts
         public string? DisplayName { get; set; }
         public string? Description { get; set; }
         public bool IsAsync { get; set; } = true;
-        public bool RequiresAdmin { get; set; } = false;
+        public bool RequiresAdmin { get; set; }
         public string? IconName { get; set; }
         
-        public bool IsHeader { get; set; } = false;
-        public bool AutoTick { get; set; } = false;
-        public bool IsDestructive { get; set; } = false;
-        public bool Highlight { get; set; } = false;
+        public bool IsHeader { get; set; }
+        public bool AutoTick { get; set; }
+        public bool IsDestructive { get; set; }
+        public bool Highlight { get; set; }
         
         public Func<IProgress<ProgressReport>, Action<string>, CancellationToken, Task>? ExecuteAction { get; set; }
         public Func<IProgress<ProgressReport>, Action<string>, IDialogService, CancellationToken, Task>? ExecuteActionExtended { get; set; }
@@ -68,7 +68,7 @@ namespace RecoveryCommander.Contracts
         public int PercentComplete { get; set; }
         public string StatusMessage { get; set; } = string.Empty;
         public string? Details { get; set; }
-        public bool IsIndeterminate { get; set; } = false;
+        public bool IsIndeterminate { get; set; }
 
         public ProgressReport(int percent, string message, string? details = null)
         {
@@ -108,7 +108,7 @@ namespace RecoveryCommander.Contracts
     {
         void ReportProgress(int percent, string message);
         void ReportOutput(string output);
-        void ReportError(string error);
+        void ReportError(string message);
         void Report(ProgressReport report);
     }
 

@@ -16,6 +16,12 @@
 ### CI/CD Security
 - **HTTPS Timestamp URL [Finding #2]** — Changed the Authenticode signing timestamp server in `.github/workflows/dotnet-desktop.yml` from `http://timestamp.digicert.com` to `https://timestamp.digicert.com`, eliminating the unencrypted supply-chain vector during code signing.
 
+### CI/CD & Code Quality
+- **Test Integrity Restoration** — Fixed 6 failing unit tests in `SecurityHelpersTests.cs` that were incorrectly failing after the architectural shift to network-layer SSRF protection.
+- **Defense-in-Depth SSRF Validation** — Restored static loopback and private IP validation in `SecurityHelpers.IsValidDownloadUrl` as a fast-fail mechanism complementing the dynamic `SocketsHttpHandler` checks.
+- **Code Analysis Remediation (CA1805)** — Eliminated redundant explicit initializations of boolean members to `false` in `WinREWizards.cs` and `SimpleContracts.cs`.
+- **API Cross-Language Compatibility (CA1716)** — Renamed the `error` parameter in `IProgressReporter.ReportError` to avoid reserved keyword conflicts, ensuring library compatibility with VB.NET and other consumers.
+
 ### Security & Hardening
 - **Content-Security-Policy (CSP) [Finding #1]** — Implemented a strict CSP meta tag in `index.html` to mitigate XSS risks. The policy restricts scripts to `'self'`, styles to `'self'` and Google Fonts, and images to `'self'` and trusted GitHub sources, while disabling dangerous features like `object-src`.
 

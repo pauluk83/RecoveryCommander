@@ -44,9 +44,9 @@ namespace RecoveryCommander.Core
         // Step data
         private string capturedPpkgPath = "";
         private string registeredOemImagePath = "";
-        private bool scanStateCompleted = false;
-        private bool oemRegistrationCompleted = false;
-        private bool useFfuCapture = false;
+        private bool scanStateCompleted;
+        private bool oemRegistrationCompleted;
+        private bool useFfuCapture;
 
         private RadioButton? rbScanState;
         private RadioButton? rbFfu;
