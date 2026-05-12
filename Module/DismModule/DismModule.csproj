@@ -15,7 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DismModule.cs" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Management" Version="10.0.7" />
   </ItemGroup>
   <ItemGroup>
      <ProjectReference Include="..\..\Core\RecoveryCommander.Core.csproj" />
