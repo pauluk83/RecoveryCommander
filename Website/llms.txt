@@ -1,0 +1,32 @@
+# RecoveryCommander
+
+> Professional Windows System Recovery & Maintenance Tool — open-source, modular, Windows 11-styled.
+
+## What it does
+
+RecoveryCommander is a free, open-source desktop application for diagnosing and repairing Windows 10/11 systems. It provides a single dashboard for over 60 system tools organized into pluggable recovery modules.
+
+## Core modules
+
+- **DISM** — CheckHealth, ScanHealth, RestoreHealth, StartComponentCleanup
+- **SFC** — System File Checker with real-time progress
+- **REAgentC** — Windows Recovery Environment configuration
+- **Diagnostics** — Memory diagnostics and disk health checks
+- **Utilities** — Activation tools, network optimization, cleanup (BleachBit, Recuva, UniGetUI, EaseUS Partition Master, and more)
+- **System Prep** — Pre-recovery preparation tasks
+- **Malware Removal** — Integrated scanning and removal tools
+- **Driver Manager** — Driver backup, restore, and update
+- **Cloud Recovery** — Secure cloud-based recovery image downloads
+
+## Technical details
+
+- **Platform**: Windows 10/11 (x64)
+- **Framework**: .NET 10, WinForms with Windows 11 Mica theming
+- **Architecture**: Plugin-based modular system with dynamic module loading
+- **License**: Open source — see GitHub repository
+- **Current version**: 1.2.6
+
+## Links
+
+- GitHub: https://github.com/pauluk83/RecoveryCommander
+- Releases: https://github.com/pauluk83/RecoveryCommander/releases

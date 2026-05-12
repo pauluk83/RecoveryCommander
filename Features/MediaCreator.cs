@@ -108,22 +108,49 @@ namespace RecoveryCommander.Features
             }
         }
 
+        // Cancelled when the host Form closes so MCT downloads don't outlive the dialog.
+        private static CancellationTokenSource? _activeDownloadCts;
+
         private static async Task DownloadAndOfferAsync(string url, string defaultFileName, Form? owner)
         {
+            // Replace any prior in-flight token (close/cancel previous if user re-clicks).
+            try { _activeDownloadCts?.Cancel(); } catch { /* ignore */ }
+            _activeDownloadCts?.Dispose();
+            _activeDownloadCts = new CancellationTokenSource();
+            var ct = _activeDownloadCts.Token;
+
+            FormClosedEventHandler? cancelOnClose = null;
+            if (owner != null)
+            {
+                cancelOnClose = (_, _) => { try { _activeDownloadCts?.Cancel(); } catch { } };
+                owner.FormClosed += cancelOnClose;
+            }
+
             try
             {
                 await CoreUtilities.DownloadAndExecuteAsync(
-                    url: url, 
-                    fileName: defaultFileName, 
-                    allowedExtensions: null, 
-                    progress: null, 
-                    reportOutput: null, 
-                    cancellationToken: CancellationToken.None);
+                    url: url,
+                    fileName: defaultFileName,
+                    allowedExtensions: null,
+                    progress: null,
+                    reportOutput: null,
+                    cancellationToken: ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the host form closes mid-download.
             }
             catch (Exception ex)
             {
                 MessageBox.Show(owner, $"Download/Execute failed: {ex.Message}\nOpening official download page instead.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 OpenUrl(url);
+            }
+            finally
+            {
+                if (owner != null && cancelOnClose != null)
+                {
+                    try { owner.FormClosed -= cancelOnClose; } catch { /* host already disposed */ }
+                }
             }
         }
     }

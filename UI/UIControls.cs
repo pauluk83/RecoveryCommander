@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using RecoveryCommander.Contracts;
@@ -65,11 +66,27 @@ namespace RecoveryCommander.UI
 
         public ModernButton()
         {
-            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | 
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
-            
+
+            // Custom-drawn buttons must opt in to keyboard focus + a visible focus indicator
+            // so users navigating with Tab can see where they are. AccessibleRole.PushButton
+            // is the default for Button, but stating it explicitly documents the intent.
+            SetStyle(ControlStyles.Selectable, true);
+            TabStop = true;
+            AccessibleRole = AccessibleRole.PushButton;
+
             ApplyTheme();
         }
+
+        protected override void OnTextChanged(EventArgs e)
+        {
+            base.OnTextChanged(e);
+            // Use the visible label as the accessible name unless the caller supplied one.
+            if (string.IsNullOrEmpty(AccessibleName)) AccessibleName = Text;
+        }
+
+        protected override bool ShowFocusCues => true;
 
         private void ApplyTheme()
         {
@@ -231,7 +248,28 @@ namespace RecoveryCommander.UI
                 }
             }
 
-            // 5. Draw Text
+            // 5. Draw focus ring when keyboard-focused.
+            // Uses SystemColors.Highlight in high-contrast themes so it remains visible against
+            // any theme palette the user has chosen at the OS level.
+            if (Focused && ShowFocusCues)
+            {
+                Color focusColor = SystemInformation.HighContrast
+                    ? SystemColors.Highlight
+                    : Theme.Colors.Primary;
+                using var focusPen = new Pen(focusColor, 2) { DashStyle = DashStyle.Solid };
+                var focusBounds = new Rectangle(2, 2, Width - 5, Height - 5);
+                if (_cornerRadius > 0)
+                {
+                    using var fp = Theme.GetRoundedRectPath(focusBounds, Math.Max(2, _cornerRadius - 1));
+                    g.DrawPath(focusPen, fp);
+                }
+                else
+                {
+                    g.DrawRectangle(focusPen, focusBounds);
+                }
+            }
+
+            // 6. Draw Text
             if (!string.IsNullOrEmpty(Text))
             {
                 var lines = Text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
@@ -317,6 +355,18 @@ namespace RecoveryCommander.UI
             Invalidate();
         }
 
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            Invalidate();
+        }
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            base.OnLostFocus(e);
+            Invalidate();
+        }
+
         [Browsable(false)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public float HoverProgress
@@ -374,9 +424,12 @@ namespace RecoveryCommander.UI
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
-            
+
             BackColor = Theme.Surface;
             Padding = new Padding(16);
+            // Cards are passive containers; expose them as Pane to screen readers so child
+            // controls remain individually navigable rather than hidden behind a "PushButton".
+            AccessibleRole = AccessibleRole.Pane;
             UpdateRegion();
         }
 
@@ -463,11 +516,12 @@ namespace RecoveryCommander.UI
         {
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                      ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
-            
+
             BackColor = Theme.Surface;
             ForeColor = Theme.Text;
             BorderStyle = BorderStyle.None;
             Padding = new Padding(8, 6, 8, 6);
+            AccessibleRole = AccessibleRole.Text;
             UpdateRegion();
         }
 
@@ -728,11 +782,30 @@ namespace RecoveryCommander.UI
             StartPosition = FormStartPosition.Manual;
             TopMost = true;
             ShowInTaskbar = false;
-            Size = new Size(300, 80);
-            
-            // Position in top-right corner
+            // Scale base size by the OS DPI / text-scaling factor so high-DPI users still see
+            // a readable toast.
+            float scale = Math.Max(1.0f, DeviceDpi / 96f);
+            Size = new Size((int)(300 * scale), (int)(80 * scale));
+
+            // Position in top-right corner of the working area.
             var screenBounds = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
-            Location = new Point(screenBounds.Right - 320, screenBounds.Top + 20);
+            Location = new Point(screenBounds.Right - Size.Width - 20, screenBounds.Top + 20);
+
+            // Accessibility: announce the toast contents to screen readers.
+            AccessibleName = $"Notification: {notification.Title}";
+            AccessibleDescription = notification.Message;
+            AccessibleRole = AccessibleRole.Alert;
+
+            // Esc dismisses the toast.
+            KeyPreview = true;
+            KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
             
             ApplyTheme(notification.Type);
             
@@ -905,27 +978,48 @@ namespace RecoveryCommander.UI
         }
 
         /// <summary>
-        /// Show progress dialog for async operation
+        /// Show a modal progress dialog and run a unit of work, reporting progress back to the dialog.
+        /// The work runs on a background thread; the dialog stays on the UI thread (where ShowDialog requires it).
+        /// Returns true if the work completed; false if cancelled by the user.
         /// </summary>
-        public static async Task<bool> ShowAsync(IProgress<ProgressReport> progress, string title = "Progress")
+        public static async Task<bool> ShowAsync(
+            IWin32Window? owner,
+            Func<IProgress<ProgressReport>, CancellationToken, Task> work,
+            string title = "Progress")
         {
-            using var dialog = new EnhancedProgressDialog();
-            dialog.Text = title;
+            ArgumentNullException.ThrowIfNull(work);
 
-            // Create a simple progress handler
-            var progressHandler = new Progress<ProgressReport>(report =>
+            using var dialog = new EnhancedProgressDialog { Text = title };
+            using var cts = new CancellationTokenSource();
+
+            // Cancel button + form-close cancel the token; the work loop should observe it.
+            dialog._cancelButton.Click += (s, e) => { try { cts.Cancel(); } catch { } };
+            dialog.FormClosing += (s, e) => { try { cts.Cancel(); } catch { } };
+
+            var progress = new Progress<ProgressReport>(r => dialog.UpdateProgress(r.PercentComplete, r.StatusMessage));
+
+            // Kick off the work on a background thread; close the dialog when done.
+            var workTask = Task.Run(async () =>
             {
-                dialog.UpdateProgress(report.PercentComplete, report.StatusMessage);
+                try
+                {
+                    await work(progress, cts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) { /* expected on cancel */ }
+                finally
+                {
+                    if (!dialog.IsDisposed && dialog.IsHandleCreated)
+                    {
+                        try { dialog.BeginInvoke(new Action(() => { if (!dialog.IsDisposed) dialog.Close(); })); }
+                        catch (ObjectDisposedException) { }
+                        catch (InvalidOperationException) { }
+                    }
+                }
             });
 
-            // Subscribe to progress updates
-            if (progress is IProgress<ProgressReport> progressReporter)
-            {
-                // Simulate progress updates - in real implementation this would be wired up differently
-                await Task.Run(() => dialog.ShowDialog());
-            }
-
-            return dialog.DialogResult == DialogResult.OK;
+            dialog.ShowDialog(owner);
+            await workTask.ConfigureAwait(true);
+            return !cts.IsCancellationRequested;
         }
     }
     #endregion

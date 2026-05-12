@@ -79,16 +79,8 @@ namespace RecoveryCommander.Core
                 if (uri.Scheme != Uri.UriSchemeHttps)
                     return false;
                 
-                // Block localhost and private IP ranges (including IPv6)
-                string host = uri.Host.ToLowerInvariant();
-                if (host == "localhost" || 
-                    host == "127.0.0.1" || 
-                    host == "[::1]" ||
-                    host.StartsWith("192.168.") ||
-                    host.StartsWith("10.") ||
-                    host.StartsWith("169.254.") || // Link-local
-                    Regex.IsMatch(host, @"^172\.(1[6-9]|2[0-9]|3[01])\.")) // 172.16.0.0/12
-                    return false;
+                // SSRF protection is now handled at the network layer via SocketsHttpHandler.ConnectCallback
+                // in ServiceContainer.cs to protect against DNS rebinding and IP obfuscation.
                 
                 validUri = uri;
                 return true;
@@ -109,7 +101,7 @@ namespace RecoveryCommander.Core
             
             // Remove potentially dangerous characters that could be used for injection
             // We are more aggressive now: & | ; ` $ ( ) < > \n \r " '
-            var dangerousChars = new[] { '&', '|', ';', '`', '$', '(', ')', '<', '>', '\n', '\r' };
+            var dangerousChars = new[] { '&', '|', ';', '`', '$', '(', ')', '<', '>', '\n', '\r', '"', '\'' };
             var sanitized = arguments;
             
             foreach (var c in dangerousChars)

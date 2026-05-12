@@ -344,7 +344,7 @@ namespace RecoveryCommander.Core
             if (string.IsNullOrWhiteSpace(url)) return "N/A";
             
             // Mask sensitive cloud storage links
-            if (url.Contains("dropbox.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Content Delivery (Dropbox)]";
+            if (url.Contains("dropbox.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Storage]";
             if (url.Contains("drive.google.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Content Delivery (Google Drive)]";
             if (url.Contains("usrfiles.com", StringComparison.OrdinalIgnoreCase)) return "[Secure Content Delivery (Wix)]";
             

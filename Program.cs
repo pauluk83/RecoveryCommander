@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using RecoveryCommander.Forms;
 using RecoveryCommander.UI;
 using RecoveryCommander.Core;
+using RecoveryCommander.Core.Logging;
 
 namespace RecoveryCommander
 {
@@ -29,18 +30,20 @@ namespace RecoveryCommander
             try
             {
                 // Initialize dependency injection container
-                ServiceContainer.Initialize(services => 
+                ServiceContainer.Initialize(services =>
                 {
                     services.AddTransient<MainForm>();
                 });
-                
+
                 // Initialize global exception handling
                 GlobalExceptionHandler.Initialize();
 
                 // Get logger via ILoggerFactory
                 var loggerFactory = ServiceContainer.GetService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RecoveryCommander");
-                logger.LogInformation("Recovery Commander starting up");
+                logger.LogInformation("App startup - Recovery Commander v{Version}, log dir = {LogDir}",
+                    typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+                    AppPaths.LogsDirectory);
 
                 // Enable visual styles
                 Application.EnableVisualStyles();
@@ -70,10 +73,12 @@ namespace RecoveryCommander
                     Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
                 }
                 
+                var logDir = AppPaths.LogsDirectory;
                 MessageBox.Show(
                     "Failed to start Recovery Commander.\n\n" +
                     $"Error: {ex.Message}\n\n" +
-                    "Please check the log files for more details.",
+                    $"Logs are written to:\n{logDir}\n" +
+                    $"(today's file is {Path.GetFileName(AppPaths.CurrentLogFile())}).",
                     "Startup Error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error

@@ -12,7 +12,7 @@ namespace RecoveryCommander.Forms
     {
         private const string README_PATH = @"README.md";
         private const string CHANGELOG_PATH = @"Resources\changelog.md";
-        private const string PROJECT_MANIFEST_PATH = @"Resources\PROJECT_MANIFEST.md";
+        private const string ARCHITECTURAL_NOTES_PATH = @"Resources\ARCHITECTURAL_NOTES.md";
 
         public static IEnumerable<ToolStripItem> BuildMenuItems(Form parent)
         {
@@ -28,35 +28,20 @@ namespace RecoveryCommander.Forms
             toolsMenu.DropDownItems.Add("Startup Manager", null, (s, e) => DialogFactory.ShowStartupManager(host));
             toolsMenu.DropDownItems.Add("Network Repair & Optimization", null, (s, e) => DialogFactory.ShowNetworkOptimizer(host));
             toolsMenu.DropDownItems.Add("Media Tools", null, (s, e) => DialogFactory.ShowMediaTools(host));
-
-            var viewMenu = new ToolStripMenuItem("View");
-            var materialMenu = new ToolStripMenuItem("Material");
-            
-            foreach (Theme.BackdropType type in Enum.GetValues(typeof(Theme.BackdropType)))
-            {
-                var backdropItem = new ToolStripMenuItem(type.ToString()) { Tag = type };
-                backdropItem.Click += (s, e) =>
-                {
-                    Theme.CurrentPreferences.PreferredBackdrop = (Theme.BackdropType)type;
-                    Theme.UpdatePreferences(Theme.CurrentPreferences);
-                    Theme.ApplyBackdropEffect(parent, (Theme.BackdropType)type);
-                };
-                materialMenu.DropDownItems.Add(backdropItem);
-            }
-            viewMenu.DropDownItems.Add(materialMenu);
+            toolsMenu.DropDownItems.Add(new ToolStripSeparator());
+            toolsMenu.DropDownItems.Add("Module Builder", null, (s, e) => DialogFactory.ShowModuleBuilder(host));
 
             var helpMenu = new ToolStripMenuItem("Help");
             helpMenu.DropDownItems.Add("About", null, (s, e) => DialogFactory.ShowAboutDialog(parent));
             helpMenu.DropDownItems.Add("Check for Updates", null, async (s, e) => await AutoUpdateDialog.ShowUpdateDialogAsync(host));
             helpMenu.DropDownItems.Add(new ToolStripSeparator());
             helpMenu.DropDownItems.Add("View README", null, (s, e) => DialogFactory.ShowHelpWindow(host, README_PATH, "README"));
-            helpMenu.DropDownItems.Add("View Project Manifest", null, (s, e) => DialogFactory.ShowHelpWindow(host, PROJECT_MANIFEST_PATH, "Project Manifest"));
+            helpMenu.DropDownItems.Add("View Architectural Notes", null, (s, e) => DialogFactory.ShowHelpWindow(host, ARCHITECTURAL_NOTES_PATH, "Architectural Notes"));
             helpMenu.DropDownItems.Add("View Changelog", null, (s, e) => DialogFactory.ShowHelpWindow(host, CHANGELOG_PATH, "Changelog"));
 
-            ApplyMenuColors(fileMenu, viewMenu, toolsMenu, helpMenu);
+            ApplyMenuColors(fileMenu, toolsMenu, helpMenu);
 
             yield return fileMenu;
-            yield return viewMenu;
             yield return toolsMenu;
             yield return helpMenu;
         }

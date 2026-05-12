@@ -1,96 +1,105 @@
-# RecoveryCommander – Architectural & Design Notes
+# RecoveryCommander — Architectural & Design Notes
 
-## 🧱 Code Structure & Workflow
-Recovery Commander (now **Win Recovery**) avoids auto-generated designers and keeps everything explicit:
-- **Designer-Free UI** – No `.Designer.cs` or `InitializeComponent()`. Layouts and controls are all written directly in code.
-- **Modular Execution** – Each module implements the built-in `IModule` interface and can be injected into the UI with `InjectModuleUI(Control)`.
-- **Audit & Change Tracking** – Every source file carries a permanent audit header and changelog block, with updates also mirrored into the project-wide `changelog.md`.
-- **Whole File Responses** – All deliverables are full, error-checked files that can be pasted and run immediately. No partial snippets, no inline commentary.
-- **Embedded Shared Types** – Interfaces and enums like `IModule` and `Theme` live inside `MainForm.cs`, avoiding extra dependency files.
-- **Archive Handling** – All code must be checked, optimized, and cleaned of redundancy. Deprecated or unused code is moved into the `\Archive` folder. This folder is ignored during builds and debugging sessions.
-- **Module Data & UI Control** – Each module manages only its own data (commands, metadata, build info). The main app owns and renders the central layout and UI elements. Once the UI structure is in place, modules simply define which commands run when their associated buttons are clicked.
-- **Default Modules** – Present commands as Windows 11–styled buttons in the Module Action Pane.
-- **System Prep Module (Special Case)** – Displays commands as tickboxes (auto-selected by default) in two columns:
-    - Maintenance (header, no tickboxes)
-    - Optimizations (header, no tickboxes)
-    - Includes two control buttons: **Untick All** and **Run Selected**
+Professional Windows System Recovery and Maintenance Tool.
 
 ---
 
-## 🎨 UI & UX Design
-The app should feel like it belongs in Windows 11:
-- **Look & Feel** – Rounded corners, fluent spacing, Segoe UI font, Mica background. High DPI and accessibility are non-negotiable.
-- **Main Window** – Launches maximized, with Minimize/Maximize/Close controls, and auto-elevates to admin rights.
-- **Menus**
+## 🧱 Core Principles & Workflow
+
+RecoveryCommander follows a strict philosophy of explicit control and modularity:
+
+- **Designer-Free UI**: Avoids auto-generated `.Designer.cs` files. All layouts, controls, and event bindings are written directly in C# for maximum transparency and precise control.
+- **Plugin Architecture**: Each module implements the `IRecoveryModule` contract. The application dynamically discovers and loads these modules via reflection at runtime.
+- **Audit-First Development**: Every source file carries a permanent audit header and changelog block. Changes are mirrored in the project-wide `changelog.md` to maintain a perfect traceability trail.
+- **Clean Code & Archive Management**: Redundant or deprecated code is aggressively purged or moved to the `\Archive` folder (ignored during builds) to ensure zero-waste deployments.
+- **High-Performance Backgrounding**: All recovery operations run on background threads with safe progress callbacks, ensuring the UI remains responsive even during heavy system repairs.
+
+---
+
+## 🔐 Download Supply-Chain Policy (v1.2.6)
+
+All third-party tool downloads are governed by a central catalog:
+
+- **Single source of truth**: `Core/DownloadCatalog.cs` contains canonical IDs, URLs, output filenames, vendor/version metadata, and optional SHA-256 values.
+- **HTTPS required**: URLs must be HTTPS; insecure or local/private targets are rejected by `SecurityHelpers`.
+- **Hash verification path**: `DownloadCatalog.DownloadVerifiedAsync(...)` verifies SHA-256 whenever a catalog entry has `Sha256`.
+- **No silent trust gaps**: if an entry has no hash yet, runtime emits a clear `[supply-chain] WARN` message before download/execute.
+- **Update rule**: when bumping a pinned binary, update `Version` and `Sha256` together in the catalog (never change URL only).
+
+This policy lets the app remain operational today while steadily moving every binary to cryptographic pinning.
+
+---
+
+## 🎨 UI & UX Design Language
+
+The application is built to feel native to **Windows 11**:
+
+- **Aesthetics**: Rounded corners, fluent spacing, and consistent dark/light mode theming based on the **Mica** design system.
+- **Typography**: Uses **Inter** and **Outfit** typefaces for high readability.
+- **Main Interface**:
+    - **Sidebar**: Lists available recovery modules with metadata (Build Date/Version).
+    - **Action Pane**: Dynamically populates with buttons or checkboxes based on the selected module.
+    - **Output Log**: A native, interactive `RichTextBox` for real-time command feedback with full text selection and clipboard support.
+- **Standard Menus**:
     - **File** → Exit
-    - **Help** → About – shows build date, author (**Zane Stanton**), and license message.
-    - **Help** → ChangeLog – opens a window showing `changelog.md` from `\Resources`.
-    - **Help** → Readme – opens a window showing `README.md` from `\Resources`.
-- **Theming** – Native Windows 11 dark mode applied consistently across all controls.
-- **App Icon** – Stored as `system_restore.ico` in `\Resources`.
-- **Blueprint Alignment** – The UI layout must follow the provided screenshots as a blueprint.
+    - **Help** → **About**: Displays version info, author (**Zane Stanton**), and licensing.
+    - **Help** → **Changelog**: Opens the interactive Markdown changelog viewer.
+    - **Help** → **README**: Opens the comprehensive project documentation.
 
 ---
 
 ## 🖼️ Layout Blueprint (ASCII)
+
 ```text
 +------------------------------------------------------------------+
-|                        [ Title Bar ]                             |
-|  [ Menu Bar ]                                                    |
+| [ Menu: File  Help ]                                 [ _ ] [ □ ] [ X ] |
 +------------------------------------------------------------------+
-|  Module Pane (Vertical)    |  Module Action Pane (Vertical)      |
-|  ------------------------  |  --------------------------------   |
-|  [ Module A ]  build: 01/01|  (Default Module Commands)          |
-|  [ Module B ]  build: 02/01|  [ Button 1: Run Command A ]        |
-|  [ Module C ]  build: 03/01|  [ Button 2: Run Command B ]        |
-|  [ System Prep ] build: 04/01|  [ Button 3: Run Command C ]      |
-|  [ Module D ]  build: 05/01|  (System Prep Module – Special)     |
-|  [ Module E ]  build: 06/01|  Maintenance       Optimizations     |
-|  [ Module F ]  build: 07/01|  [✓] Option 1      [✓] Option 2         |
-|  [ Module G ]  build: 08/01|  [✓] Option 3      [✓] Option 4         |
-|  [ Module H ]  build: 09/01|  [✓] Option 5      [✓] Option 6         |
-|  [ Module I ]  build: 10/01|  [ Untick All ]    [ Run Selected ]     |
-|  [ Module J ]  build: 11/01|                                     |
+|  MODULES (Sidebar)         |  ACTIONS (Dynamic Pane)             |
+|  ------------------------  |  ---------------------------------  |
+|  [ Cloud Recovery ]        |  (Standard Module Actions)          |
+|  [ Diagnostics    ]        |  [ > Run Action A ]  [ > Run Action B ] |
+|  [ DISM Operations]        |  [ > Run Action C ]  [ > Run Action D ] |
+|  [ Driver Manager ]        |                                     |
+|  [ Malware Removal]        |  (Special: System Prep Layout)      |
+|  [ REAgentC       ]        |  Maintenance       Optimizations    |
+|  [ SFC Verification]       |  [✓] Task 1        [✓] Task 2       |
+|  [ System Prep    ]        |  [✓] Task 3        [✓] Task 4       |
+|  [ Utilities      ]        |  [ Untick All ]    [ Run Selected ] |
+|                            |                                     |
 +------------------------------------------------------------------+
-|       [ Live Output Log (auto-scrolling multi-line textbox) ]    |
+|  LIVE OUTPUT CONSOLE (Interactive RichText Feed)                 |
+|  > Processing system health check...                             |
+|  > Done. [Secure Content Delivery] masked.                       |
+|                                                                  |
 +------------------------------------------------------------------+
-|   [ Progress Bar ----------------------------------] [ Cancel ]  |
+|  [ Progress Bar: 75% ----------------------------]  [ Cancel ]   |
 +------------------------------------------------------------------+
-|                   [ Status Bar – real-time info ]                |
+|  STATUS: Connected | CPU: 12% | RAM: 4.2GB | Ver: 1.2.6          |
 +------------------------------------------------------------------+
 ```
 
 ---
 
-## 🔑 Notes
-- **Module Pane (Vertical)** – Lists modules with Name + Build Date. Selecting a module populates the Module Action Pane.
-- **Module Action Pane (Vertical)**
-    - **Default Modules**: Buttons mapped to commands in runtime.dll.
-    - **System Prep Module**: Tickboxes under two columns (Maintenance and Optimizations), headers never have tickboxes. Two control buttons: Untick All and Run Selected.
-- **Live Output Log**: Streams real-time command output; auto-scrolls.
-- **Progress Bar + Cancel Button**: Progress bar extends up to the Cancel button for continuous visual feedback.
-- **Status Bar**: Displays real-time module and execution info.
+## 🛠️ Technical Specifications
 
----
-
-## ⚙️ Runtime Behavior
-- **Command Execution** – Outputs stream live into the log box; progress bar shows execution state. Cancel safely aborts tasks.
-- **Centralized Logging** – All logs are timestamped and funneled through `Log(string message)`.
-- **Error Handling** – Every public method uses try-catch. Failures are logged, never ignored.
-- **Modules** – Auto-discovered from DLLs in the specific module folders.
-- **Archive Safety** – Code in `\Archive` is ignored for builds and debugging; reference only.
+- **Runtime**: .NET 9.0 (Windows Forms)
+- **Host**: Secure Storage Direct-Download Infrastructure (for secure, high-speed resource delivery)
+- **Theming Engine**: Dynamic Registry-based theme detection with live-switching support.
+- **Downloader**: Resilient, async-based system with security challenge detection and path sanitization.
+- **Security**: 
+    - **ZipSlip Protection**: Post-extraction path validation.
+    - **Shell Injection Hardening**: Direct process execution without shell expansion.
+    - **Privacy Masking**: Real-time scrubbing of sensitive infrastructure IDs from logs.
 
 ---
 
 ## 🔒 Development Philosophy
-- **No Regression** – Updates build cumulatively; nothing removed or downgraded.
-- **Extensibility** – Patterns support long-term maintainability.
-- **Rapid Iteration** – Modular injection enables fast prototyping.
-- **Accessibility & Auditability** – Controls and modules are traceable and compliant.
-- **Autonomous Operation** – Runs without repeated prompting.
-- **Persistent Memory** – All requests, changes, and project decisions are remembered:
-    - Every file carries audit/change markers.
-    - `changelog.md` is auto-updated.
-    - Local logging supports continuity and prevents repeated instructions.
 
+- **No Regression**: Updates are cumulative; features are optimized, never removed without a replacement.
+- **Autonomous Recovery**: Designed to run as a standalone toolkit with minimal external dependencies.
+- **Transparency**: Open Source architecture allowing for deep auditing of all recovery mechanisms.
+- **Rapid Prototyping**: Modular system allows for adding new recovery modules in minutes via the `ModuleBuilder` tool.
 
+---
+
+**RecoveryCommander** — *The Ultimate Windows System Repair Infrastructure*

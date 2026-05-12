@@ -32,14 +32,30 @@ namespace RecoveryCommander.Module
 
         private Task ExecuteCloudResetAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            // Honor cancellation up front - if the user cancelled before the dialog opened we
+            // shouldn't even prompt for the destructive action.
+            if (cancellationToken.IsCancellationRequested)
+            {
+                progress.Report(new ProgressReport(100, "Cancelled"));
+                return Task.CompletedTask;
+            }
+
             var result = MessageBox.Show("This will restart your computer and begin the Windows Cloud Reset process. This is a DESTRUCTIVE action. Continue?",
                 "Cloud Reset", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                progress.Report(new ProgressReport(100, "Cancelled"));
+                return Task.CompletedTask;
+            }
 
             if (result == DialogResult.Yes)
             {
                 progress.Report(new ProgressReport(50, "Launching systemreset..."));
                 reportOutput?.Invoke("> systemreset -cleanpc");
-                // Note: -cleanpc triggers the "Fresh Start" / Cloud Reset flow in modern Windows
+                // -cleanpc triggers the "Fresh Start" / Cloud Reset flow in modern Windows.
+                // ShellExecute is required so the OS can elevate; arguments are constant so
+                // there's no shell-injection surface here.
                 Process.Start(new ProcessStartInfo("systemreset.exe", "-cleanpc") { UseShellExecute = true });
                 progress.Report(new ProgressReport(100, "Windows Reset Wizard launched."));
             }

@@ -30,6 +30,8 @@ namespace RecoveryCommander.Forms
         private CheckBox includeDrivers;
         private Label driveInfoLabel;
         private DriverService _driverService = new();
+        // Cancelled when the form closes so any in-flight long operations bail out cleanly.
+        private readonly CancellationTokenSource _formCts = new();
 
         public BootMediaCreator()
         {
@@ -40,6 +42,14 @@ namespace RecoveryCommander.Forms
             MinimizeBox = true;
             MaximizeBox = true;
             AutoScroll = true;
+
+            // Closing the form cancels any in-flight driver/copy operations so they don't
+            // leak into the UI thread or hold file handles open.
+            FormClosed += (_, _) =>
+            {
+                try { _formCts.Cancel(); } catch { /* already cancelled */ }
+                _formCts.Dispose();
+            };
 
             // Simple panel with absolute positioning
             var mainPanel = new Panel 
@@ -291,7 +301,7 @@ namespace RecoveryCommander.Forms
                     Directory.CreateDirectory(driverPath);
                     
                     var progress = new Progress<ProgressReport>(report => LogMessage($"{report.PercentComplete}%: {report.StatusMessage}"));
-                    await _driverService.BackupDriversAsync(driverPath, progress, msg => LogMessage(msg), CancellationToken.None);
+                    await _driverService.BackupDriversAsync(driverPath, progress, msg => LogMessage(msg), _formCts.Token);
                 }
                 
                 // Create boot configuration

@@ -8,7 +8,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <AssemblyName>SFCModule</AssemblyName>
     <RootNamespace>RecoveryCommander.Module</RootNamespace>
-    <Version>1.2.5</Version>
+    <Version>1.2.6</Version>
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\SFCModule\</OutputPath>
     <DebugType>embedded</DebugType>
   </PropertyGroup>

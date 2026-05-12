@@ -39,13 +39,30 @@ namespace RecoveryCommander.Core.Services
             progress.Report(new ProgressReport(100, "Driver restoration complete."));
         }
 
+        public async Task EnumerateDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress.Report(new ProgressReport(20, "Enumerating installed third-party drivers..."));
+            reportOutput?.Invoke("> pnputil.exe /enum-drivers");
+
+            var psi = CoreUtilities.CreateProcessInfo("pnputil.exe", "/enum-drivers");
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput ?? (_ => { }), null, cancellationToken);
+
+            progress.Report(new ProgressReport(100, "Driver enumeration complete."));
+        }
+
         public async Task OptimizeDriverStoreAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            progress.Report(new ProgressReport(20, "Optimizing driver store (removing old drivers)..."));
-            // This is complex to automate safely via pnputil /delete-driver, 
-            // but we can at least trigger a cleanup info scan.
+            // Safely automated cleanup via pnputil /delete-driver requires reasoning about
+            // currently-bound devices, so for now we surface a scan + a clear notice.
+            progress.Report(new ProgressReport(20, "Scanning driver store..."));
+            reportOutput?.Invoke("Driver store cleanup is currently informational. Removing redundant drivers safely requires");
+            reportOutput?.Invoke("verifying each driver is no longer bound to active hardware. Listing installed drivers below:");
+            reportOutput?.Invoke("> pnputil.exe /enum-drivers");
+
             var psi = CoreUtilities.CreateProcessInfo("pnputil.exe", "/enum-drivers");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput ?? (_ => { }), null, cancellationToken);
+
+            progress.Report(new ProgressReport(100, "Driver store scan complete."));
         }
     }
 }

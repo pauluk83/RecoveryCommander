@@ -150,6 +150,7 @@ namespace RecoveryCommander.Features
 
             Theme.ApplyFormStyle(this);
             Theme.ApplyTheme(this);
+            Theme.ApplyMicaEffect(this);
         }
 
         private GroupBox CreateGroupBox(string title, int height)

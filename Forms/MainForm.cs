@@ -1,5 +1,15 @@
-// MainForm.cs - Primary UI form for Recovery Commander
-// Implements the main application window with module display and navigation
+/*
+ * AUDIT HEADER
+ * File: MainForm.cs
+ * Module: Core UI
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial implementation of the modern Windows 11-styled UI.
+ * 2026-04-22 - 1.1.0 - Added background job management and multi-threaded execution support.
+ * 2026-04-28 - 1.2.6 - Updated build version and synchronized project references.
+ */
 
 using System;
 using System.Diagnostics;
@@ -157,6 +167,8 @@ namespace RecoveryCommander.Forms
             // Initial layout adjustment
             MainForm_Resize(this, EventArgs.Empty);
         }
+
+
 
         public void MainForm_Load(object? sender, EventArgs e)
         {
@@ -1314,17 +1326,67 @@ namespace RecoveryCommander.Forms
                     return 1;
                 }).ThenBy(m => m.Name).ToList();
 
-                // Clear and add in correct order (FlowLayoutPanel index 0 is TOP)
-                moduleButtonsPanel.Controls.Clear();
-                ShowOutput($"[DEBUG] Building module buttons for {loadedModules.Count} modules (Diagnostics should be @ index 0)...");
-                
-                for (int i = 0; i < loadedModules.Count; i++)
+                // Group modules by category for clear navigation hierarchy
+                var categories = new Dictionary<string, List<IRecoveryModule>>
                 {
-                    var module = loadedModules[i];
-                    var moduleButton = CreateModuleButton(module);
-                    moduleButtonsPanel.Controls.Add(moduleButton);
-                    moduleButtonsPanel.Controls.SetChildIndex(moduleButton, i);
-                    ShowOutput($"[DEBUG] Added button {i}: '{module.Name}'");
+                    { "Core Repair", new List<IRecoveryModule>() },
+                    { "Optimization", new List<IRecoveryModule>() },
+                    { "Security", new List<IRecoveryModule>() },
+                    { "Custom", new List<IRecoveryModule>() }
+                };
+
+                foreach (var module in loadedModules)
+                {
+                    string name = module.Name.Trim();
+                    if (name.Equals("Diagnostics", StringComparison.OrdinalIgnoreCase) || 
+                        name.Equals("SFC", StringComparison.OrdinalIgnoreCase) || 
+                        name.Equals("DISM", StringComparison.OrdinalIgnoreCase) || 
+                        name.Equals("Reagentc", StringComparison.OrdinalIgnoreCase))
+                        categories["Core Repair"].Add(module);
+                    else if (name.Equals("Utilities", StringComparison.OrdinalIgnoreCase) || 
+                             name.Equals("System Prep", StringComparison.OrdinalIgnoreCase))
+                        categories["Optimization"].Add(module);
+                    else if (name.Equals("Malware Removal", StringComparison.OrdinalIgnoreCase) || 
+                             name.Equals("Cloud Recovery", StringComparison.OrdinalIgnoreCase))
+                        categories["Security"].Add(module);
+                    else
+                        categories["Custom"].Add(module);
+                }
+
+                // Clear and add in correct grouped order (FlowLayoutPanel index 0 is TOP)
+                moduleButtonsPanel.Controls.Clear();
+                int controlIndex = 0;
+                
+                // Rebuild loadedModules linearly based on categories to maintain navigation logic
+                loadedModules.Clear();
+
+                foreach (var category in categories)
+                {
+                    if (category.Value.Count == 0) continue;
+
+                    var headerLabel = new Label
+                    {
+                        Text = category.Key.ToUpper(),
+                        Font = Theme.Typography.Caption,
+                        ForeColor = Color.Gray,
+                        AutoSize = false,
+                        Width = moduleButtonsPanel.ClientSize.Width > 0 ? moduleButtonsPanel.ClientSize.Width - 20 : 200,
+                        Height = 24,
+                        TextAlign = ContentAlignment.BottomLeft,
+                        Margin = new Padding(0, 10, 0, 4)
+                    };
+
+                    moduleButtonsPanel.Controls.Add(headerLabel);
+                    moduleButtonsPanel.Controls.SetChildIndex(headerLabel, controlIndex++);
+
+                    foreach (var module in category.Value)
+                    {
+                        loadedModules.Add(module);
+                        var moduleButton = CreateModuleButton(module);
+                        moduleButtonsPanel.Controls.Add(moduleButton);
+                        moduleButtonsPanel.Controls.SetChildIndex(moduleButton, controlIndex++);
+                        System.Diagnostics.Debug.WriteLine($"[ModuleLoader] Added button {controlIndex-1}: '{module.Name}' in '{category.Key}'");
+                    }
                 }
 
                 // Ensure panels and sidebar are visible
@@ -1633,15 +1695,14 @@ namespace RecoveryCommander.Forms
                 var mainLayout = new TableLayoutPanel
                 {
                     Dock = DockStyle.Fill,
-                    ColumnCount = 2,
+                    ColumnCount = 1,
                     RowCount = 1,
                     BackColor = Color.Transparent,
                     Padding = new Padding(15)
                 };
-                mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70f)); // Actions
-                mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30f)); // Info pane
+                mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f)); // Actions
 
-                // Left side: Actions Grid (Optimized for 3 columns)
+                // Actions Grid
                 var actionsPanelFlow = new FlowLayoutPanel 
                 { 
                     Dock = DockStyle.Fill,
@@ -1653,78 +1714,16 @@ namespace RecoveryCommander.Forms
                     AutoScroll = false
                 };
                 
-                // Use a standard panel instead of DarkFlowLayoutPanel for more predictable layout in Diagnostics
                 foreach (var action in module.Actions)
                 {
                     if (action.IsHeader) continue;
                     var tile = CreateActionTile(module, action, null);
-                    tile.Width = 280; // Reliable 3-column width for 70% of 1500px
-                    tile.Height = 48; // Shorter to save vertical space
+                    tile.Width = 280; 
+                    tile.Height = 48; 
                     actionsPanelFlow.Controls.Add(tile);
                 }
                 
                 mainLayout.Controls.Add(actionsPanelFlow, 0, 0);
-
-                // Right side: "What this toolkit checks" info pane
-                var infoPane = new Panel 
-                { 
-                    Dock = DockStyle.Fill, 
-                    Padding = new Padding(15), 
-                    BackColor = Color.FromArgb(20, Theme.Colors.Primary), 
-                    Margin = new Padding(10, 0, 0, 0) 
-                };
-                infoPane.Paint += (s, e) => {
-                    ProfessionalDesignSystem.DrawProfessionalCard(e.Graphics, infoPane.ClientRectangle, 12);
-                };
-
-                var infoTitle = new Label {
-                    Text = "WHAT THIS TOOLKIT CHECKS",
-                    Dock = DockStyle.Top,
-                    Height = 35,
-                    Font = Theme.Typography.Header,
-                    ForeColor = Theme.Colors.Primary,
-                    TextAlign = ContentAlignment.MiddleLeft,
-                    Margin = new Padding(0, 0, 0, 10)
-                };
-
-                var checklist = new FlowLayoutPanel 
-                { 
-                    Dock = DockStyle.Fill, 
-                    FlowDirection = FlowDirection.TopDown, 
-                    AutoScroll = false,
-                    WrapContents = false,
-                    BackColor = Color.Transparent
-                };
-                
-                string[] checks = { 
-                    "✓ System hardware info", 
-                    "✓ CPU & Processor details", 
-                    "✓ RAM modules & speed", 
-                    "✓ Disk health (SMART)", 
-                    "✓ Free storage space", 
-                    "✓ Network configuration", 
-                    "✓ Active connections", 
-                    "✓ Startup programs", 
-                    "✓ Running processes", 
-                    "✓ System integrity" 
-                };
-
-                foreach (var check in checks)
-                {
-                    var checkLabel = new Label { 
-                        Text = check, 
-                        AutoSize = true, 
-                        Font = new Font(Theme.Typography.DefaultFontFamily, 10f), 
-                        ForeColor = Theme.Colors.Text,
-                        Margin = new Padding(0, 3, 0, 3)
-                    };
-                    checklist.Controls.Add(checkLabel);
-                }
-
-                infoPane.Controls.Add(checklist);
-                infoPane.Controls.Add(infoTitle);
-                mainLayout.Controls.Add(infoPane, 1, 0);
-
                 actionContainer.Controls.Add(mainLayout);
                 return actionContainer;
             }
@@ -1736,6 +1735,24 @@ namespace RecoveryCommander.Forms
             actionsPanelFlowDefault.Padding = new Padding(8);
             actionsPanelFlowDefault.Margin = new Padding(0);
             Theme.ApplyPanelStyle(actionsPanelFlowDefault);
+
+            // Responsive fluid grid layout implementation
+            actionsPanelFlowDefault.Resize += (s, e) => {
+                int baseWidth = module.Name == "Utilities" ? 285 : 340;
+                int margins = 16; // Standard margin applied in CreateActionTile
+                int availableWidth = actionsPanelFlowDefault.ClientSize.Width - 16; // - padding
+                
+                if (availableWidth > 0)
+                {
+                    int columns = Math.Max(1, availableWidth / (baseWidth + margins));
+                    int dynamicWidth = (availableWidth / columns) - margins - 2; // -2 for calculation safety
+                    
+                    foreach (Control c in actionsPanelFlowDefault.Controls)
+                    {
+                        c.Width = dynamicWidth;
+                    }
+                }
+            };
 
             BuildAndAddActionTiles(module, actionsPanelFlowDefault, null);
             actionContainer.Controls.Add(actionsPanelFlowDefault);
@@ -1768,11 +1785,12 @@ namespace RecoveryCommander.Forms
         private Panel CreateActionTile(IRecoveryModule module, ModuleAction action, ModernButton? runSelectedButton)
         {
             bool isSystemPrepModule = module.Name == "System Prep";
+            bool isUtilitiesModule = module.Name == "Utilities";
             
             var tile = new Panel
             {
-                Width = 340,
-                Height = 64,
+                Width = isUtilitiesModule ? 285 : 340,
+                Height = isUtilitiesModule ? 60 : 64,
                 Margin = new Padding(ProfessionalDesignSystem.Spacing.SM),
                 Padding = ProfessionalDesignSystem.Spacing.Standard,
                 BackColor = Theme.IsModernTheme ? Theme.Colors.SurfaceVariant : Color.FromArgb(30, 30, 40),
@@ -1849,16 +1867,40 @@ namespace RecoveryCommander.Forms
                 Theme.Animator.Animate(tile, "Top", tile.Top + 2, 200, Theme.Animator.EasingFunction.CubicOut);
             };
 
-            void HandleTileInteraction()
+            async Task HandleTileInteractionAsync()
             {
-                if (!isOperationRunning)
+                if (isOperationRunning) return;
+                
+                string originalIcon = iconLabel.Text;
+                Color originalColor = iconLabel.ForeColor;
+                
+                try
                 {
-                    _ = ExecuteActionSafelyAsync(module, action);
+                    // Immediate visual feedback (Micro-interaction)
+                    iconLabel.Text = "⌛";
+                    iconLabel.ForeColor = Theme.Colors.Warning;
+                    tile.Refresh(); // Force immediate synchronous repaint so the user sees it instantly
+                    
+                    await ExecuteActionSafelyAsync(module, action);
+                }
+                catch (Exception ex)
+                {
+                    // ExecuteActionSafelyAsync already handles user-facing errors internally,
+                    // but we keep a defensive catch here so an unexpected fault never bubbles
+                    // out of an async-void Click handler and crashes the app.
+                    System.Diagnostics.Debug.WriteLine($"[MainForm] Action tile click failed: {ex}");
+                }
+                finally
+                {
+                    // Always restore the original icon state when the task completes
+                    iconLabel.Text = originalIcon;
+                    iconLabel.ForeColor = originalColor;
+                    tile.Invalidate();
                 }
             }
 
-            tile.Click += (s, e) => HandleTileInteraction();
-            title.Click += (s, e) => HandleTileInteraction();
+            tile.Click += async (s, e) => await HandleTileInteractionAsync();
+            title.Click += async (s, e) => await HandleTileInteractionAsync();
 
             return tile;
         }
@@ -2187,13 +2229,13 @@ namespace RecoveryCommander.Forms
                     if (progressReadoutLabel != null)
                     {
                         progressReadoutLabel.Text = statusText;
-                        progressReadoutLabel.Refresh();
+                        progressReadoutLabel.Invalidate();
                     }
                 }
 
-                // Force immediate visual update to overcome any message queue lag
+                // Request a repaint; the natural paint cycle (and the 250ms refresh loop)
+                // delivers updates without forcing a synchronous paint, which can stall the UI thread.
                 progressBar.Invalidate();
-                progressBar.Update();
                 
                 // If we're at a high percentage, ensure busy overlay is updated
                 if (progressBar.Value > 5)
@@ -2329,12 +2371,6 @@ namespace RecoveryCommander.Forms
             }
             
             stepIndicatorsPanel.Visible = total > 1;
-        }
-
-        private void ExecuteActionSafely(IRecoveryModule module, ModuleAction action)
-        {
-            // Use the async version but run it synchronously for backward compatibility
-            _ = ExecuteActionSafelyAsync(module, action);
         }
 
         private async Task ExecuteActionSafelyAsync(IRecoveryModule module, ModuleAction action)
@@ -2771,10 +2807,39 @@ namespace RecoveryCommander.Forms
         {
             if (disposing)
             {
-                // Unsubscribe from events to prevent memory leaks
+                // Unsubscribe from events to prevent memory leaks.
                 this.Resize -= MainForm_Resize;
                 this.ResizeEnd -= MainForm_ResizeEnd;
-                
+
+                // Stop the UI refresh loop and any new background work BEFORE awaiting outstanding tasks.
+                isOperationRunning = false;
+
+                // Cancel and (briefly) await any in-flight module action so we don't tear the
+                // form down while a background task still holds a reference to a soon-to-be-disposed handle.
+                try
+                {
+                    if (cancellationTokenSource is { IsCancellationRequested: false } cts)
+                    {
+                        try { cts.Cancel(); } catch { /* already cancelled */ }
+                    }
+
+                    // Snapshot the active jobs before awaiting so we don't hold the dict during await.
+                    var jobs = activeJobs.Values.Where(j => j.ExecutionTask != null && !j.ExecutionTask.IsCompleted)
+                                                .Select(j => j.ExecutionTask!)
+                                                .ToArray();
+                    if (jobs.Length > 0)
+                    {
+                        // Wait at most 1.5s for cooperative cancellation to take effect; we cannot
+                        // block the UI thread forever here.
+                        Task.WaitAll(jobs, TimeSpan.FromMilliseconds(1500));
+                    }
+                }
+                catch (AggregateException) { /* expected when tasks throw on cancel */ }
+                catch { /* defensive: never let Dispose throw */ }
+
+                cancellationTokenSource?.Dispose();
+                cancellationTokenSource = null;
+
                 // Dispose enhanced systems
                 enhancedProgressSystem?.Dispose();
                 if (themeChangedHandler != null)
@@ -2787,98 +2852,15 @@ namespace RecoveryCommander.Forms
                     Theme.OnThemePreferencesChanged -= themePreferencesChangedHandler;
                     themePreferencesChangedHandler = null;
                 }
-                
-                // Dispose other resources
-                // Clean up loops
-                isOperationRunning = false;
-                
-                // Clear collections to help GC
+
+                // Clear collections to help GC.
                 outputHistory?.Clear();
                 selectedActions?.Clear();
                 stepIndicatorPanels?.Clear();
+                activeJobs.Clear();
             }
             base.Dispose(disposing);
         }
         
     } // End of MainForm class
-
-    // MenuRenderer for Windows 11 style
-    internal class Windows11MenuRenderer : ToolStripProfessionalRenderer
-    {
-        public Windows11MenuRenderer() : base(new Windows11ColorTable()) { }
-        
-        protected override void OnRenderButtonBackground(ToolStripItemRenderEventArgs e)
-        {
-            if (e.Item.Selected || e.Item.Pressed)
-            {
-                Rectangle rect = new Rectangle(0, 0, e.Item.Width - 1, e.Item.Height - 1);
-                using (GraphicsPath path = GetRoundedRect(rect, 4))
-                {
-                    using (SolidBrush brush = new SolidBrush(e.Item.Pressed ? Theme.Colors.Primary : Color.FromArgb(30, Theme.Colors.Primary)))
-                    {
-                        e.Graphics.FillPath(brush, path);
-                    }
-                }
-            }
-            else
-            {
-                base.OnRenderButtonBackground(e);
-            }
-        }
-
-        private static GraphicsPath GetRoundedRect(Rectangle bounds, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            path.AddArc(bounds.X, bounds.Y, radius * 2, radius * 2, 180, 90);
-            path.AddArc(bounds.Right - radius * 2, bounds.Y, radius * 2, radius * 2, 270, 90);
-            path.AddArc(bounds.Right - radius * 2, bounds.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
-            path.CloseFigure();
-            return path;
-        }
-    }
-
-    // Color table for Windows 11 style menu
-    internal class Windows11ColorTable : ProfessionalColorTable
-    {
-        public override Color ToolStripGradientBegin => Theme.Colors.Background;
-        public override Color ToolStripGradientMiddle => Theme.Colors.Background;
-        public override Color ToolStripGradientEnd => Theme.Colors.Background;
-        public override Color ToolStripBorder => Theme.Colors.Border;
-        public override Color ButtonSelectedBorder => Theme.Colors.Primary;
-        public override Color ButtonSelectedHighlight => Theme.Colors.Primary;
-        public override Color ButtonSelectedGradientBegin => Color.FromArgb(30, Theme.Colors.Primary);
-        public override Color ButtonSelectedGradientMiddle => Color.FromArgb(30, Theme.Colors.Primary);
-        public override Color ButtonSelectedGradientEnd => Color.FromArgb(30, Theme.Colors.Primary);
-    }
-
-    public class DirectUIProgress<T> : IProgress<T>
-    {
-        private readonly Action<T> _handler;
-        private readonly Control _syncRoot;
-
-        public DirectUIProgress(Control syncRoot, Action<T> handler)
-        {
-            _syncRoot = syncRoot;
-            _handler = handler;
-        }
-
-        public void Report(T value)
-        {
-            if (_syncRoot.IsDisposed || !_syncRoot.IsHandleCreated) return;
-
-            try
-            {
-                if (_syncRoot.InvokeRequired)
-                {
-                    _syncRoot.BeginInvoke(new Action<T>(_handler), value);
-                }
-                else
-                {
-                    _handler(value);
-                }
-            }
-            catch { /* Ignore context-specific failures during shutdown */ }
-        }
-    }
 }

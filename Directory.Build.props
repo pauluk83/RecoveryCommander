@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    Repo-wide build defaults for RecoveryCommander.
+    Introduced in v1.3.0 to give every project a single source of truth for analyzers,
+    nullable, language version, and warnings policy.
+
+    NOTE: TreatWarningsAsErrors is intentionally OFF for now while the repo migrates to
+    a clean analyzer baseline. Flip it on once the warning count is at zero, OR enable
+    per-project once a project is clean.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Analyzer rollout (advisory mode for v1.3.0). -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+
+    <!--
+      Warning policy:
+      - WarningLevel 9 surfaces the strictest C# diagnostics.
+      - We do NOT promote warnings to errors yet; doing so requires a clean baseline first.
+      - When ready to flip the switch, set TreatWarningsAsErrors=true here and review the
+        WarningsNotAsErrors list below for warnings that should remain advisory.
+    -->
+    <WarningLevel>9</WarningLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>CS1591;NU1701;CA1416</WarningsNotAsErrors>
+
+    <!-- Determinism / reproducible builds (CI-friendly). -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true' or '$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+</Project>

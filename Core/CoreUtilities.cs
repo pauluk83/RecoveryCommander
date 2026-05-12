@@ -186,6 +186,22 @@ namespace RecoveryCommander.Core
         #endregion
 
         #region Process Management
+
+        /// <summary>
+        /// Launches a process via ShellExecute (the OS shell parses the args).
+        /// <para>
+        /// SECURITY: <c>UseShellExecute = true</c> is intentional here so we can request
+        /// elevation through <c>Verb = "runas"</c> and so the OS can resolve registered
+        /// document handlers. This means the <paramref name="arguments"/> string is parsed by
+        /// the shell, NOT by .NET. Callers MUST therefore:
+        /// <list type="bullet">
+        ///   <item>Only pass <paramref name="arguments"/> values they fully control,</item>
+        ///   <item>Validate any user-derived path/arg through <see cref="SecurityHelpers"/>,</item>
+        ///   <item>Prefer <see cref="CreateProcessInfo"/> + <c>AsyncHelpers.RunProcessAsync</c>
+        ///   for command-line tools where stdout capture and cancellation matter.</item>
+        /// </list>
+        /// </para>
+        /// </summary>
         public static bool RunProcess(string fileName, string arguments = "", bool runAsAdmin = false)
         {
             try

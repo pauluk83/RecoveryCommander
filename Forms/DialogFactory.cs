@@ -56,6 +56,7 @@ namespace RecoveryCommander.Forms
 
             Theme.ApplyFormStyle(form);
             Theme.ApplyTheme(form);
+            Theme.ApplyMicaEffect(form);
 
             var contentPanel = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(30), ColumnCount = 1, RowCount = 2 };
             contentPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
@@ -99,26 +100,33 @@ namespace RecoveryCommander.Forms
 
         public static void ShowHelpWindow(Form? host, string filePath, string title)
         {
-            string content = "";
-            try
+            // Read the file off the UI thread so large markdown files don't stall input.
+            // We show the dialog after the read completes.
+            _ = ShowHelpWindowAsync(host, filePath, title);
+        }
+
+        public static async Task ShowHelpWindowAsync(Form? host, string filePath, string title)
+        {
+            string? resolvedPath = null;
+            var fullPath = Path.Combine(AppContext.BaseDirectory, filePath);
+            if (File.Exists(fullPath)) resolvedPath = fullPath;
+            else if (File.Exists(filePath)) resolvedPath = filePath;
+
+            string content;
+            if (resolvedPath is null)
             {
-                var fullPath = Path.Combine(AppContext.BaseDirectory, filePath);
-                if (File.Exists(fullPath))
-                {
-                    content = File.ReadAllText(fullPath);
-                }
-                else if (File.Exists(filePath))
-                {
-                    content = File.ReadAllText(filePath);
-                }
-                else
-                {
-                    content = $"{title} not found: {filePath}";
-                }
+                content = $"{title} not found: {filePath}";
             }
-            catch (Exception ex)
+            else
             {
-                content = $"Error loading {title}: {ex.Message}";
+                try
+                {
+                    content = await Task.Run(() => File.ReadAllText(resolvedPath)).ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    content = $"Error loading {title}: {ex.Message}";
+                }
             }
 
             ShowContentDialog(host, content, title);
@@ -138,6 +146,7 @@ namespace RecoveryCommander.Forms
 
             Theme.ApplyFormStyle(form);
             Theme.ApplyTheme(form);
+            Theme.ApplyMicaEffect(form);
 
             var layout = new TableLayoutPanel
             {
@@ -247,6 +256,7 @@ namespace RecoveryCommander.Forms
 
             Theme.ApplyFormStyle(form);
             Theme.ApplyTheme(form);
+            Theme.ApplyMicaEffect(form);
 
             Theme.ApplyButtonStyle(btnCreate, Theme.ButtonStyle.Primary, 8);
             Theme.ApplyButtonStyle(btnDelete, Theme.ButtonStyle.Primary, 8);
@@ -287,16 +297,13 @@ namespace RecoveryCommander.Forms
                 await LoadPointsAsync();
             };
 
-            btnDelete.Click += async (s, e) =>
+            btnDelete.Click += (s, e) =>
             {
                 if (list.SelectedItems.Count == 0) return;
                 var sel = list.SelectedItems[0].Tag as RestorePoint;
                 if (sel == null) return;
 
-                await Task.Run(() =>
-                {
-                    MessageBox.Show(form, "Delete restore point functionality is not currently available.", "Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                });
+                MessageBox.Show(form, "Delete restore point functionality is not currently available.", "Not Available", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
             btnRestore.Click += async (s, e) =>
@@ -378,6 +385,7 @@ namespace RecoveryCommander.Forms
 
             Theme.ApplyFormStyle(form);
             Theme.ApplyTheme(form);
+            Theme.ApplyMicaEffect(form);
 
             Theme.ApplyButtonStyle(btnRefresh, Theme.ButtonStyle.Secondary, 8);
             Theme.ApplyButtonStyle(btnDisable, Theme.ButtonStyle.Primary, 8);
@@ -484,6 +492,19 @@ namespace RecoveryCommander.Forms
             catch (Exception ex)
             {
                 MessageBox.Show(host, $"Failed to open Network Optimizer: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        public static void ShowModuleBuilder(Form? host)
+        {
+            try
+            {
+                using var form = new ModuleBuilder();
+                form.ShowDialog(host);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(host, $"Failed to open Module Builder: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

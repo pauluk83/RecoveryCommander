@@ -132,8 +132,9 @@ namespace SystemPrepModule
         public static async Task<List<UpdateItem>> GetPSModuleUpdatesAsync(Action<string> reportOutput, CancellationToken cancellationToken)
         {
             reportOutput("Scanning for PowerShell module updates...");
-            
-            string script = @"
+            cancellationToken.ThrowIfCancellationRequested();
+
+            const string script = @"
                 Get-InstalledModule | ForEach-Object {
                     $local = $_
                     $latest = Find-Module -Name $local.Name -ErrorAction SilentlyContinue
@@ -144,35 +145,58 @@ namespace SystemPrepModule
                             Available = $latest.Version.ToString()
                         }
                     }
-                } | ConvertTo-Json";
+                } | ConvertTo-Json -Depth 3";
 
-            var psi = new ProcessStartInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script}\"")
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process == null) return new List<UpdateItem>();
-
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync(cancellationToken);
+            // Route through ExecuteCommandAsync so cancellation kills the powershell.exe tree
+            // and stderr is captured the same way as the rest of the module's commands.
+            var result = await CoreUtilities.ExecuteCommandAsync(
+                "powershell",
+                $"-NoProfile -NonInteractive -Command \"{script}\"",
+                timeoutSeconds: 180,
+                cancellationToken: cancellationToken);
 
             var items = new List<UpdateItem>();
+            if (!result.Success)
+            {
+                if (!string.IsNullOrWhiteSpace(result.Error))
+                {
+                    reportOutput($"PS module scan failed: {result.Error}");
+                }
+                return items;
+            }
+
+            var output = result.Output ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                reportOutput("No PowerShell module updates available.");
+                return items;
+            }
+
             try
             {
-                // Simple parsing if JSON is returned
-                if (!string.IsNullOrWhiteSpace(output))
+                // ConvertTo-Json emits either a single object or an array depending on count;
+                // wrap a single object so System.Text.Json can always read an array.
+                var trimmed = output.TrimStart();
+                var json = trimmed.StartsWith("[", StringComparison.Ordinal) ? output : "[" + output + "]";
+
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                foreach (var element in doc.RootElement.EnumerateArray())
                 {
-                    // For simplicity in this toolkit environment, we use a basic parse if it's an array
-                    // In a full app we'd use System.Text.Json
-                    reportOutput("Processing PS module list...");
-                    // This is a placeholder for actual JSON deserialization if needed, 
-                    // but we'll assume a list was returned and parsed.
+                    items.Add(new UpdateItem
+                    {
+                        Name = element.GetProperty("Name").GetString() ?? string.Empty,
+                        Id = element.GetProperty("Name").GetString() ?? string.Empty,
+                        InstalledVersion = element.GetProperty("Installed").GetString() ?? string.Empty,
+                        AvailableVersion = element.GetProperty("Available").GetString() ?? string.Empty,
+                        Source = "PSGallery",
+                        Category = "PowerShell"
+                    });
                 }
             }
-            catch { }
+            catch (System.Text.Json.JsonException ex)
+            {
+                reportOutput($"PS module scan: could not parse JSON ({ex.Message}).");
+            }
 
             reportOutput($"Found {items.Count} PowerShell module update(s).");
             return items;

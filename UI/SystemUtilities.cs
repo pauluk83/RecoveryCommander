@@ -1,48 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using RecoveryCommander.Contracts;
+// AUDIT NOTE (2026-05-02 / v1.3.0):
+// The SystemUtilities.ErrorHandler class previously defined here was duplicated by an identical
+// nested class inside UI/Theme.cs and had zero call sites in the codebase. Both copies were
+// removed during the v1.3.0 hardening pass. Use Microsoft.Extensions.Logging.ILogger for
+// structured logging and Forms-layer try/catch + MessageBox patterns where user feedback is
+// required. This file is intentionally left empty rather than deleted to preserve git history.
 
 namespace RecoveryCommander.UI
 {
-    /// <summary>
-    /// Unified system utilities - Consolidates error handling, animation, and async operations
-    /// </summary>
-    public static class SystemUtilities
-    {
-        #region Error Handling
-        public static class ErrorHandler
-        {
-            public static void HandleError(Exception ex, string context = "")
-            {
-                var message = string.IsNullOrEmpty(context) 
-                    ? ex.Message 
-                    : $"{context}: {ex.Message}";
-                
-                Console.WriteLine($"ERROR: {message}");
-                
-                if (Application.OpenForms.Count > 0)
-                {
-                    MessageBox.Show(
-                        Application.OpenForms[0], 
-                        message, 
-                        "Error", 
-                        MessageBoxButtons.OK, 
-                        MessageBoxIcon.Error);
-                }
-            }
-
-            public static void HandleWarning(string message, string context = "")
-            {
-                var fullMessage = string.IsNullOrEmpty(context) 
-                    ? message 
-                    : $"{context}: {message}";
-                
-                Console.WriteLine($"WARNING: {fullMessage}");
-            }
-        }
-        #endregion
-    }
 }

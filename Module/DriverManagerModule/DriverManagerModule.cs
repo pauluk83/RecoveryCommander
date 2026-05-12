@@ -16,11 +16,6 @@ namespace RecoveryCommander.Module
     {
         private readonly DriverService _driverService = new();
 
-        private static class DownloadUrls
-        {
-            public const string IObitDriverBooster = "https://www.dropbox.com/scl/fi/2paq4t1yevyprkw5jrp0a/DriverBoosterPortable.txt?rlkey=p6j6ofauo26tp5xnunqhc3pxb&st=bvyegici&raw=1";
-        }
-
         public string Name => "Driver Manager";
         public string Description => "Comprehensive driver backup, restoration, and optimization tools.";
         public string BuildInfo => "Driver Manager v1.0.0 - Focused driver management.";
@@ -32,9 +27,9 @@ namespace RecoveryCommander.Module
         {
             new ModuleAction("Backup Drivers", "Exports all third-party drivers to a selected folder", ExecuteBackupDriversAsync) { Highlight = true },
             new ModuleAction("Restore Drivers", "Installs drivers from a folder (pnputil)", ExecuteRestoreDriversAsync),
-            new ModuleAction("List Drivers", "Enumerate all installed third-party drivers", _driverService.OptimizeDriverStoreAsync),
+            new ModuleAction("List Drivers", "Enumerate all installed third-party drivers", _driverService.EnumerateDriversAsync),
             new ModuleAction("Cleanup Driver Store", "Removes redundant and old driver versions", ExecuteOptimizeDriversAsync) { IsDestructive = true },
-            new ModuleAction("Driver Booster PRO 13.4.0.234", "Driver Booster PRO Portable", (p, o, c) => AsyncHelpers.DownloadAndExecuteAsync(DownloadUrls.IObitDriverBooster, "Driver Booster PRO 13.4.0.234.exe", p, o, c))
+            new ModuleAction("Driver Booster PRO 13.4.0.234", "Driver Booster PRO Portable", (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.IObitDriverBooster", p, o, c))
         };
 
         private async Task ExecuteBackupDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

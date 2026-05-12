@@ -1,46 +1,45 @@
-# RecoveryCommander
+# RecoveryCommander — v1.2.6
 
-A professional Windows system recovery and maintenance tool with a modern Windows 11-styled interface. RecoveryCommander provides modular system utilities, diagnostic tools, and recovery operations through an extensible plugin architecture.
+A comprehensive Windows system recovery and maintenance tool with a modern Windows 11-styled interface. RecoveryCommander provides modular system utilities, diagnostic tools, and recovery operations through an extensible plugin architecture.
 
 ---
 
 ## 🚀 Features
 
-- **Modern UI**: Windows 11-styled interface with dark/light theme support.
-- **Advanced Boot Media Creator**: Driver injection and WinRE integration for recovery drives.
-- **Driver Manager**: Dedicated module for third-party driver backup, restoration, and cleanup.
-- **Cloud Recovery**: One-click access to Windows Cloud Reset and profile backup/sync.
-- **Modular Architecture**: Extensible plugin system supporting dynamic recovery modules.
-- **System Diagnostics**: Detailed hardware, OS health, and disk diagnostics.
-- **Malware Removal**: Integrated suite of industry-standard security scanners.
-- **System Utilities**: Activation tools, network optimization, and automated cleanup utilities.
-- **Real-time Progress**: Live progress tracking with a clean, detailed output console.
-- **Thread-Safe Operations**: Robust threading with proper disposal handling and graceful cancellation.
+- **Modern UI**: Windows 11-styled interface with dark/light theme support
+- **Advanced Boot Media Creator**: Driver injection and WinRE integration for recovery drives
+- **Driver Manager**: Dedicated module for third-party driver backup, restoration, and cleanup
+- **Cloud Recovery**: One-click access to Windows Cloud Reset and profile backup/sync
+- **Modular Architecture**: Extensible plugin system for recovery modules
+- **System Diagnostics**: SFC, DISM, memory diagnostics, and disk checks
+- **System Utilities**: Activation tools, network optimization, cleanup utilities
+- **Real-time Progress**: Live progress tracking with clean output console
+- **Thread-Safe Operations**: Robust threading with proper disposal handling
 
 ---
 
 ## 🔗 Links & Resources
 
 - **GitHub Repository**: [pauluk83/RecoveryCommander](https://github.com/pauluk83/RecoveryCommander)
-- **Official Website**: [RecoveryCommander Portal](https://recoverycommander.free.nf/)
+- **Official Website**: [RecoveryCommander Portal](https://pauluk83.github.io/RecoveryCommander/)
 
 ---
 
 ## 📊 Project Status & Recent Updates
 
-*Current Status (Updated 2026-04-28)*
+*Current Status (Updated 2026-05-12) - Build 1.2.6*
 
-- ✅ **Infrastructure**: Full migration to Dropbox for reliable, high-speed file hosting.
-- ✅ **UI/UX**: Interactive command feed with native text selection and secure URL masking.
-- ✅ **Security**: Strict HTTPS enforcement for all downloads and external resources.
-- ✅ **Optimized**: High-performance browser cache cleanup for all major browsers.
-- ✅ **Core**: Dictionary-based action mapping for O(1) diagnostic command lookup.
-- ✅ **Stability**: Full dead code purge and project reference cleanup for zero-waste builds.
-- ✅ **Hardened**: Enhanced path validation and filename sanitization in core download utility.
+- ✅ **Security**: Centralized `DownloadCatalog` with explicit supply-chain policy and SHA-256 pinning hooks.
+- ✅ **Reliability**: Rolling file logs under `%LOCALAPPDATA%\RecoveryCommander\logs` + safer global exception handling.
+- ✅ **Quality**: Added xUnit test project (`Tests/RecoveryCommander.Tests`) and CI `dotnet test` coverage upload.
+- ✅ **UX/A11y**: Focus indicators on custom controls, high-contrast palette snapping, scalable toasts + Esc dismiss.
+- ✅ **Maintainability**: Diagnostics command metadata unified; key refactors extracted from `MainForm` monolith.
 
 ---
 
 ## 📁 Project Structure
+
+Project Manifest Overview
 
 ```text
 RecoveryCommander/

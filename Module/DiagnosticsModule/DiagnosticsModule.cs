@@ -1,8 +1,23 @@
+/*
+ * AUDIT HEADER
+ * File: DiagnosticsModule.cs
+ * Module: Diagnostics
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial diagnostics module with system info, CPU, RAM, disk, network checks.
+ * 2026-05-02 - 1.2.6 - Unified command metadata: per-action (file, args) declared once in
+ *                       _diagnosticCommands and consumed by both Actions and RunFullDiagnostic.
+ *                       Removes the duplicate commandMap dictionary.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
@@ -21,61 +36,67 @@ namespace DiagnosticsModule
         public string BuildInfo => "DiagnosticsModule (Technician Toolkit)";
         public bool SupportsAsync => true;
 
-        public IEnumerable<ModuleAction> Actions => new List<ModuleAction>
+        // Single source of truth for diagnostic commands. Used by both Actions and RunFullDiagnostic.
+        private sealed record DiagnosticCommand(
+            string Name,
+            string DisplayName,
+            string Description,
+            string FileName,
+            string Arguments,
+            string StatusMessage);
+
+        private static readonly DiagnosticCommand[] _diagnosticCommands =
         {
-            new("Full Diagnostic", "Run Full Diagnostic") { 
-                Description = "Executes all diagnostic checks and generates a comprehensive report.",
-                ExecuteActionExtended = RunFullDiagnostic,
-                Highlight = true,
-                IconName = "Activity"
-            },
-            new("System Info", "System Hardware Info") { 
-                Description = "Displays detailed system hardware and operating system information.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("systeminfo", "", "Gathering system information...", p, o, d, c, true) 
-            },
-            new("CPU Details", "CPU & Processor Details") { 
-                Description = "Shows CPU model, cores, and logical processor count.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("wmic", "cpu get name,NumberOfCores,NumberOfLogicalProcessors", "Retrieving CPU details...", p, o, d, c, true) 
-            },
-            new("RAM Details", "Memory (RAM) Modules") { 
-                Description = "Displays installed RAM capacity and speed.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("wmic", "memorychip get capacity,speed", "Checking RAM modules...", p, o, d, c, true) 
-            },
-            new("Disk Health", "Disk Health (SMART)") { 
-                Description = "Checks the health status and SMART attributes of physical drives.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("wmic", "diskdrive get model,status,size", "Analyzing disk health...", p, o, d, c, true) 
-            },
-            new("Storage Space", "Free Storage Space") { 
-                Description = "Shows free space and file system type for all logical drives.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("wmic", "logicaldisk get caption,freespace,size,filesystem", "Calculating storage space...", p, o, d, c, true) 
-            },
-            new("Network Config", "Network Configuration") { 
-                Description = "Displays all network adapter settings and IP configurations.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("ipconfig", "/all", "Retrieving network configuration...", p, o, d, c, true) 
-            },
-            new("Active Connections", "Active Connections") { 
-                Description = "Lists all active network connections and listening ports.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("netstat", "-ano", "Scanning active connections...", p, o, d, c, true) 
-            },
-            new("Startup Programs", "Startup Programs") { 
-                Description = "Lists applications configured to run at system startup.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("wmic", "startup get caption,command", "Checking startup programs...", p, o, d, c, true) 
-            },
-            new("Running Processes", "Running Processes") { 
-                Description = "Lists all currently running processes and services.",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("tasklist", "", "Listing running processes...", p, o, d, c, true) 
-            },
-            new("File Integrity", "System File Integrity") { 
-                Description = "Verifies the integrity of system files (verify only).",
-                ExecuteActionExtended = (p, o, d, c) => RunDiagnosticCommand("sfc", "/verifyonly", "Checking system file integrity...", p, o, d, c, true) 
-            }
+            new("System Info",         "System Hardware Info",      "Displays detailed system hardware and operating system information.", "systeminfo", "",                                                          "Gathering system information..."),
+            new("CPU Details",         "CPU & Processor Details",   "Shows CPU model, cores, and logical processor count.",                  "wmic",       "cpu get name,NumberOfCores,NumberOfLogicalProcessors",      "Retrieving CPU details..."),
+            new("RAM Details",         "Memory (RAM) Modules",      "Displays installed RAM capacity and speed.",                            "wmic",       "memorychip get capacity,speed",                             "Checking RAM modules..."),
+            new("Disk Health",         "Disk Health (SMART)",       "Checks the health status and SMART attributes of physical drives.",      "wmic",       "diskdrive get model,status,size",                           "Analyzing disk health..."),
+            new("Storage Space",       "Free Storage Space",        "Shows free space and file system type for all logical drives.",         "wmic",       "logicaldisk get caption,freespace,size,filesystem",         "Calculating storage space..."),
+            new("Network Config",      "Network Configuration",     "Displays all network adapter settings and IP configurations.",          "ipconfig",   "/all",                                                      "Retrieving network configuration..."),
+            new("Active Connections",  "Active Connections",        "Lists all active network connections and listening ports.",             "netstat",    "-ano",                                                      "Scanning active connections..."),
+            new("Startup Programs",    "Startup Programs",          "Lists applications configured to run at system startup.",               "wmic",       "startup get caption,command",                               "Checking startup programs..."),
+            new("Running Processes",   "Running Processes",         "Lists all currently running processes and services.",                   "tasklist",   "",                                                          "Listing running processes..."),
+            new("File Integrity",      "System File Integrity",     "Verifies the integrity of system files (verify only).",                 "sfc",        "/verifyonly",                                               "Checking system file integrity..."),
         };
 
-        private async Task<string> RunDiagnosticCommand(string fileName, string arguments, string statusMessage, IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken, bool showIndividualReport = false)
+        public IEnumerable<ModuleAction> Actions
+        {
+            get
+            {
+                yield return new ModuleAction("Full Diagnostic", "Run Full Diagnostic")
+                {
+                    Description = "Executes all diagnostic checks and generates a comprehensive report.",
+                    ExecuteActionExtended = RunFullDiagnostic,
+                    Highlight = true,
+                    IconName = "Activity"
+                };
+
+                foreach (var cmd in _diagnosticCommands)
+                {
+                    var local = cmd; // capture for closure
+                    yield return new ModuleAction(local.Name, local.DisplayName)
+                    {
+                        Description = local.Description,
+                        ExecuteActionExtended = (p, o, d, c) =>
+                            RunDiagnosticCommand(local.FileName, local.Arguments, local.StatusMessage, p, o, d, c, showIndividualReport: true)
+                    };
+                }
+            }
+        }
+
+        private async Task<string> RunDiagnosticCommand(
+            string fileName,
+            string arguments,
+            string statusMessage,
+            IProgress<ProgressReport> progress,
+            Action<string> reportOutput,
+            IDialogService dialogService,
+            CancellationToken cancellationToken,
+            bool showIndividualReport = false)
         {
             progress.Report(new ProgressReport(0, statusMessage));
             reportOutput($"> Running: {fileName} {arguments}");
-            var reportBuilder = new System.Text.StringBuilder();
+            var reportBuilder = new StringBuilder();
 
             try
             {
@@ -89,28 +110,32 @@ namespace DiagnosticsModule
                     CreateNoWindow = true
                 };
 
-                Action<string> combinedOutput = s => {
+                Action<string> combinedOutput = s =>
+                {
                     reportOutput(s);
                     reportBuilder.AppendLine(s);
                 };
 
                 await AsyncHelpers.RunProcessAsync(psi, combinedOutput, combinedOutput, cancellationToken);
                 progress.Report(new ProgressReport(100, "Completed"));
-                
+
                 if (showIndividualReport)
                 {
-                    reportOutput($"> [POPUP] Requesting themed report dialog for: {fileName}");
-                    try 
+                    try
                     {
                         dialogService.ShowContentDialog(reportBuilder.ToString(), $"{fileName} Diagnostic Report");
-                        reportOutput($"> [POPUP] Dialog displayed successfully.");
                     }
                     catch (Exception dex)
                     {
-                        reportOutput($"> [ERROR] Themed dialog failed: {dex.Message}. Falling back to standard MessageBox.");
+                        reportOutput($"[WARN] Themed dialog unavailable ({dex.Message}); falling back to MessageBox.");
                         System.Windows.Forms.MessageBox.Show(reportBuilder.ToString(), $"{fileName} Diagnostic Report (Fallback)");
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                reportOutput("Operation cancelled.");
+                progress.Report(new ProgressReport(100, "Cancelled"));
             }
             catch (Exception ex)
             {
@@ -121,39 +146,42 @@ namespace DiagnosticsModule
             return reportBuilder.ToString();
         }
 
-        private async Task RunFullDiagnostic(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
+        private async Task RunFullDiagnostic(
+            IProgress<ProgressReport> progress,
+            Action<string> reportOutput,
+            IDialogService dialogService,
+            CancellationToken cancellationToken)
         {
-            var diagnosticActions = Actions.Where(a => a.Name != "Full Diagnostic").ToList();
-            int total = diagnosticActions.Count;
+            var commands = _diagnosticCommands;
+            int total = commands.Length;
             int current = 0;
-            var fullReport = new System.Text.StringBuilder();
+            var fullReport = new StringBuilder();
 
             reportOutput("=== STARTING FULL TECHNICIAN DIAGNOSTIC ===");
             fullReport.AppendLine("=== RECOVERY COMMANDER TECHNICIAN DIAGNOSTIC REPORT ===");
             fullReport.AppendLine($"Generated: {DateTime.Now}");
             fullReport.AppendLine("-------------------------------------------------------");
 
-            foreach (var action in diagnosticActions)
+            foreach (var cmd in commands)
             {
                 if (cancellationToken.IsCancellationRequested) break;
 
                 current++;
                 int percent = (int)((double)current / total * 100);
-                progress.Report(new ProgressReport(percent, $"Running {action.DisplayName} ({current}/{total})..."));
-                fullReport.AppendLine($"\n[{action.DisplayName}]");
+                progress.Report(new ProgressReport(percent, $"Running {cmd.DisplayName} ({current}/{total})..."));
+                fullReport.AppendLine($"\n[{cmd.DisplayName}]");
 
                 try
                 {
-                    if (action.ExecuteActionExtended != null)
-                    {
-                        // We override the reporter to collect the result for the full report
-                        var result = await RunDiagnosticCommandFromAction(action, progress, reportOutput, dialogService, cancellationToken);
-                        fullReport.AppendLine(result);
-                    }
+                    var result = await RunDiagnosticCommand(
+                        cmd.FileName, cmd.Arguments, $"{cmd.DisplayName}...",
+                        progress, reportOutput, dialogService, cancellationToken,
+                        showIndividualReport: false);
+                    fullReport.AppendLine(result);
                 }
                 catch (Exception ex)
                 {
-                    reportOutput($"[ERROR] {action.DisplayName}: {ex.Message}");
+                    reportOutput($"[ERROR] {cmd.DisplayName}: {ex.Message}");
                     fullReport.AppendLine($"ERROR: {ex.Message}");
                 }
 
@@ -165,52 +193,21 @@ namespace DiagnosticsModule
             {
                 reportOutput("!!! DIAGNOSTIC CANCELLED BY USER !!!");
                 progress.Report(new ProgressReport(100, "Cancelled"));
+                return;
             }
-            else
-            {
-                reportOutput("=== DIAGNOSTIC COMPLETE ===");
-                progress.Report(new ProgressReport(100, "Finished All Checks"));
-                
-                reportOutput("> [POPUP] Opening final diagnostic summary report...");
-                try 
-                {
-                    dialogService.ShowContentDialog(fullReport.ToString(), "Full System Diagnostic Report");
-                    reportOutput("> [POPUP] Full report displayed.");
-                }
-                catch (Exception dex)
-                {
-                    reportOutput($"> [ERROR] Full report dialog failed: {dex.Message}. Falling back to standard MessageBox.");
-                    System.Windows.Forms.MessageBox.Show(fullReport.ToString(), "Full System Diagnostic Report (Fallback)");
-                }
-            }
-        }
 
-        private async Task<string> RunDiagnosticCommandFromAction(ModuleAction action, IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
-        {
-            // Extract command and arguments from the action's display name or description mapping
-            // In a better design, ModuleAction would have these as properties.
-            // For now, we'll use a cleaner mapping or just call the direct ones.
-            
-            var commandMap = new Dictionary<string, (string File, string Args)>
-            {
-                { "System Hardware Info", ("systeminfo", "") },
-                { "CPU & Processor Details", ("wmic", "cpu get name,NumberOfCores,NumberOfLogicalProcessors") },
-                { "Memory (RAM) Modules", ("wmic", "memorychip get capacity,speed") },
-                { "Disk Health (SMART)", ("wmic", "diskdrive get model,status,size") },
-                { "Free Storage Space", ("wmic", "logicaldisk get caption,freespace,size,filesystem") },
-                { "Network Configuration", ("ipconfig", "/all") },
-                { "Active Connections", ("netstat", "-ano") },
-                { "Startup Programs", ("wmic", "startup get caption,command") },
-                { "Running Processes", ("tasklist", "") },
-                { "System File Integrity", ("sfc", "/verifyonly") }
-            };
+            reportOutput("=== DIAGNOSTIC COMPLETE ===");
+            progress.Report(new ProgressReport(100, "Finished All Checks"));
 
-            if (commandMap.TryGetValue(action.DisplayName ?? action.Name, out var cmd))
+            try
             {
-                return await RunDiagnosticCommand(cmd.File, cmd.Args, $"{action.DisplayName}...", progress, reportOutput, dialogService, cancellationToken, false);
+                dialogService.ShowContentDialog(fullReport.ToString(), "Full System Diagnostic Report");
             }
-            
-            return $"Command execution for {action.DisplayName} failed: No command mapping found.";
+            catch (Exception dex)
+            {
+                reportOutput($"[WARN] Full report dialog failed ({dex.Message}); falling back to MessageBox.");
+                System.Windows.Forms.MessageBox.Show(fullReport.ToString(), "Full System Diagnostic Report (Fallback)");
+            }
         }
     }
 }

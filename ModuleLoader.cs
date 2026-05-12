@@ -28,7 +28,14 @@ namespace RecoveryCommander
                     {
                         Assembly.Load(moduleName);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        // Failure here is usually because the module assembly is already embedded
+                        // in single-file mode (the type warm-up in Program.cs handles that path).
+                        // Surface as a debug write so we can diagnose deployment issues without
+                        // spamming the user-visible output console.
+                        System.Diagnostics.Debug.WriteLine($"[ModuleLoader] Assembly.Load('{moduleName}') failed: {ex.GetType().Name}: {ex.Message}");
+                    }
                 }
 
                 var builtInTypes = AppDomain.CurrentDomain.GetAssemblies()
