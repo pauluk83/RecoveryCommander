@@ -10,7 +10,7 @@ namespace RecoveryCommander.Core.Services
     [SupportedOSPlatform("windows")]
     public class DriverService
     {
-        public async Task BackupDriversAsync(string destinationPath, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task BackupDriversAsync(string destinationPath, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(destinationPath)) return;
             if (!Directory.Exists(destinationPath)) Directory.CreateDirectory(destinationPath);
@@ -19,7 +19,7 @@ namespace RecoveryCommander.Core.Services
             await DismHelper.RunDismAsync($"/online /export-driver /destination:\"{destinationPath}\"", progress, reportOutput, cancellationToken);
         }
 
-        public async Task RestoreDriversAsync(string sourcePath, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task RestoreDriversAsync(string sourcePath, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(sourcePath)) return;
             if (!Directory.Exists(sourcePath))
@@ -39,7 +39,7 @@ namespace RecoveryCommander.Core.Services
             progress.Report(new ProgressReport(100, "Driver restoration complete."));
         }
 
-        public async Task EnumerateDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task EnumerateDriversAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(20, "Enumerating installed third-party drivers..."));
             reportOutput?.Invoke("> pnputil.exe /enum-drivers");
@@ -50,7 +50,7 @@ namespace RecoveryCommander.Core.Services
             progress.Report(new ProgressReport(100, "Driver enumeration complete."));
         }
 
-        public async Task OptimizeDriverStoreAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task OptimizeDriverStoreAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             // Safely automated cleanup via pnputil /delete-driver requires reasoning about
             // currently-bound devices, so for now we surface a scan + a clear notice.

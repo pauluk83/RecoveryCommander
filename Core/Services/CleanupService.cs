@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
@@ -11,7 +12,7 @@ namespace RecoveryCommander.Core.Services
     [SupportedOSPlatform("windows")]
     public class CleanupService
     {
-        public async Task ClearBrowserCachesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task ClearBrowserCachesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var appPaths = new Dictionary<string, string>
@@ -62,7 +63,7 @@ namespace RecoveryCommander.Core.Services
             }
         }
 
-        private void SafeDeleteDirectoryContents(string path)
+        private static void SafeDeleteDirectoryContents(string path)
         {
             try
             {
@@ -83,7 +84,7 @@ namespace RecoveryCommander.Core.Services
             catch { }
         }
 
-        public async Task ClearTempFilesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task ClearTempFilesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(10, "Cleaning Temp files..."));
             string[] dirs = {
@@ -113,14 +114,14 @@ namespace RecoveryCommander.Core.Services
             }
         }
 
-        public async Task RunDiskCleanupAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task RunDiskCleanupAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(50, "Running Disk Cleanup (SageSet 65535)..."));
             var psi = CoreUtilities.CreateProcessInfo("cleanmgr.exe", "/sagerun:65535");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
         }
 
-        public async Task DeepCleanWinSxSAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static async Task DeepCleanWinSxSAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
              await DismHelper.RunDismAsync("/online /cleanup-image /startcomponentcleanup /resetbase", progress, reportOutput, cancellationToken);
         }

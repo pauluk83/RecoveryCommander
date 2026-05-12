@@ -15,10 +15,6 @@ namespace RecoveryCommander.Module
     [RecoveryModule("SystemPrepModule")]
     public class SystemPrepModule : IRecoveryModule
     {
-        private readonly UpdateService _updateService = new();
-        private readonly CleanupService _cleanupService = new();
-        private readonly SystemTweakService _tweakService = new();
-        
         public string Name => "System Prep";
         public string Description => "Performs various system preparation and cleanup tasks using modular services.";
         public string BuildInfo => "System Prep Module v1.2.0 - Selective updates with popup selection.";
@@ -36,9 +32,9 @@ namespace RecoveryCommander.Module
                 new ModuleAction("Update PS Modules", "Updates PowerShell Modules (Selective)", ExecutePSUpdatesSelectiveAsync),
                 new ModuleAction("Scan for Windows Updates", "Check and install OS updates (Selective)", ExecuteWindowsUpdatesSelectiveAsync),
                 new ModuleAction("Clear All Caches", "Removes browser caches and temp files", ExecuteClearCachesAsync) { IsDestructive = true },
-                new ModuleAction("Deep Clean WinSxS", "Component store cleanup (resetbase)", _cleanupService.DeepCleanWinSxSAsync) { IsDestructive = true },
+                new ModuleAction("Deep Clean WinSxS", "Component store cleanup (resetbase)", CleanupService.DeepCleanWinSxSAsync) { IsDestructive = true },
                 new ModuleAction("Apply Privacy Tweaks", "Disable telemetry and web search in Start", ExecuteApplyTweaksAsync) { IsDestructive = true },
-                new ModuleAction("Run Disk Cleanup", "Standard cleanmgr /sagerun:65535", _cleanupService.RunDiskCleanupAsync) { IsDestructive = true }
+                new ModuleAction("Run Disk Cleanup", "Standard cleanmgr /sagerun:65535", CleanupService.RunDiskCleanupAsync) { IsDestructive = true }
             };
         }
 
@@ -70,7 +66,7 @@ namespace RecoveryCommander.Module
                 var pct = (int)((double)i / count * 100);
                 progress.Report(new ProgressReport(pct, $"Updating {item.Name} ({i}/{count})..."));
                 reportOutput($">>> Installing {item.Name}...");
-                await _updateService.UpgradeWingetPackageAsync(item.Id, reportOutput, cancellationToken);
+                await UpdateService.UpgradeWingetPackageAsync(item.Id, reportOutput, cancellationToken);
             }
             progress.Report(new ProgressReport(100, "Winget updates completed."));
         }
@@ -98,7 +94,7 @@ namespace RecoveryCommander.Module
                 i++;
                 var pct = (int)((double)i / count * 100);
                 progress.Report(new ProgressReport(pct, $"Updating {item.Name} ({i}/{count})..."));
-                await _updateService.UpdateStoreAppAsync(item.Id, reportOutput, cancellationToken);
+                await UpdateService.UpdateStoreAppAsync(item.Id, reportOutput, cancellationToken);
             }
             progress.Report(new ProgressReport(100, "Store updates completed."));
         }
@@ -125,7 +121,7 @@ namespace RecoveryCommander.Module
                 i++;
                 var pct = (int)((double)i / count * 100);
                 progress.Report(new ProgressReport(pct, $"Updating {item.Name} ({i}/{count})..."));
-                await _updateService.UpdatePSModuleAsync(item.Name, reportOutput, cancellationToken);
+                await UpdateService.UpdatePSModuleAsync(item.Name, reportOutput, cancellationToken);
             }
             progress.Report(new ProgressReport(100, "PS updates completed."));
         }
@@ -181,23 +177,23 @@ namespace RecoveryCommander.Module
         {
             progress.Report(new ProgressReport(0, "Full Prep starting..."));
             // Full prep remains unattended to avoid blocking
-            await _updateService.UpgradeWingetPackagesAsync(progress, reportOutput, cancellationToken);
-            await _updateService.UpdateStoreAppsAsync(progress, reportOutput, cancellationToken);
-            await _cleanupService.ClearTempFilesAsync(progress, reportOutput, cancellationToken);
-            await _cleanupService.ClearBrowserCachesAsync(progress, reportOutput, cancellationToken);
+            await UpdateService.UpgradeWingetPackagesAsync(progress, reportOutput, cancellationToken);
+            await UpdateService.UpdateStoreAppsAsync(progress, reportOutput, cancellationToken);
+            await CleanupService.ClearTempFilesAsync(progress, reportOutput, cancellationToken);
+            await CleanupService.ClearBrowserCachesAsync(progress, reportOutput, cancellationToken);
             progress.Report(new ProgressReport(100, "Full Prep completed successfully."));
         }
 
         private async Task ExecuteClearCachesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            await _cleanupService.ClearTempFilesAsync(progress, reportOutput, cancellationToken);
-            await _cleanupService.ClearBrowserCachesAsync(progress, reportOutput, cancellationToken);
+            await CleanupService.ClearTempFilesAsync(progress, reportOutput, cancellationToken);
+            await CleanupService.ClearBrowserCachesAsync(progress, reportOutput, cancellationToken);
         }
 
         private async Task ExecuteApplyTweaksAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            await _tweakService.DisableTelemetryAsync(progress, reportOutput, cancellationToken);
-            await _tweakService.DisableWebSearchAsync(progress, reportOutput, cancellationToken);
+            await SystemTweakService.DisableTelemetryAsync(progress, reportOutput, cancellationToken);
+            await SystemTweakService.DisableWebSearchAsync(progress, reportOutput, cancellationToken);
             progress.Report(new ProgressReport(100, "Privacy tweaks applied."));
         }
     }

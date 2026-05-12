@@ -25,7 +25,10 @@ namespace RecoveryCommander.Core.Services
     [SupportedOSPlatform("windows")]
     public class SystemTweakService
     {
-        public Task DisableTelemetryAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private static readonly Action<ILogger, string, string, object, Exception?> _logRegistryFailure = 
+            LoggerMessage.Define<string, string, object>(LogLevel.Error, new EventId(3, "RegistryTweakFailure"), "Failed to set registry value: {KeyPath}\\{ValueName} = {Value}");
+
+        public static Task DisableTelemetryAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
 
@@ -49,7 +52,7 @@ namespace RecoveryCommander.Core.Services
             return Task.CompletedTask;
         }
 
-        public Task DisableWebSearchAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        public static Task DisableWebSearchAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
 
@@ -64,7 +67,7 @@ namespace RecoveryCommander.Core.Services
             return Task.CompletedTask;
         }
 
-        private bool SetRegistryValue(RegistryKey root, string keyPath, string valueName, object value, RegistryValueKind kind, Action<string>? reportOutput = null)
+        private static bool SetRegistryValue(RegistryKey root, string keyPath, string valueName, object value, RegistryValueKind kind, Action<string>? reportOutput = null)
         {
             try
             {
@@ -75,7 +78,10 @@ namespace RecoveryCommander.Core.Services
             catch (Exception ex)
             {
                 var logger = ServiceContainer.GetOptionalService<ILogger>();
-                logger?.LogError(ex, "Failed to set registry value: {KeyPath}\\{ValueName} = {Value}", keyPath, valueName, value);
+                if (logger != null)
+                {
+                    _logRegistryFailure(logger, keyPath, valueName, value, ex);
+                }
                 reportOutput?.Invoke($"[WARN] Could not set {root.Name}\\{keyPath}!{valueName}: {ex.Message}");
                 return false;
             }
