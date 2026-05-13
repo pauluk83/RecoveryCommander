@@ -10,10 +10,13 @@ using RecoveryCommander.Contracts;
 namespace RecoveryCommander.Core.Services
 {
     [SupportedOSPlatform("windows")]
-    public class CleanupService
+    public static class CleanupService
     {
         public static async Task ClearBrowserCachesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var appPaths = new Dictionary<string, string>
             {
@@ -45,7 +48,7 @@ namespace RecoveryCommander.Core.Services
                                 if (Directory.Exists(cacheDir))
                                 {
                                     reportOutput($"Cleaning Firefox cache: {cacheDir}");
-                                    await Task.Run(() => SafeDeleteDirectoryContents(cacheDir), cancellationToken);
+                                    await Task.Run(() => SafeDeleteDirectoryContents(cacheDir), cancellationToken).ConfigureAwait(false);
                                 }
                             }
                         }
@@ -53,7 +56,7 @@ namespace RecoveryCommander.Core.Services
                     else if (Directory.Exists(kvp.Value))
                     {
                         reportOutput($"Cleaning {kvp.Key} cache: {kvp.Value}");
-                        await Task.Run(() => SafeDeleteDirectoryContents(kvp.Value), cancellationToken);
+                        await Task.Run(() => SafeDeleteDirectoryContents(kvp.Value), cancellationToken).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex)
@@ -86,6 +89,9 @@ namespace RecoveryCommander.Core.Services
 
         public static async Task ClearTempFilesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             progress.Report(new ProgressReport(10, "Cleaning Temp files..."));
             string[] dirs = {
                 Path.GetTempPath(),
@@ -109,21 +115,24 @@ namespace RecoveryCommander.Core.Services
                         {
                             try { Directory.Delete(sub, true); } catch { }
                         }
-                    }, cancellationToken);
+                    }, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
 
         public static async Task RunDiskCleanupAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             progress.Report(new ProgressReport(50, "Running Disk Cleanup (SageSet 65535)..."));
             var psi = CoreUtilities.CreateProcessInfo("cleanmgr.exe", "/sagerun:65535");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task DeepCleanWinSxSAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-             await DismHelper.RunDismAsync("/online /cleanup-image /startcomponentcleanup /resetbase", progress, reportOutput, cancellationToken);
+             await DismHelper.RunDismAsync("/online /cleanup-image /startcomponentcleanup /resetbase", progress, reportOutput, cancellationToken).ConfigureAwait(false);
         }
     }
 }

@@ -126,7 +126,7 @@ namespace RecoveryCommander.UI
             };
 
             public enum EasingFunction { Linear, CubicOut, QuickOut }
-            private class AnimationInstance {
+            private sealed class AnimationInstance {
                 public Control Target = null!; public string PropertyName = "";
                 public float StartValue; public float TargetValue;
                 public DateTime StartTime; public int Duration; public EasingFunction Easing;

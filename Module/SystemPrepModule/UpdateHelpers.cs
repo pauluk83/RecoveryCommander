@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
 using RecoveryCommander.Core;
 
 namespace SystemPrepModule
@@ -19,6 +20,9 @@ namespace SystemPrepModule
         private static readonly object[] ItemIndexArgument = new object[] { 0 };
         private static readonly object[] SearchCriteriaArgument = new object[] { "IsInstalled=0 and Type='Software'" };
         private static readonly object[] CategoryIndexArgument = new object[] { 0 };
+        private static readonly string[] LineSeparatorArray = new[] { "\r", "\n" };
+        private static readonly object[] ZeroArgument = new object[] { 0 };
+        private static readonly char[] WingetHeaderSplit = new[] { '\r', '\n' };
         public sealed class UpdateItem
         {
             public string Name { get; set; } = string.Empty;
@@ -27,7 +31,7 @@ namespace SystemPrepModule
             public string AvailableVersion { get; set; } = string.Empty;
             public string Source { get; set; } = string.Empty;
             public string Size { get; set; } = "Calculating...";
-            public long SizeInBytes { get; set; } = 0;
+            public long SizeInBytes { get; set; }
             public string Category { get; set; } = "General";
         }
 
@@ -49,7 +53,7 @@ namespace SystemPrepModule
             if (cancellationToken.IsCancellationRequested) return items;
 
             var message = result.Output ?? string.Empty;
-            var lines = message.Split(new[] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            var lines = message.Split(LineSeparatorArray, StringSplitOptions.RemoveEmptyEntries);
             var tableStarted = false;
 
             foreach (var rawLine in lines)
@@ -101,7 +105,7 @@ namespace SystemPrepModule
 
             if (!result.Success || cancellationToken.IsCancellationRequested) return items;
 
-            var lines = (result.Output ?? string.Empty).Split(new[] { "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            var lines = (result.Output ?? string.Empty).Split(LineSeparatorArray, StringSplitOptions.RemoveEmptyEntries);
             var tableStarted = false;
 
             foreach (var rawLine in lines)
@@ -177,7 +181,7 @@ namespace SystemPrepModule
                 // ConvertTo-Json emits either a single object or an array depending on count;
                 // wrap a single object so System.Text.Json can always read an array.
                 var trimmed = output.TrimStart();
-                var json = trimmed.StartsWith("[", StringComparison.Ordinal) ? output : "[" + output + "]";
+                var json = trimmed.StartsWith('[') ? output : "[" + output + "]";
 
                 using var doc = System.Text.Json.JsonDocument.Parse(json);
                 foreach (var element in doc.RootElement.EnumerateArray())
@@ -242,7 +246,7 @@ namespace SystemPrepModule
                         return items;
                     }
 
-                    var searcher = sessionType.InvokeMember("CreateUpdateSearcher", BindingFlags.InvokeMethod, null, session, null);
+                    var searcher = sessionType.InvokeMember("CreateUpdateSearcher", BindingFlags.InvokeMethod, null, session, null, CultureInfo.CurrentCulture);
                     if (searcher == null)
                     {
                         reportOutput("Failed to create Windows Update searcher.");
@@ -250,7 +254,7 @@ namespace SystemPrepModule
                     }
 
                     var searcherType = searcher.GetType();
-                    var result = searcherType.InvokeMember("Search", BindingFlags.InvokeMethod, null, searcher, SearchCriteriaArgument);
+                    var result = searcherType.InvokeMember("Search", BindingFlags.InvokeMethod, null, searcher, SearchCriteriaArgument, CultureInfo.CurrentCulture);
                     if (result == null)
                     {
                         reportOutput("Windows Update search returned no result.");
@@ -258,7 +262,7 @@ namespace SystemPrepModule
                     }
 
                     var resultType = result.GetType();
-                    var updatesObj = resultType.InvokeMember("Updates", BindingFlags.GetProperty, null, result, null);
+                    var updatesObj = resultType.InvokeMember("Updates", BindingFlags.GetProperty, null, result, null, CultureInfo.CurrentCulture);
                     if (updatesObj == null)
                     {
                         reportOutput("Windows Update search returned no updates collection.");
@@ -266,7 +270,7 @@ namespace SystemPrepModule
                     }
 
                     var updatesType = updatesObj.GetType();
-                    var countObj = updatesType.InvokeMember("Count", BindingFlags.GetProperty, null, updatesObj, null);
+                    var countObj = updatesType.InvokeMember("Count", BindingFlags.GetProperty, null, updatesObj, null, CultureInfo.CurrentCulture);
                     var count = countObj is int c ? c : 0;
 
                     for (var i = 0; i < count; i++)
@@ -276,29 +280,29 @@ namespace SystemPrepModule
                             break;
                         }
 
-                        var update = updatesType.InvokeMember("Item", BindingFlags.GetProperty, null, updatesObj, new object[] { i });
+                        var update = updatesType.InvokeMember("Item", BindingFlags.GetProperty, null, updatesObj, new object[] { i }, CultureInfo.CurrentCulture);
                         if (update == null)
                         {
                             continue;
                         }
 
                         var uType = update.GetType();
-                        var titleObj = uType.InvokeMember("Title", BindingFlags.GetProperty, null, update, null);
+                        var titleObj = uType.InvokeMember("Title", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                         var title = titleObj as string ?? string.Empty;
 
                         string categoryName = string.Empty;
-                        var categoriesObj = uType.InvokeMember("Categories", BindingFlags.GetProperty, null, update, null);
+                        var categoriesObj = uType.InvokeMember("Categories", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                         if (categoriesObj != null)
                         {
                             var categoriesType = categoriesObj.GetType();
-                            var catCountObj = categoriesType.InvokeMember("Count", BindingFlags.GetProperty, null, categoriesObj, null);
+                            var catCountObj = categoriesType.InvokeMember("Count", BindingFlags.GetProperty, null, categoriesObj, null, CultureInfo.CurrentCulture);
                             var catCount = catCountObj is int cc ? cc : 0;
                             if (catCount > 0)
                             {
-                                var cat0 = categoriesType.InvokeMember("Item", BindingFlags.GetProperty, null, categoriesObj, CategoryIndexArgument);
+                                var cat0 = categoriesType.InvokeMember("Item", BindingFlags.GetProperty, null, categoriesObj, CategoryIndexArgument, CultureInfo.CurrentCulture);
                                 if (cat0 != null)
                                 {
-                                    var catTitleObj = cat0.GetType().InvokeMember("Name", BindingFlags.GetProperty, null, cat0, null);
+                                    var catTitleObj = cat0.GetType().InvokeMember("Name", BindingFlags.GetProperty, null, cat0, null, CultureInfo.CurrentCulture);
                                     if (catTitleObj is string catTitle && !string.IsNullOrWhiteSpace(catTitle))
                                     {
                                         categoryName = catTitle;
@@ -308,7 +312,7 @@ namespace SystemPrepModule
                         }
 
                         string kb = string.Empty;
-                        var kbObj = uType.InvokeMember("KBArticleIDs", BindingFlags.GetProperty, null, update, null);
+                        var kbObj = uType.InvokeMember("KBArticleIDs", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                         if (kbObj is Array kbArray && kbArray.Length > 0)
                         {
                             var parts = new List<string>();
@@ -328,10 +332,10 @@ namespace SystemPrepModule
                         }
 
                         string updateId = string.Empty;
-                        var identityObj = uType.InvokeMember("Identity", BindingFlags.GetProperty, null, update, null);
+                        var identityObj = uType.InvokeMember("Identity", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                         if (identityObj != null)
                         {
-                            var idObj = identityObj.GetType().InvokeMember("UpdateID", BindingFlags.GetProperty, null, identityObj, null);
+                            var idObj = identityObj.GetType().InvokeMember("UpdateID", BindingFlags.GetProperty, null, identityObj, null, CultureInfo.CurrentCulture);
                             if (idObj is string id)
                             {
                                 updateId = id;
@@ -341,7 +345,7 @@ namespace SystemPrepModule
                         string sizeStr = "Unknown";
                         try
                         {
-                            var sizeObj = uType.InvokeMember("MaxDownloadSize", BindingFlags.GetProperty, null, update, null);
+                            var sizeObj = uType.InvokeMember("MaxDownloadSize", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                             if (sizeObj is decimal bytes)
                             {
                                 sizeStr = $"{(bytes / 1024 / 1024):F2} MB";
@@ -349,7 +353,7 @@ namespace SystemPrepModule
                         }
                         catch { }
 
-                        var descObj = uType.InvokeMember("Description", BindingFlags.GetProperty, null, update, null);
+                        var descObj = uType.InvokeMember("Description", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                         var description = descObj as string ?? string.Empty;
 
                         items.Add(new WindowsUpdateItem
@@ -421,7 +425,7 @@ namespace SystemPrepModule
                     return;
                 }
 
-                var searcher = sessionType.InvokeMember("CreateUpdateSearcher", BindingFlags.InvokeMethod, null, session, null);
+                var searcher = sessionType.InvokeMember("CreateUpdateSearcher", BindingFlags.InvokeMethod, null, session, null, CultureInfo.CurrentCulture);
                 if (searcher == null)
                 {
                     reportOutput("Failed to create Windows Update searcher.");
@@ -429,7 +433,7 @@ namespace SystemPrepModule
                 }
 
                 var searcherType = searcher.GetType();
-                var result = searcherType.InvokeMember("Search", BindingFlags.InvokeMethod, null, searcher, SearchCriteriaArgument);
+                var result = searcherType.InvokeMember("Search", BindingFlags.InvokeMethod, null, searcher, SearchCriteriaArgument, CultureInfo.CurrentCulture);
                 if (result == null)
                 {
                     reportOutput("Windows Update search returned no result.");
@@ -437,7 +441,7 @@ namespace SystemPrepModule
                 }
 
                 var resultType = result.GetType();
-                var updatesObj = resultType.InvokeMember("Updates", BindingFlags.GetProperty, null, result, null);
+                var updatesObj = resultType.InvokeMember("Updates", BindingFlags.GetProperty, null, result, null, CultureInfo.CurrentCulture);
                 if (updatesObj == null)
                 {
                     reportOutput("Windows Update search returned no updates collection.");
@@ -445,7 +449,7 @@ namespace SystemPrepModule
                 }
 
                 var updatesType = updatesObj.GetType();
-                var countObj = updatesType.InvokeMember("Count", BindingFlags.GetProperty, null, updatesObj, null);
+                var countObj = updatesType.InvokeMember("Count", BindingFlags.GetProperty, null, updatesObj, null, CultureInfo.CurrentCulture);
                 var count = countObj is int c ? c : 0;
 
                 var collType = Type.GetTypeFromProgID("Microsoft.Update.UpdateColl");
@@ -467,17 +471,17 @@ namespace SystemPrepModule
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
-                    var update = updatesType.InvokeMember("Item", BindingFlags.GetProperty, null, updatesObj, new object[] { i });
+                    var update = updatesType.InvokeMember("Item", BindingFlags.GetProperty, null, updatesObj, new object[] { i }, CultureInfo.CurrentCulture);
                     if (update == null) continue;
 
                     var uType = update.GetType();
-                    var identityObj = uType.InvokeMember("Identity", BindingFlags.GetProperty, null, update, null);
+                    var identityObj = uType.InvokeMember("Identity", BindingFlags.GetProperty, null, update, null, CultureInfo.CurrentCulture);
                     if (identityObj == null) continue;
 
-                    var idObj = identityObj.GetType().InvokeMember("UpdateID", BindingFlags.GetProperty, null, identityObj, null);
+                    var idObj = identityObj.GetType().InvokeMember("UpdateID", BindingFlags.GetProperty, null, identityObj, null, CultureInfo.CurrentCulture);
                     if (idObj is not string id || !selectedIds.Contains(id)) continue;
 
-                    collType.InvokeMember("Add", BindingFlags.InvokeMethod, null, coll, new object[] { update });
+                    collType.InvokeMember("Add", BindingFlags.InvokeMethod, null, coll, new object[] { update }, CultureInfo.CurrentCulture);
                     added++;
                 }
 
@@ -487,7 +491,7 @@ namespace SystemPrepModule
                     return;
                 }
 
-                var installer = sessionType.InvokeMember("CreateUpdateInstaller", BindingFlags.InvokeMethod, null, session, null);
+                var installer = sessionType.InvokeMember("CreateUpdateInstaller", BindingFlags.InvokeMethod, null, session, null, CultureInfo.CurrentCulture);
                 if (installer == null)
                 {
                     reportOutput("Failed to create Windows Update installer.");
@@ -495,14 +499,14 @@ namespace SystemPrepModule
                 }
 
                 var installerType = installer.GetType();
-                installerType.InvokeMember("Updates", BindingFlags.SetProperty, null, installer, new object[] { coll });
+                installerType.InvokeMember("Updates", BindingFlags.SetProperty, null, installer, new object[] { coll }, CultureInfo.CurrentCulture);
 
                 reportOutput("Starting installation of selected Windows Updates...");
-                var installResult = installerType.InvokeMember("Install", BindingFlags.InvokeMethod, null, installer, null);
+                var installResult = installerType.InvokeMember("Install", BindingFlags.InvokeMethod, null, installer, null, CultureInfo.CurrentCulture);
                 if (installResult != null)
                 {
                     var resType = installResult.GetType();
-                    var resultCodeObj = resType.InvokeMember("ResultCode", BindingFlags.GetProperty, null, installResult, null);
+                    var resultCodeObj = resType.InvokeMember("ResultCode", BindingFlags.GetProperty, null, installResult, null, CultureInfo.CurrentCulture);
                     if (resultCodeObj != null)
                     {
                         reportOutput($"Windows Update installer result: {resultCodeObj}");
@@ -529,9 +533,9 @@ namespace SystemPrepModule
                 using var p = Process.Start(psi);
                 if (p != null)
                 {
-                    var output = await p.StandardOutput.ReadToEndAsync();
-                    await p.WaitForExitAsync();
-                    var first = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    var output = await p.StandardOutput.ReadToEndAsync(cancellationToken);
+                    await p.WaitForExitAsync(cancellationToken);
+                    var first = output.Split(WingetHeaderSplit, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
                     if (!string.IsNullOrWhiteSpace(first))
                     {
                         reportOutput($"Found winget at: {first}");

@@ -20,10 +20,11 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 
-namespace DiagnosticsModule
+namespace RecoveryCommander.Modules
 {
     [RecoveryModule("DiagnosticsModule")]
     [SupportedOSPlatform("windows")]
@@ -84,7 +85,7 @@ namespace DiagnosticsModule
             }
         }
 
-        private async Task<string> RunDiagnosticCommand(
+        private static async Task<string> RunDiagnosticCommand(
             string fileName,
             string arguments,
             string statusMessage,
@@ -159,7 +160,7 @@ namespace DiagnosticsModule
 
             reportOutput("=== STARTING FULL TECHNICIAN DIAGNOSTIC ===");
             fullReport.AppendLine("=== RECOVERY COMMANDER TECHNICIAN DIAGNOSTIC REPORT ===");
-            fullReport.AppendLine($"Generated: {DateTime.Now}");
+            fullReport.AppendFormat(CultureInfo.InvariantCulture, "Generated: {0}", DateTime.Now).AppendLine();
             fullReport.AppendLine("-------------------------------------------------------");
 
             foreach (var cmd in commands)
@@ -168,8 +169,8 @@ namespace DiagnosticsModule
 
                 current++;
                 int percent = (int)((double)current / total * 100);
-                progress.Report(new ProgressReport(percent, $"Running {cmd.DisplayName} ({current}/{total})..."));
-                fullReport.AppendLine($"\n[{cmd.DisplayName}]");
+                progress.Report(new ProgressReport(percent, string.Format(CultureInfo.InvariantCulture, "Running {0} ({1}/{2})...", cmd.DisplayName, current, total)));
+                fullReport.AppendFormat(CultureInfo.InvariantCulture, "\n[{0}]", cmd.DisplayName).AppendLine();
 
                 try
                 {
@@ -182,7 +183,7 @@ namespace DiagnosticsModule
                 catch (Exception ex)
                 {
                     reportOutput($"[ERROR] {cmd.DisplayName}: {ex.Message}");
-                    fullReport.AppendLine($"ERROR: {ex.Message}");
+                    fullReport.AppendFormat(CultureInfo.InvariantCulture, "ERROR: {0}", ex.Message).AppendLine();
                 }
 
                 reportOutput("\n" + new string('-', 40) + "\n");

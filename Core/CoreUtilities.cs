@@ -46,7 +46,9 @@ namespace RecoveryCommander.Core
                     return File.GetLastWriteTime(exePath).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
                 }
             }
-            catch { }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            catch (NotSupportedException) { }
             return "Unknown";
         }
 
@@ -60,7 +62,9 @@ namespace RecoveryCommander.Core
                     return File.GetLastWriteTimeUtc(exePath);
                 }
             }
-            catch { }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+            catch (NotSupportedException) { }
             return DateTime.MinValue;
         }
         #endregion
@@ -77,7 +81,7 @@ namespace RecoveryCommander.Core
             Action<string>? reportOutput = null,
             CancellationToken cancellationToken = default)
         {
-            await AsyncHelpers.DownloadAndExecuteAsync(url, fileName ?? "download.exe", progress, reportOutput, cancellationToken, allowedExtensions);
+            await AsyncHelpers.DownloadAndExecuteAsync(url, fileName ?? "download.exe", progress, reportOutput, cancellationToken, allowedExtensions).ConfigureAwait(false);
         }
         #endregion
 
@@ -87,6 +91,8 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static void HandleGlobalException(Exception ex, string context = "")
         {
+            ArgumentNullException.ThrowIfNull(ex);
+            
             var logger = ServiceContainer.GetService<ILogger>();
             var message = string.IsNullOrEmpty(context) ? ex.Message : $"{context}: {ex.Message}";
             
@@ -151,9 +157,13 @@ namespace RecoveryCommander.Core
             {
                 // File is in use - ignore for cleanup operations
             }
-            catch (Exception)
+            catch (InvalidOperationException ex)
             {
-                // Other errors - ignore for cleanup operations
+                Debug.WriteLine($"SafeDeleteFile invalid operation: {ex.Message}");
+            }
+            catch (System.Security.SecurityException ex)
+            {
+                Debug.WriteLine($"SafeDeleteFile security error: {ex.Message}");
             }
         }
 
@@ -184,9 +194,9 @@ namespace RecoveryCommander.Core
             {
                 // Directory is in use - ignore for cleanup operations
             }
-            catch (Exception)
+            catch (NotSupportedException)
             {
-                // Other errors - ignore for cleanup operations
+                // Path format not supported - ignore for cleanup operations
             }
         }
         #endregion
@@ -223,7 +233,7 @@ namespace RecoveryCommander.Core
                 using var process = Process.Start(startInfo);
                 return process != null;
             }
-            catch (Exception ex)
+            catch (System.ComponentModel.Win32Exception ex)
             {
                 Debug.WriteLine($"Failed to run process {fileName}: {ex.Message}");
                 return false;
@@ -234,9 +244,14 @@ namespace RecoveryCommander.Core
         {
             try
             {
-                return await Task.Run(() => RunProcess(fileName, arguments, runAsAdmin));
+                return await Task.Run(() => RunProcess(fileName, arguments, runAsAdmin)).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                Debug.WriteLine($"Failed to run process {fileName}: {ex.Message}");
+                return false;
+            }
+            catch (InvalidOperationException ex)
             {
                 Debug.WriteLine($"Failed to run process {fileName}: {ex.Message}");
                 return false;
@@ -254,7 +269,11 @@ namespace RecoveryCommander.Core
                 var principal = new System.Security.Principal.WindowsPrincipal(identity);
                 return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
             }
-            catch
+            catch (System.Security.SecurityException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
             {
                 return false;
             }
@@ -290,7 +309,7 @@ namespace RecoveryCommander.Core
                 
                 // Validate command path
                 string validatedCommand;
-                if (!Path.IsPathRooted(command) && !command.Contains(Path.DirectorySeparatorChar) && !command.Contains(Path.AltDirectorySeparatorChar))
+                if (!Path.IsPathRooted(command) && !command.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal) && !command.Contains(Path.AltDirectorySeparatorChar, StringComparison.Ordinal))
                 {
                      // Simple command name - just validate chars
                      if (!SecurityHelpers.IsValidFileName(command, out validatedCommand))
@@ -337,10 +356,10 @@ namespace RecoveryCommander.Core
                     // Register cancellation to kill process
                     using var registration = timeoutCts.Token.Register(() =>
                     {
-                        try { if (!process.HasExited) process.Kill(true); } catch { }
+                        try { if (!process.HasExited) process.Kill(true); } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
                     });
 
-                    await tcs.Task.WaitAsync(timeoutCts.Token);
+                    await tcs.Task.WaitAsync(timeoutCts.Token).ConfigureAwait(false);
 
                     result.Success = process.ExitCode == 0;
                     result.ExitCode = process.ExitCode;
@@ -361,7 +380,12 @@ namespace RecoveryCommander.Core
                     result.Output = outputBuilder.ToString();
                 }
             }
-            catch (Exception ex)
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                result.Success = false;
+                result.Error = ex.Message;
+            }
+            catch (InvalidOperationException ex)
             {
                 result.Success = false;
                 result.Error = ex.Message;

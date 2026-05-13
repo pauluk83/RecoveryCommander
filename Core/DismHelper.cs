@@ -22,15 +22,15 @@ namespace RecoveryCommander.Core
                     }
                 }, 
                 error => reportOutput("ERROR: " + error), 
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         private static void ParseDismProgress(string output, IProgress<ProgressReport> progress, Action<int> setPercent, Func<int> getPercent)
         {
-            var lowerOutput = output.ToLowerInvariant();
+            var upperOutput = output.ToUpperInvariant();
             int currentPercent = getPercent();
             
-            string cleanOutput = output.Replace("\0", "").Replace(" ", "");
+            string cleanOutput = output.Replace("\0", "", StringComparison.Ordinal).Replace(" ", "", StringComparison.Ordinal);
             var match = System.Text.RegularExpressions.Regex.Match(cleanOutput, @"(\d+)(?:\.\d+)?%", System.Text.RegularExpressions.RegexOptions.RightToLeft);
             if (match.Success && int.TryParse(match.Groups[1].Value, out var percent))
             {
@@ -38,37 +38,37 @@ namespace RecoveryCommander.Core
                 {
                     currentPercent = percent;
                     setPercent(currentPercent);
-                    var detail = lowerOutput.Contains("complete") ? "complete" : "processing";
+                    var detail = upperOutput.Contains("COMPLETE", StringComparison.Ordinal) ? "complete" : "processing";
                     progress.Report(new ProgressReport(currentPercent, $"DISM: {currentPercent}% {detail}"));
                 }
                 return;
             }
 
-            if (lowerOutput.Contains("mounting") && currentPercent < 5)
+            if (upperOutput.Contains("MOUNTING", StringComparison.Ordinal) && currentPercent < 5)
             {
                 currentPercent = 5;
                 setPercent(currentPercent);
                 progress.Report(new ProgressReport(currentPercent, "Mounting image..."));
             }
-            else if (lowerOutput.Contains("cleaning") && currentPercent < 50)
+            else if (upperOutput.Contains("CLEANING", StringComparison.Ordinal) && currentPercent < 50)
             {
                 currentPercent = currentPercent > 50 ? currentPercent : 50;
                 setPercent(currentPercent);
                 progress.Report(new ProgressReport(currentPercent, "Cleaning component store..."));
             }
-            else if (lowerOutput.Contains("restoring") && currentPercent < 40)
+            else if (upperOutput.Contains("RESTORING", StringComparison.Ordinal) && currentPercent < 40)
             {
                 currentPercent = 40;
                 setPercent(currentPercent);
                 progress.Report(new ProgressReport(currentPercent, "Restoring health..."));
             }
-            else if (lowerOutput.Contains("scanning") && currentPercent < 10)
+            else if (upperOutput.Contains("SCANNING", StringComparison.Ordinal) && currentPercent < 10)
             {
                 currentPercent = 10;
                 setPercent(currentPercent);
                 progress.Report(new ProgressReport(currentPercent, "Scanning health..."));
             }
-            else if (lowerOutput.Contains("operation completed successfully") || lowerOutput.Contains("completed successfully"))
+            else if (upperOutput.Contains("OPERATION COMPLETED SUCCESSFULLY", StringComparison.Ordinal) || upperOutput.Contains("COMPLETED SUCCESSFULLY", StringComparison.Ordinal))
             {
                 setPercent(0);
                 progress.Report(new ProgressReport(100, "Operation completed successfully"));

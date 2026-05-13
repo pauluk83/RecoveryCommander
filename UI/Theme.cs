@@ -1076,7 +1076,7 @@ namespace RecoveryCommander.UI
             }
         }
 
-        private class FuturisticColorTable : ProfessionalColorTable
+        private sealed class FuturisticColorTable : ProfessionalColorTable
         {
             public override Color MenuItemSelected => Color.FromArgb(40, 40, 60);
             public override Color MenuItemSelectedGradientBegin => Color.FromArgb(40, 40, 60);

@@ -11,6 +11,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Runtime.Versioning;
+using System.Resources;
+using System.Globalization;
 using RecoveryCommander.Core;
 
 namespace RecoveryCommander.Core
@@ -48,6 +50,8 @@ namespace RecoveryCommander.Core
         private bool oemRegistrationCompleted;
         private bool useFfuCapture;
 
+        private static readonly ResourceManager _resManager = new("RecoveryCommander.Resources.WinREStrings", typeof(WinREWizards).Assembly);
+
         private RadioButton? rbScanState;
         private RadioButton? rbFfu;
 
@@ -84,7 +88,7 @@ namespace RecoveryCommander.Core
             // Title label
             lblTitle = new Label
             {
-                Text = "Push-Button Reset Setup Wizard",
+                Text = _resManager.GetString("WizardTitle", CultureInfo.CurrentUICulture) ?? "Push-Button Reset Setup Wizard",
                 Font = new Font("Segoe UI", 14, FontStyle.Bold),
                 Location = new Point(20, 20),
                 Size = new Size(550, 30),
@@ -96,7 +100,7 @@ namespace RecoveryCommander.Core
             // Step indicator
             lblStepIndicator = new Label
             {
-                Text = "Step 1 of 3",
+                Text = _resManager.GetString("Step1Of3", CultureInfo.CurrentUICulture) ?? "Step 1 of 3",
                 Font = new Font("Segoe UI", 10),
                 Location = new Point(20, 60),
                 Size = new Size(550, 20),
@@ -117,7 +121,7 @@ namespace RecoveryCommander.Core
             // Navigation buttons
             btnBack = new Button
             {
-                Text = "< Back",
+                Text = _resManager.GetString("BackButton", CultureInfo.CurrentUICulture) ?? "< Back",
                 Location = new Point(20, 410),
                 Size = new Size(80, 35),
                 Enabled = true,
@@ -130,7 +134,7 @@ namespace RecoveryCommander.Core
 
             btnNext = new Button
             {
-                Text = "Next >",
+                Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >",
                 Location = new Point(420, 410),
                 Size = new Size(80, 35),
                 FlatStyle = FlatStyle.Flat,
@@ -142,7 +146,7 @@ namespace RecoveryCommander.Core
 
             btnCancel = new Button
             {
-                Text = "Cancel",
+                Text = _resManager.GetString("CancelButton", CultureInfo.CurrentUICulture) ?? "Cancel",
                 Location = new Point(510, 410),
                 Size = new Size(80, 35),
                 FlatStyle = FlatStyle.Flat,
@@ -174,44 +178,44 @@ namespace RecoveryCommander.Core
             switch (currentStep)
             {
                 case WizardStep.Welcome:
-                    lblStepIndicator!.Text = "Step 1 of 5: Introduction";
+                    lblStepIndicator!.Text = _resManager.GetString("Step1Introduction", CultureInfo.CurrentUICulture) ?? "Step 1 of 5: Introduction";
                     btnBack!.Enabled = false;
-                    btnNext!.Text = "Next >";
+                    btnNext!.Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >";
                     ShowWelcomeStep();
                     break;
 
                 case WizardStep.CaptureChoice:
-                    lblStepIndicator!.Text = "Step 2 of 5: Choose Capture Method";
+                    lblStepIndicator!.Text = _resManager.GetString("Step2ChooseMethod", CultureInfo.CurrentUICulture) ?? "Step 2 of 5: Choose Capture Method";
                     btnBack!.Enabled = true;
-                    btnNext!.Text = "Next >";
+                    btnNext!.Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >";
                     ShowCaptureChoiceStep();
                     break;
 
                 case WizardStep.ScanStateCapture:
-                    lblStepIndicator!.Text = "Step 3 of 5: Capture Customizations (ScanState)";
+                    lblStepIndicator!.Text = _resManager.GetString("Step3CaptureScanState", CultureInfo.CurrentUICulture) ?? "Step 3 of 5: Capture Customizations (ScanState)";
                     btnBack!.Enabled = true;
-                    btnNext!.Text = scanStateCompleted ? "Next >" : "Capture Now";
+                    btnNext!.Text = scanStateCompleted ? (_resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >") : "Capture Now";
                     ShowScanStateStep();
                     break;
 
                 case WizardStep.FfuCaptureInfo:
-                    lblStepIndicator!.Text = "Step 3 of 5: FFU Capture Instructions (Offline)";
+                    lblStepIndicator!.Text = _resManager.GetString("Step3CaptureFfu", CultureInfo.CurrentUICulture) ?? "Step 3 of 5: FFU Capture Instructions (Offline)";
                     btnBack!.Enabled = true;
-                    btnNext!.Text = "Next >";
+                    btnNext!.Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >";
                     ShowFfuCaptureInfoStep();
                     break;
 
                 case WizardStep.OemImageRegistration:
-                    lblStepIndicator!.Text = "Step 4 of 5: Register OEM Image";
+                    lblStepIndicator!.Text = _resManager.GetString("Step4RegisterImage", CultureInfo.CurrentUICulture) ?? "Step 4 of 5: Register OEM Image";
                     btnBack!.Enabled = true;
-                    btnNext!.Text = oemRegistrationCompleted ? "Finish" : "Register Now";
+                    btnNext!.Text = oemRegistrationCompleted ? (_resManager.GetString("FinishButton", CultureInfo.CurrentUICulture) ?? "Finish") : "Register Now";
                     ShowOemImageStep();
                     break;
 
                 case WizardStep.Completion:
-                    lblStepIndicator!.Text = "Step 5 of 5: Complete!";
+                    lblStepIndicator!.Text = _resManager.GetString("Step5Complete", CultureInfo.CurrentUICulture) ?? "Step 5 of 5: Complete!";
                     btnBack!.Enabled = false;
-                    btnNext!.Text = "Close";
+                    btnNext!.Text = _resManager.GetString("CloseButton", CultureInfo.CurrentUICulture) ?? "Close";
                     ShowCompletionStep();
                     break;
             }
@@ -520,13 +524,13 @@ namespace RecoveryCommander.Core
 
             if (currentStep == WizardStep.ScanStateCapture && !scanStateCompleted)
             {
-                await ExecuteScanStateCaptureAsync();
+                await ExecuteScanStateCaptureAsync().ConfigureAwait(false);
                 return;
             }
 
             if (currentStep == WizardStep.OemImageRegistration && !oemRegistrationCompleted)
             {
-                await ExecuteOemImageRegistrationAsync();
+                await ExecuteOemImageRegistrationAsync().ConfigureAwait(false);
                 return;
             }
 
@@ -560,7 +564,7 @@ namespace RecoveryCommander.Core
                 reportOutput("Preparing Windows ADK download...");
 
                 // Show download options dialog
-                var adkForm = new Form
+                using var adkForm = new Form
                 {
                     Text = "Download Windows ADK",
                     Size = new Size(600, 400),
@@ -715,7 +719,7 @@ namespace RecoveryCommander.Core
 
                     if (result == DialogResult.Yes)
                     {
-                        await DownloadWindowsAdkAsync();
+                        await DownloadWindowsAdkAsync().ConfigureAwait(false);
                         return;
                     }
                     else if (result == DialogResult.No)
@@ -754,7 +758,7 @@ namespace RecoveryCommander.Core
                 reportOutput("This process may take several minutes...");
 
                 var psi = CoreUtilities.CreateProcessInfo(scanstatePath, args);
-                await AsyncHelpers.RunProcessAsync(psi, reportOutput, err => reportOutput("SCANSTATE: " + err), cts.Token);
+                await AsyncHelpers.RunProcessAsync(psi, reportOutput, err => reportOutput("SCANSTATE: " + err), cts.Token).ConfigureAwait(false);
 
                 capturedPpkgPath = ppkgPath;
                 scanStateCompleted = true;
@@ -783,9 +787,19 @@ namespace RecoveryCommander.Core
             {
                 reportOutput("ScanState capture was cancelled.");
             }
-            catch (Exception ex)
+            catch (System.ComponentModel.Win32Exception ex)
             {
-                reportOutput($"ScanState capture failed: {ex.Message}");
+                reportOutput($"ScanState capture failed (Process): {ex.Message}");
+                MessageBox.Show($"ScanState capture failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (IOException ex)
+            {
+                reportOutput($"ScanState capture failed (IO): {ex.Message}");
+                MessageBox.Show($"ScanState capture failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (InvalidOperationException ex)
+            {
+                reportOutput($"ScanState capture failed (System): {ex.Message}");
                 MessageBox.Show($"ScanState capture failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
@@ -836,7 +850,7 @@ namespace RecoveryCommander.Core
   </SystemDisk>
 </Reset>";
 
-                await File.WriteAllTextAsync(xmlPath, xmlContent, Encoding.UTF8, cts.Token);
+                await File.WriteAllTextAsync(xmlPath, xmlContent, Encoding.UTF8, cts.Token).ConfigureAwait(false);
 
                 registeredOemImagePath = wimPath;
                 oemRegistrationCompleted = true;
@@ -868,10 +882,15 @@ namespace RecoveryCommander.Core
             {
                 reportOutput("OEM image registration was cancelled.");
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                reportOutput($"OEM image registration failed: {ex.Message}");
-                MessageBox.Show($"OEM image registration failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                reportOutput($"OEM image registration failed (IO): {ex.Message}");
+                MessageBox.Show($"Registration failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                reportOutput($"OEM image registration failed (Access): {ex.Message}");
+                MessageBox.Show($"Registration failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -888,6 +907,23 @@ namespace RecoveryCommander.Core
             cts.Cancel();
             cts.Dispose();
             base.OnFormClosing(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                lblTitle?.Dispose();
+                lblStepIndicator?.Dispose();
+                pnlContent?.Dispose();
+                btnBack?.Dispose();
+                btnNext?.Dispose();
+                btnCancel?.Dispose();
+                progressBar?.Dispose();
+                lblStatus?.Dispose();
+                lblOemStatus?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         #region Designer Generated Code

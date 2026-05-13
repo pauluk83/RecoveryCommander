@@ -12,15 +12,18 @@ using RecoveryCommander.Contracts;
 namespace RecoveryCommander.Core.Services
 {
     [SupportedOSPlatform("windows")]
-    public class UpdateService
+    public static class UpdateService
     {
         public static async Task UpgradeWingetPackagesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             progress.Report(new ProgressReport(5, "Checking for winget..."));
             if (!IsWingetInstalled())
             {
                 reportOutput("winget not found. Attempting to install...");
-                await InstallWingetAsync(reportOutput, cancellationToken);
+                await InstallWingetAsync(reportOutput, cancellationToken).ConfigureAwait(false);
                 if (!IsWingetInstalled())
                 {
                     reportOutput("Failed to install winget. Skipping package upgrades.");
@@ -30,39 +33,45 @@ namespace RecoveryCommander.Core.Services
 
             progress.Report(new ProgressReport(20, "Scanning for updates..."));
             var psi = CoreUtilities.CreateProcessInfo("winget", "upgrade --all --silent --accept-package-agreements --accept-source-agreements");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdateStoreAppsAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             progress.Report(new ProgressReport(10, "Triggering Microsoft Store updates..."));
             string script = "Get-CimInstance -Namespace root/Microsoft/Windows/Appx -ClassName MSFT_AppxPackage | Foreach-Object { $_.Update() }";
             var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script}\"");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpgradeWingetPackageAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdateStoreAppAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             // Try winget first for Store apps as it is more reliable for specific versions
             var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements --source msstore");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdatePSModuleAsync(string moduleName, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             string script = $"Update-Module -Name \"{moduleName}\" -Force -ErrorAction SilentlyContinue";
             var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script}\"");
-            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+            await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task ScanForWindowsUpdatesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             progress.Report(new ProgressReport(5, "Initializing Windows Update Agent..."));
             await Task.Run(() =>
             {
@@ -86,7 +95,7 @@ namespace RecoveryCommander.Core.Services
                 {
                     reportOutput($"WU Scan Error: {ex.Message}");
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
         }
 
         private static bool IsWingetInstalled()
@@ -109,9 +118,9 @@ namespace RecoveryCommander.Core.Services
             string temp = Path.Combine(tempDir, "winget_installer.msixbundle");
             try
             {
-                await AsyncHelpers.DownloadFileAsync(url, temp, null, cancellationToken);
+                await AsyncHelpers.DownloadFileAsync(url, temp, null, cancellationToken).ConfigureAwait(false);
                 var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"Add-AppxPackage -Path '{temp}'\"");
-                await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken);
+                await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
             }
             finally
             {

@@ -8,13 +8,13 @@ using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 using RecoveryCommander.Core.Services;
 
-namespace RecoveryCommander.Module
+namespace RecoveryCommander.Modules
 {
     [RecoveryModule("DriverManagerModule")]
     [SupportedOSPlatform("windows")]
     public class DriverManagerModule : IRecoveryModule
     {
-        private readonly DriverService _driverService = new();
+
 
         public string Name => "Driver Manager";
         public string Description => "Comprehensive driver backup, restoration, and optimization tools.";
@@ -27,7 +27,7 @@ namespace RecoveryCommander.Module
         {
             new ModuleAction("Backup Drivers", "Exports all third-party drivers to a selected folder", ExecuteBackupDriversAsync) { Highlight = true },
             new ModuleAction("Restore Drivers", "Installs drivers from a folder (pnputil)", ExecuteRestoreDriversAsync),
-            new ModuleAction("List Drivers", "Enumerate all installed third-party drivers", _driverService.EnumerateDriversAsync),
+            new ModuleAction("List Drivers", "Enumerate all installed third-party drivers", DriverService.EnumerateDriversAsync),
             new ModuleAction("Cleanup Driver Store", "Removes redundant and old driver versions", ExecuteOptimizeDriversAsync) { IsDestructive = true },
             new ModuleAction("Driver Booster PRO 13.4.0.234", "Driver Booster PRO Portable", (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.IObitDriverBooster", p, o, c))
         };
@@ -42,7 +42,7 @@ namespace RecoveryCommander.Module
 
             if (fbd.ShowDialog() == DialogResult.OK)
             {
-                await _driverService.BackupDriversAsync(fbd.SelectedPath, progress, reportOutput, cancellationToken);
+                await DriverService.BackupDriversAsync(fbd.SelectedPath, progress, reportOutput, cancellationToken);
             }
         }
 
@@ -56,7 +56,7 @@ namespace RecoveryCommander.Module
 
             if (fbd.ShowDialog() == DialogResult.OK)
             {
-                await _driverService.RestoreDriversAsync(fbd.SelectedPath, progress, reportOutput, cancellationToken);
+                await DriverService.RestoreDriversAsync(fbd.SelectedPath, progress, reportOutput, cancellationToken);
             }
         }
 
@@ -67,7 +67,7 @@ namespace RecoveryCommander.Module
 
             if (result == DialogResult.Yes)
             {
-                await _driverService.OptimizeDriverStoreAsync(progress, reportOutput, cancellationToken);
+                await DriverService.OptimizeDriverStoreAsync(progress, reportOutput, cancellationToken);
             }
         }
     }

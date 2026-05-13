@@ -10,7 +10,7 @@ using RecoveryCommander.Core;
 using System.Windows.Forms;
 using System.Runtime.Versioning;
 
-namespace RecoveryCommander.Module;
+namespace RecoveryCommander.Modules;
 
 [SupportedOSPlatform("windows")]
 [RecoveryModuleAttribute("SfcModule")]
@@ -66,7 +66,7 @@ public sealed class SfcModule : IRecoveryModule
         return ExecuteActionSafeAsync("Offline Scan", $"/scannow /offbootdir={bootDir} /offwindir={winDir}", progress, reportOutput, cancellationToken);
     }
 
-    private async Task ExecuteActionSafeAsync(string actionName, string arguments, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    private static async Task ExecuteActionSafeAsync(string actionName, string arguments, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
     {
         progress.Report(new ProgressReport(0, $"Preparing {actionName}..."));
 

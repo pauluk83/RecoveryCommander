@@ -1,5 +1,36 @@
 # RecoveryCommander Changelog
 
+## 2026-05-13 - Code Quality Improvements
+
+### Build & Code Analysis
+- **CA1031 Warning Fix** — Added pragma suppress directive with justification comment for the general exception catch in `AsyncHelpersTests.Dispose()`. The catch-all exception handler is necessary in Dispose methods to prevent exceptions from propagating during cleanup operations.
+- **Zero-Warning Build** — Verified solution builds cleanly with **0 errors, 0 warnings** in Release configuration.
+
+## 2026-05-12 - Technical Hardening & Analyzer Remediation (v1.2.6)
+
+### Technical Hardening (Core & Modules)
+- **Specific Exception Handling (CA1031/CA2201)** — Systematically replaced generic `catch { }` and `catch (Exception)` blocks with specific Win32, IO, and Task exceptions. Migrated `ReagentcModule` to use `InvalidOperationException` over `System.Exception`.
+- **Async Pattern Compliance (CA2007)** — Applied `.ConfigureAwait(false)` to all asynchronous operations in the core library and WinRE wizards.
+- **Namespace Modernization (CA1716)** — Renamed `RecoveryCommander.Module` to `RecoveryCommander.Modules` across the entire solution to resolve reserved language keyword conflicts.
+- **Static Access Optimization (CA1052)** — Fixed build errors in `DriverManagerModule` by correctly qualifying static `DriverService` calls, following its conversion to a static utility class.
+- **String & Comparison Optimization (CA1847/CA1307)** — Migrated to `char`-based overloads for `string.Contains` and `StringBuilder.Append` to eliminate redundant string allocations.
+
+### UI & Resource Management
+- **WinRE Wizard Disposal (CA2213/CA2000)** — Implemented `Dispose(bool)` in `WinREWizards` and wrapped transient forms in `using` blocks.
+- **Resource Migration (CA1303/CA1304)** — Migrated hardcoded strings in `WinREWizards.cs` to `WinREStrings.resx` and enforced explicit `CultureInfo` usage for resource lookups.
+- **Security Sanitization** — Optimized `SecurityHelpers.cs` with efficient `Span<char>` and ordinal comparisons.
+- **Global `CA1822` Remediation** — Finalized static method migration across `SfcModule`, `DismModule`, `SystemPrepModule`, and `UtilitiesModule`, achieving zero-warning state for instance-less logic.
+- **Static Array Optimization (CA1861)** — Consolidated constant array allocations in `UpdateHelpers.cs` and `UtilitiesModule.cs` into `static readonly` fields.
+- **`UpdateHelpers` Culture Enforcement (CA1304/CA1305)** — Enforced explicit `CultureInfo` across all `Type.InvokeMember` calls and date formatting in `CloudProfileSyncService` and Windows Update logic.
+- **Namespace Unification** — Completed the migration of all modular components to the `RecoveryCommander.Modules` namespace, resolving final `CA1716` conflicts.
+
+### Infrastructure & Compliance
+- **Analyzer Configuration** — Created root `.editorconfig` with surgical suppressions for Test projects (CA1707) and strict enforcement for Core/Module logic.
+- **Service Layer Safety** — Forwarded cancellation tokens in network DNS resolution and hardened `GlobalExceptionHandler` with specific security exception handling.
+- **`TreatWarningsAsErrors` Preparation** — Achieved zero-warning baseline for high-priority rules in the Core and Module projects.
+
+
+
 ## 2026-05-12 - Static Audit Remediation (Website & CI)
 
 ### Website SEO & Structured Data

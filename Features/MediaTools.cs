@@ -29,7 +29,7 @@ namespace RecoveryCommander.Forms
         private CheckBox backupRecovery;
         private CheckBox includeDrivers;
         private Label driveInfoLabel;
-        private DriverService _driverService = new();
+
         // Cancelled when the form closes so any in-flight long operations bail out cleanly.
         private readonly CancellationTokenSource _formCts = new();
 
@@ -301,7 +301,7 @@ namespace RecoveryCommander.Forms
                     Directory.CreateDirectory(driverPath);
                     
                     var progress = new Progress<ProgressReport>(report => LogMessage($"{report.PercentComplete}%: {report.StatusMessage}"));
-                    await _driverService.BackupDriversAsync(driverPath, progress, msg => LogMessage(msg), _formCts.Token);
+                    await DriverService.BackupDriversAsync(driverPath, progress, msg => LogMessage(msg), _formCts.Token);
                 }
                 
                 // Create boot configuration

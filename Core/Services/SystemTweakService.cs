@@ -23,13 +23,16 @@ using RecoveryCommander.Contracts;
 namespace RecoveryCommander.Core.Services
 {
     [SupportedOSPlatform("windows")]
-    public class SystemTweakService
+    public static class SystemTweakService
     {
         private static readonly Action<ILogger, string, string, object, Exception?> _logRegistryFailure = 
             LoggerMessage.Define<string, string, object>(LogLevel.Error, new EventId(3, "RegistryTweakFailure"), "Failed to set registry value: {KeyPath}\\{ValueName} = {Value}");
 
         public static Task DisableTelemetryAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
 
             progress.Report(new ProgressReport(10, "Disabling telemetry..."));
@@ -54,6 +57,9 @@ namespace RecoveryCommander.Core.Services
 
         public static Task DisableWebSearchAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(progress);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
 
             progress.Report(new ProgressReport(50, "Disabling Bing search in Start..."));

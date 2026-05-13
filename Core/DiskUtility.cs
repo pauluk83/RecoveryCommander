@@ -14,10 +14,13 @@ namespace RecoveryCommander.Core
 
         public static async Task<bool> RunDiskpartScriptAsync(string script, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(script);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             string tmp = Path.Combine(Path.GetTempPath(), $"rc_diskpart_{Guid.NewGuid():N}.txt");
             try
             {
-                await File.WriteAllTextAsync(tmp, script, cancellationToken);
+                await File.WriteAllTextAsync(tmp, script, cancellationToken).ConfigureAwait(false);
                 var psi = CoreUtilities.CreateProcessInfo("diskpart.exe", $"/s \"{tmp}\"");
                 bool success = false;
                 await AsyncHelpers.RunProcessAsync(psi, (line) =>
@@ -29,29 +32,37 @@ namespace RecoveryCommander.Core
                     {
                         success = true;
                     }
-                }, error => reportOutput("ERROR: " + error), cancellationToken);
+                }, error => reportOutput("ERROR: " + error), cancellationToken).ConfigureAwait(false);
                 return success;
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                reportOutput($"Diskpart error: {ex.Message}");
+                reportOutput($"Diskpart IO error: {ex.Message}");
+                return false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                reportOutput($"Diskpart process error: {ex.Message}");
                 return false;
             }
             finally
             {
-                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
         }
 
         public static async Task<int?> FindVolumeNumberByLabelAsync(string label, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(label);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             string tmp = Path.Combine(Path.GetTempPath(), $"rc_diskpart_{Guid.NewGuid():N}.txt");
             try
             {
-                await File.WriteAllTextAsync(tmp, "list volume\r\n", cancellationToken);
+                await File.WriteAllTextAsync(tmp, "list volume\r\n", cancellationToken).ConfigureAwait(false);
                 var psi = CoreUtilities.CreateProcessInfo("diskpart.exe", $"/s \"{tmp}\"");
                 var sb = new StringBuilder();
-                await AsyncHelpers.RunProcessAsync(psi, (line) => { sb.AppendLine(line); }, null, cancellationToken);
+                await AsyncHelpers.RunProcessAsync(psi, (line) => { sb.AppendLine(line); }, null, cancellationToken).ConfigureAwait(false);
                 foreach (var raw in sb.ToString().Split(_lineSeparators, StringSplitOptions.RemoveEmptyEntries))
                 {
                     var line = raw.Trim();
@@ -65,13 +76,17 @@ namespace RecoveryCommander.Core
                     }
                 }
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                reportOutput($"Failed to list volumes: {ex.Message}");
+                reportOutput($"Failed to list volumes (IO): {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                reportOutput($"Failed to list volumes (Process): {ex.Message}");
             }
             finally
             {
-                try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+                try { if (File.Exists(tmp)) File.Delete(tmp); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
             return null;
         }
@@ -90,7 +105,8 @@ namespace RecoveryCommander.Core
                     }
                 }
             }
-            catch { }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
             var prefs = new[] { 'R', 'Q', 'P', 'H', 'K' };
             foreach (var c in prefs)
             {

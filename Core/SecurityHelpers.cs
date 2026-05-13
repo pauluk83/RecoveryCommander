@@ -32,18 +32,17 @@ namespace RecoveryCommander.Core
                 if (fullPath.StartsWith("\\\\", StringComparison.OrdinalIgnoreCase))
                     return false;
                 
-                // Block potential alternative data streams (ADS)
-                if (fullPath.Contains(':'))
+                if (fullPath.Contains(':', StringComparison.Ordinal))
                 {
                     // Allow only the drive letter colon (e.g., C:\)
-                    if (fullPath.IndexOf(':') != 1 || fullPath.Substring(2).Contains(':'))
+                    if (fullPath.IndexOf(':', StringComparison.Ordinal) != 1 || fullPath.AsSpan(2).IndexOf(':') != -1)
                         return false;
                 }
 
                 // Check for path traversal attempts
-                if (path.Contains("..") || path.Contains('~'))
+                if (path.Contains("..", StringComparison.Ordinal) || path.Contains('~', StringComparison.Ordinal))
                 {
-                    if (fullPath.Contains("..")) return false;
+                    if (fullPath.Contains("..", StringComparison.Ordinal)) return false;
                 }
                 
                 // Validate the path doesn't contain invalid characters
@@ -54,10 +53,9 @@ namespace RecoveryCommander.Core
                 sanitizedPath = fullPath;
                 return true;
             }
-            catch (Exception)
-            {
-                return false;
-            }
+            catch (ArgumentException) { return false; }
+            catch (PathTooLongException) { return false; }
+            catch (NotSupportedException) { return false; }
         }
         
         /// <summary>
@@ -88,10 +86,7 @@ namespace RecoveryCommander.Core
                 validUri = uri;
                 return true;
             }
-            catch
-            {
-                return false;
-            }
+            catch (UriFormatException) { return false; }
         }
 
         private static bool IsLocalOrPrivateHost(string host)
@@ -139,7 +134,7 @@ namespace RecoveryCommander.Core
             
             foreach (var c in dangerousChars)
             {
-                sanitized = sanitized.Replace(c.ToString(), string.Empty);
+                sanitized = sanitized.Replace(c.ToString(), string.Empty, StringComparison.Ordinal);
             }
             // Note: command chaining patterns (&&, ||, ;) are already neutralized by
             // the character-level stripping above, so no additional regex pass is needed.
@@ -156,7 +151,7 @@ namespace RecoveryCommander.Core
             
             // For -File, paths with spaces must be quoted. 
             // Quotes inside the path must be escaped for PowerShell.
-            var escaped = argument.Replace("\"", "\"\"");
+            var escaped = argument.Replace("\"", "\"\"", StringComparison.Ordinal);
             return $"\"{escaped}\"";
         }
 
@@ -167,11 +162,11 @@ namespace RecoveryCommander.Core
         {
             if (string.IsNullOrEmpty(argument)) return "\"\"";
 
-            if (!argument.Contains(" ") && !argument.Contains("\t") && !argument.Contains("\""))
+            if (!argument.Contains(' ', StringComparison.Ordinal) && !argument.Contains('\t', StringComparison.Ordinal) && !argument.Contains('"', StringComparison.Ordinal))
                 return argument;
 
             var escaped = new System.Text.StringBuilder();
-            escaped.Append("\"");
+            escaped.Append('"');
             for (int i = 0; i < argument.Length; i++)
             {
                 int backslashes = 0;
@@ -196,7 +191,7 @@ namespace RecoveryCommander.Core
                     escaped.Append(argument[i]);
                 }
             }
-            escaped.Append("\"");
+            escaped.Append('"');
             return escaped.ToString();
         }
         
@@ -211,23 +206,23 @@ namespace RecoveryCommander.Core
                 return false;
 
             // Remove path separators to ensure it's just a filename
-            var name = fileName.Replace("/", "").Replace("\\", "");
+            var name = fileName.Replace("/", "", StringComparison.Ordinal).Replace("\\", "", StringComparison.Ordinal);
             
             // Remove invalid filename characters
             var invalidChars = Path.GetInvalidFileNameChars();
             foreach (var c in invalidChars)
             {
-                name = name.Replace(c.ToString(), "");
+                name = name.Replace(c.ToString(), "", StringComparison.Ordinal);
             }
 
             // Block reserved Windows filenames (CON, PRN, etc.)
             string[] reservedNames = { "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9" };
             string nameWithoutExt = Path.GetFileNameWithoutExtension(name).ToUpperInvariant();
-            if (reservedNames.Contains(nameWithoutExt))
+            if (reservedNames.Contains(nameWithoutExt, StringComparer.OrdinalIgnoreCase))
                 return false;
             
             // Check for path traversal attempts
-            if (name.Contains("..") || name.Contains("~"))
+            if (name.Contains("..", StringComparison.Ordinal) || name.Contains('~'))
                 return false;
             
             if (string.IsNullOrWhiteSpace(name))

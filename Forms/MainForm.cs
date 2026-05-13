@@ -91,7 +91,7 @@ namespace RecoveryCommander.Forms
         private IRecoveryModule? currentModule = null;
         
         // Background Job Management (Multi-threading support)
-        private class BackgroundJob
+        private sealed class BackgroundJob
         {
             public IRecoveryModule Module { get; set; } = null!;
             public ModuleAction Action { get; set; } = null!;

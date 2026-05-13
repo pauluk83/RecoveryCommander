@@ -83,7 +83,7 @@ namespace RecoveryCommander.Core
                 {
                     // SSRF Protection: Resolve DNS to IP and check if it's loopback or private.
                     // This protects against DNS rebinding and obfuscated IPs.
-                    var entry = await System.Net.Dns.GetHostEntryAsync(context.DnsEndPoint.Host);
+                    var entry = await System.Net.Dns.GetHostEntryAsync(context.DnsEndPoint.Host, cancellationToken);
                     var ip = entry.AddressList.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6);
                     
                     if (ip == null || IsPrivateOrLoopbackIp(ip))

@@ -21,7 +21,7 @@ using Microsoft.Extensions.Logging;
 namespace RecoveryCommander.Core
 {
     [SupportedOSPlatform("windows")]
-    public class GlobalExceptionHandler
+    public sealed class GlobalExceptionHandler
     {
         private static readonly Action<ILogger, Exception?> _logUnhandledException = 
             LoggerMessage.Define(LogLevel.Error, new EventId(2, "UnhandledException"), "Unhandled exception occurred");
@@ -48,10 +48,9 @@ namespace RecoveryCommander.Core
                     $"Unhandled exception: {exception}\n\nStack trace: {exception.StackTrace}",
                     EventLogEntryType.Error);
             }
-            catch
-            {
-                // EventLog writes can fail mid-session (e.g. policy changes); never crash the app.
-            }
+            catch (System.ComponentModel.Win32Exception) { }
+            catch (InvalidOperationException) { }
+            catch (System.Security.SecurityException) { }
         }
 
         public static void Initialize()
@@ -78,9 +77,14 @@ namespace RecoveryCommander.Core
                 EventLog.CreateEventSource(EventLogSource, EventLogName);
                 _eventLogReady = true;
             }
-            catch (Exception ex)
+            catch (System.Security.SecurityException ex)
             {
-                Debug.WriteLine($"[GlobalExceptionHandler] Could not register Event Log source '{EventLogSource}': {ex.Message}");
+                Debug.WriteLine($"[GlobalExceptionHandler] Permission denied to register Event Log source '{EventLogSource}': {ex.Message}");
+                _eventLogReady = false;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"[GlobalExceptionHandler] Invalid operation during Event Log registration: {ex.Message}");
                 _eventLogReady = false;
             }
         }

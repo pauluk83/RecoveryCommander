@@ -12,7 +12,7 @@ using RecoveryCommander.Core;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 
-namespace RecoveryCommander.Module
+namespace RecoveryCommander.Modules
 {
     [SupportedOSPlatform("windows")]
     [RecoveryModuleAttribute("DismModule")]
@@ -47,7 +47,7 @@ namespace RecoveryCommander.Module
         public bool SupportsAsync => true;
 
 
-        private async Task ExecuteActionSafeAsync(string actionName, string args, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private static async Task ExecuteActionSafeAsync(string actionName, string args, IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress?.Report(new ProgressReport(1, $"Starting DISM: {actionName}..."));
             try

@@ -28,6 +28,10 @@ namespace RecoveryCommander.Core
 
         public static async Task CopyToAsyncWithProgress(Stream source, Stream destination, long? totalBytes, IProgress<ProgressReport> progress, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(destination);
+            ArgumentNullException.ThrowIfNull(progress);
+
             var buffer = new byte[262144]; // 256KB buffer
             long totalRead = 0;
             int bytesRead;
@@ -35,9 +39,9 @@ namespace RecoveryCommander.Core
             long lastReportTime = 0;
             int lastPercentReported = -1;
 
-            while ((bytesRead = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)) > 0)
+            while ((bytesRead = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
             {
-                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+                await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
                 totalRead += bytesRead;
 
                 // Calculate percent if possible
@@ -146,6 +150,9 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static async Task RunProcessAsync(ProcessStartInfo psi, Action<string> reportOutput, Action<string>? reportError = null, CancellationToken cancellationToken = default)
         {
+            ArgumentNullException.ThrowIfNull(psi);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             using var process = new Process();
             process.StartInfo = psi;
             process.StartInfo.UseShellExecute = false;
@@ -178,12 +185,13 @@ namespace RecoveryCommander.Core
                         tcs.TrySetCanceled(cancellationToken);
                     }
                 } 
-                catch { }
+                catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception) { }
             });
 
             try
             {
-                await Task.WhenAll(tcs.Task, outputTask, errorTask);
+                await Task.WhenAll(tcs.Task, outputTask, errorTask).ConfigureAwait(false);
 
                 if (process.ExitCode != 0 && !cancellationToken.IsCancellationRequested)
                 {
@@ -198,13 +206,16 @@ namespace RecoveryCommander.Core
 
         private static async Task ConsumeStreamAsync(StreamReader reader, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(reader);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+
             var buffer = new System.Text.StringBuilder();
             var charBuffer = new char[1024];
             int bytesRead;
 
             try
             {
-                while ((bytesRead = await reader.ReadAsync(charBuffer, 0, charBuffer.Length)) > 0)
+                while ((bytesRead = await reader.ReadAsync(charBuffer, 0, charBuffer.Length).ConfigureAwait(false)) > 0)
                 {
                     if (cancellationToken.IsCancellationRequested) break;
 
@@ -251,9 +262,13 @@ namespace RecoveryCommander.Core
                 }
             }
             catch (OperationCanceledException) { }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                Debug.WriteLine($"Error reading process stream: {ex.Message}");
+                Debug.WriteLine($"IO Error reading process stream: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"Process Error reading process stream: {ex.Message}");
             }
         }
 
@@ -263,6 +278,10 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static void RunProcessAndReport(ProcessStartInfo psi, Action<string> reportOutput, Func<bool> isCancelled)
         {
+            ArgumentNullException.ThrowIfNull(psi);
+            ArgumentNullException.ThrowIfNull(reportOutput);
+            ArgumentNullException.ThrowIfNull(isCancelled);
+
             try
             {
                 using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
@@ -278,11 +297,11 @@ namespace RecoveryCommander.Core
                 {
                     outputHandler = (s, e) =>
                     {
-                        try { if (e.Data != null) reportOutput(e.Data); } catch { }
+                        try { if (e.Data != null) reportOutput(e.Data); } catch (InvalidOperationException) { }
                     };
                     errorHandler = (s, e) =>
                     {
-                        try { if (e.Data != null) reportOutput("ERROR: " + e.Data); } catch { }
+                        try { if (e.Data != null) reportOutput("ERROR: " + e.Data); } catch (InvalidOperationException) { }
                     };
                     
                     proc.OutputDataReceived += outputHandler;
@@ -290,7 +309,7 @@ namespace RecoveryCommander.Core
 
                     proc.Exited += (s, e) =>
                     {
-                        try { tcs.TrySetResult(true); } catch { }
+                        try { tcs.TrySetResult(true); } catch (InvalidOperationException) { }
                     };
 
                     proc.Start();
@@ -300,7 +319,11 @@ namespace RecoveryCommander.Core
                         if (proc.StartInfo.RedirectStandardOutput) proc.BeginOutputReadLine();
                         if (proc.StartInfo.RedirectStandardError) proc.BeginErrorReadLine();
                     }
-                    catch (Exception ex)
+                    catch (InvalidOperationException ex)
+                    {
+                        reportOutput($"Failed to begin async read: {ex.Message}");
+                    }
+                    catch (System.ComponentModel.Win32Exception ex)
                     {
                         reportOutput($"Failed to begin async read: {ex.Message}");
                     }
@@ -310,7 +333,7 @@ namespace RecoveryCommander.Core
                     {
                         if (isCancelled())
                         {
-                            try { proc.Kill(entireProcessTree: true); } catch { }
+                            try { proc.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
                             break;
                         }
                         // Wait a short interval before checking again
@@ -321,8 +344,8 @@ namespace RecoveryCommander.Core
                     proc.WaitForExit(2000);
 
                     // Try to stop async reads gracefully
-                    try { if (proc.StartInfo.RedirectStandardOutput) proc.CancelOutputRead(); } catch { }
-                    try { if (proc.StartInfo.RedirectStandardError) proc.CancelErrorRead(); } catch { }
+                    try { if (proc.StartInfo.RedirectStandardOutput) proc.CancelOutputRead(); } catch (InvalidOperationException) { }
+                    try { if (proc.StartInfo.RedirectStandardError) proc.CancelErrorRead(); } catch (InvalidOperationException) { }
                 }
                 finally
                 {
@@ -333,7 +356,11 @@ namespace RecoveryCommander.Core
                         proc.ErrorDataReceived -= errorHandler;
                 }
             }
-            catch (Exception ex)
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                reportOutput($"Failed to run process {psi.FileName} {psi.Arguments}: {ex.Message}");
+            }
+            catch (InvalidOperationException ex)
             {
                 reportOutput($"Failed to run process {psi.FileName} {psi.Arguments}: {ex.Message}");
             }
@@ -356,6 +383,8 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static async Task<string> ResolveDownloadUrlAsync(string url, Action<string>? reportOutput, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(url);
+
             if (string.IsNullOrWhiteSpace(url) || !url.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
             {
                 return url;
@@ -365,7 +394,7 @@ namespace RecoveryCommander.Core
             {
                 var http = ServiceContainer.GetHttpClient();
                 // Use HeadersRead to check size first
-                using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                using var response = await http.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 // If the file is large, it's likely the actual installer (renamed to .txt)
@@ -375,7 +404,7 @@ namespace RecoveryCommander.Core
                     return url;
                 }
 
-                var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 
                 // Detection for InfinityFree/free.nf security challenge
                 if (content.Contains("aes.js") && content.Contains("__test") && content.Contains("slowAES"))
@@ -393,9 +422,14 @@ namespace RecoveryCommander.Core
                 // If it's not a URL, it might be a script content (handled by the caller)
                 return url;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
                 reportOutput?.Invoke($"Warning: Failed to resolve URL from {SanitizeUrlForReport(url)}: {ex.Message}");
+                return url;
+            }
+            catch (InvalidOperationException ex)
+            {
+                reportOutput?.Invoke($"Warning: Host blocked application for {SanitizeUrlForReport(url)}: {ex.Message}");
                 return url;
             }
         }
@@ -405,8 +439,11 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static async Task DownloadFileAsync(string url, string destinationPath, IProgress<ProgressReport>? progress, CancellationToken cancellationToken, string? expectedHash = null)
         {
+            ArgumentNullException.ThrowIfNull(url);
+            ArgumentNullException.ThrowIfNull(destinationPath);
+
             var http = ServiceContainer.GetHttpClient();
-            using (var resp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+            using (var resp = await http.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
             {
                 resp.EnsureSuccessStatusCode();
                 
@@ -414,7 +451,7 @@ namespace RecoveryCommander.Core
                 if (resp.Content.Headers.ContentType?.MediaType == "text/html")
                 {
                     // Peek at the content if it's suspiciously small or HTML
-                    var peek = await resp.Content.ReadAsStringAsync(cancellationToken);
+                    var peek = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     if (peek.Contains("aes.js") || peek.Contains("JavaScript to work"))
                     {
                         throw new InvalidOperationException("The download was blocked by the host's security challenge (InfinityFree).");
@@ -431,15 +468,15 @@ namespace RecoveryCommander.Core
                 using (var fs = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     var contentLength = resp.Content.Headers.ContentLength;
-                    using (var stream = await resp.Content.ReadAsStreamAsync(cancellationToken))
+                    using (var stream = await resp.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
                     {
                         if (progress != null)
                         {
-                            await CopyToAsyncWithProgress(stream, fs, contentLength, progress, cancellationToken);
+                            await CopyToAsyncWithProgress(stream, fs, contentLength, progress, cancellationToken).ConfigureAwait(false);
                         }
                         else
                         {
-                            await stream.CopyToAsync(fs, cancellationToken);
+                            await stream.CopyToAsync(fs, cancellationToken).ConfigureAwait(false);
                         }
                     }
                 }
@@ -450,12 +487,12 @@ namespace RecoveryCommander.Core
                     progress?.Report(new ProgressReport(95, "Verifying integrity..."));
                     using var sha256 = System.Security.Cryptography.SHA256.Create();
                     using var stream = File.OpenRead(destinationPath);
-                    byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
+                    byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
                     string actualHash = Convert.ToHexStringLower(hashBytes);
 
-                    if (!actualHash.Equals(expectedHash.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                    if (!actualHash.Equals(expectedHash.Trim().ToUpperInvariant(), StringComparison.OrdinalIgnoreCase))
                     {
-                        try { File.Delete(destinationPath); } catch { }
+                        try { File.Delete(destinationPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                         throw new System.Security.SecurityException($"Hash mismatch! Expected: {expectedHash}, Actual: {actualHash}");
                     }
                 }
@@ -514,21 +551,21 @@ namespace RecoveryCommander.Core
                 }
 
                 // Resolve the actual URL if it's a .txt redirect
-                var resolvedUrl = await ResolveDownloadUrlAsync(url, reportOutput, cancellationToken);
+                var resolvedUrl = await ResolveDownloadUrlAsync(url, reportOutput, cancellationToken).ConfigureAwait(false);
 
                 // Download the file (includes hash verification)
-                await DownloadFileAsync(resolvedUrl, validatedPath!, progress, cancellationToken, expectedHash);
+                await DownloadFileAsync(resolvedUrl, validatedPath!, progress, cancellationToken, expectedHash).ConfigureAwait(false);
                 
                 reportOutput?.Invoke($"Downloaded to: {validatedPath}");
                 progress?.Report(new ProgressReport(85, "Download complete"));
                 
                 // Small delay to allow antivirus/SmartScreen to release the file handle lock after closing
-                await Task.Delay(500, cancellationToken);
+                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
 
                 ProcessStartInfo psi;
-                string extension = Path.GetExtension(validatedPath!).ToLowerInvariant();
+                string extension = Path.GetExtension(validatedPath!).ToUpperInvariant();
 
-                if (extension == ".ps1")
+                if (extension == ".PS1")
                 {
                     // Securely quote and escape path for PowerShell
                     var escapedPath = SecurityHelpers.EscapePowerShellArgument(validatedPath!);
@@ -574,9 +611,19 @@ namespace RecoveryCommander.Core
                 reportOutput?.Invoke("Download cancelled by user.");
                 progress?.Report(new ProgressReport(100, "Cancelled"));
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                reportOutput?.Invoke($"Error: {ex.Message}");
+                reportOutput?.Invoke($"File error: {ex.Message}");
+                progress?.Report(new ProgressReport(100, "Failed"));
+            }
+            catch (System.Net.Http.HttpRequestException ex)
+            {
+                reportOutput?.Invoke($"Network error: {ex.Message}");
+                progress?.Report(new ProgressReport(100, "Failed"));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                reportOutput?.Invoke($"Access denied: {ex.Message}");
                 progress?.Report(new ProgressReport(100, "Failed"));
             }
         }

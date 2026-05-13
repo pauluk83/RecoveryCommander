@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace RecoveryCommander.Module
+namespace RecoveryCommander.Modules
 {
     public class UpdateSelectorForm<T> : Form where T : class
     {

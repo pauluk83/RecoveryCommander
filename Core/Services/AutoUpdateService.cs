@@ -59,15 +59,15 @@ namespace RecoveryCommander.Core.Services
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, GitHubApiUrl);
+                using var request = new HttpRequestMessage(HttpMethod.Get, GitHubApiUrl);
                 request.Headers.Add("User-Agent", UserAgent);
                 request.Headers.Add("Accept", "application/vnd.github.v3+json");
 
-                var response = await GetHttpClient().SendAsync(request, cancellationToken);
+                var response = await GetHttpClient().SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync(cancellationToken);
-                var release = JsonDocument.Parse(json);
+                var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                using var release = JsonDocument.Parse(json);
                 var root = release.RootElement;
 
                 var tagName = root.GetProperty("tag_name").GetString() ?? "";
@@ -175,12 +175,20 @@ namespace RecoveryCommander.Core.Services
                     ErrorMessage = "Update check timed out."
                 };
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
                 return new UpdateCheckResult
                 {
                     CurrentVersion = GetCurrentVersion(),
-                    ErrorMessage = $"Update check failed: {ex.Message}"
+                    ErrorMessage = $"Release data parsing failed: {ex.Message}"
+                };
+            }
+            catch (InvalidOperationException ex)
+            {
+                return new UpdateCheckResult
+                {
+                    CurrentVersion = GetCurrentVersion(),
+                    ErrorMessage = $"Invalid update state: {ex.Message}"
                 };
             }
         }
@@ -210,24 +218,24 @@ namespace RecoveryCommander.Core.Services
                 progress?.Report((5, "Downloading update..."));
 
                 // Download the new exe with progress tracking
-                var request = new HttpRequestMessage(HttpMethod.Get, updateInfo.DownloadUrl);
+                using var request = new HttpRequestMessage(HttpMethod.Get, updateInfo.DownloadUrl);
                 request.Headers.Add("User-Agent", UserAgent);
 
-                using var response = await GetHttpClient().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                using var response = await GetHttpClient().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 var totalBytes = response.Content.Headers.ContentLength ?? updateInfo.AssetSize;
 
-                await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 await using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
 
                 var buffer = new byte[8192];
                 long totalRead = 0;
                 int bytesRead;
 
-                while ((bytesRead = await contentStream.ReadAsync(buffer, cancellationToken)) > 0)
+                while ((bytesRead = await contentStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
                 {
-                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+                    await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
                     totalRead += bytesRead;
 
                     if (totalBytes > 0)
@@ -321,7 +329,7 @@ namespace RecoveryCommander.Core.Services
                               exit /b 0
                               """;
 
-                await File.WriteAllTextAsync(scriptPath, script, cancellationToken);
+                await File.WriteAllTextAsync(scriptPath, script, cancellationToken).ConfigureAwait(false);
 
                 progress?.Report((98, "Launching updater..."));
 
@@ -341,16 +349,18 @@ namespace RecoveryCommander.Core.Services
 
                 return true;
             }
-            catch (Exception ex)
+            catch (IOException ex)
             {
-                progress?.Report((100, $"Update failed: {ex.Message}"));
-
-                // Clean up temp directory on failure
+                progress?.Report((100, $"Update failed (IO): {ex.Message}"));
                 if (tempDir != null)
                 {
-                    try { Directory.Delete(tempDir, true); } catch { }
+                    try { Directory.Delete(tempDir, true); } catch (IOException) { }
                 }
-
+                return false;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                progress?.Report((100, $"Update failed (Access): {ex.Message}"));
                 return false;
             }
         }

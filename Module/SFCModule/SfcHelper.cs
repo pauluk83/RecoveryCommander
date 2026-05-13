@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 
-namespace RecoveryCommander.Module;
+namespace RecoveryCommander.Modules;
 
 internal static class SfcHelper
 {

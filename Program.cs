@@ -17,15 +17,15 @@ namespace RecoveryCommander
         static void Main()
         {
             // Modules Warm-Up: Force load module assemblies so reflection finds them in single-file EXE
-            _ = typeof(RecoveryCommander.Module.SfcModule);
-            _ = typeof(RecoveryCommander.Module.DismModule);
-            _ = typeof(RecoveryCommander.Module.ReagentcModule);
+            _ = typeof(RecoveryCommander.Modules.SfcModule);
+            _ = typeof(RecoveryCommander.Modules.DismModule);
+            _ = typeof(RecoveryCommander.Modules.ReagentcModule);
             _ = typeof(MalwareRemovalModule.MalwareRemovalModule);
-            _ = typeof(RecoveryCommander.Module.SystemPrepModule);
-            _ = typeof(UtilitiesModule.UtilitiesModule);
-            _ = typeof(DiagnosticsModule.DiagnosticsModule);
-            _ = typeof(RecoveryCommander.Module.DriverManagerModule);
-            _ = typeof(RecoveryCommander.Module.CloudRecoveryModule);
+            _ = typeof(RecoveryCommander.Modules.SystemPrepModule);
+            _ = typeof(RecoveryCommander.Modules.UtilitiesModule);
+            _ = typeof(RecoveryCommander.Modules.DiagnosticsModule);
+            _ = typeof(RecoveryCommander.Modules.DriverManagerModule);
+            _ = typeof(RecoveryCommander.Modules.CloudRecoveryModule);
 
             try
             {

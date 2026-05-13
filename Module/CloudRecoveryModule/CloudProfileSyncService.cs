@@ -6,9 +6,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using System.Globalization;
 using RecoveryCommander.Contracts;
 
-namespace RecoveryCommander.Module
+namespace RecoveryCommander.Modules
 {
     public class CloudProfileSyncService
     {
@@ -36,7 +37,7 @@ namespace RecoveryCommander.Module
                 string backupDir = Path.Combine(cloudPath, "RecoveryCommanderBackups");
                 if (!Directory.Exists(backupDir)) Directory.CreateDirectory(backupDir);
 
-                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
                 string backupFile = Path.Combine(backupDir, $"ProfileBackup_{timestamp}.zip");
                 string stagingDir = Path.Combine(Path.GetTempPath(), $"RC_Backup_Staging_{timestamp}");
 
@@ -94,7 +95,7 @@ namespace RecoveryCommander.Module
                                     .OrderByDescending(f => f)
                                     .ToList();
 
-                if (!files.Any())
+                if (files.Count == 0)
                 {
                     _reportOutput("> No backup archives found.");
                     return;
@@ -123,7 +124,7 @@ namespace RecoveryCommander.Module
             }
         }
 
-        private string? GetCloudPath(string provider)
+        private static string? GetCloudPath(string provider)
         {
             if (provider.Equals("OneDrive", StringComparison.OrdinalIgnoreCase))
             {
@@ -143,7 +144,7 @@ namespace RecoveryCommander.Module
             return null;
         }
 
-        private List<string> GetProfileFolders()
+        private static List<string> GetProfileFolders()
         {
             return new List<string>
             {
@@ -153,7 +154,7 @@ namespace RecoveryCommander.Module
             }.Where(Directory.Exists).ToList();
         }
 
-        private async Task CopyDirectoryAsync(string source, string dest, CancellationToken ct)
+        private static async Task CopyDirectoryAsync(string source, string dest, CancellationToken ct)
         {
             Directory.CreateDirectory(dest);
             foreach (var file in Directory.GetFiles(source))

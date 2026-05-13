@@ -9,7 +9,7 @@ using System.Diagnostics;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 
-namespace RecoveryCommander.Module
+namespace RecoveryCommander.Modules
 {
     [RecoveryModule("CloudRecoveryModule")]
     [SupportedOSPlatform("windows")]
@@ -68,7 +68,7 @@ namespace RecoveryCommander.Module
             var service = new CloudProfileSyncService(progress, reportOutput);
             var providers = service.DetectAvailableProviders();
 
-            if (!providers.Any())
+            if (providers.Count == 0)
             {
                 MessageBox.Show("No supported cloud sync clients (OneDrive or Google Drive) detected.", "Cloud Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -101,7 +101,7 @@ namespace RecoveryCommander.Module
             var service = new CloudProfileSyncService(progress, reportOutput);
             var providers = service.DetectAvailableProviders();
 
-            if (!providers.Any())
+            if (providers.Count == 0)
             {
                 MessageBox.Show("No supported cloud sync clients detected.", "Cloud Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -133,7 +133,7 @@ namespace RecoveryCommander.Module
             var service = new CloudProfileSyncService(progress, reportOutput);
             var providers = service.DetectAvailableProviders();
 
-            string status = providers.Any() ? $"Detected: {string.Join(", ", providers)}" : "No providers detected.";
+            string status = providers.Count > 0 ? $"Detected: {string.Join(", ", providers)}" : "No providers detected.";
 
             MessageBox.Show($"Cloud Configuration Status:\n\n{status}\n\nRecoveryCommander automatically leverages your installed OneDrive and Google Drive clients for zero-setup profile protection.",
                 "Cloud Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);

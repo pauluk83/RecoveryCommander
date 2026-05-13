@@ -22,12 +22,14 @@ using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 
-namespace UtilitiesModule
+namespace RecoveryCommander.Modules
 {
     [RecoveryModule("UtilitiesModule")]
     [SupportedOSPlatform("windows")]
     public class UtilitiesModule : IRecoveryModule
     {
+        private static readonly string[] AllowedExtensions = { "exe", "msi", "bat", "cmd", "ps1" };
+
         // Use the shared HttpClient from ServiceContainer to prevent socket exhaustion.
         private static HttpClient GetHttpClient() => ServiceContainer.GetHttpClient();
 
@@ -60,7 +62,7 @@ namespace UtilitiesModule
             new("UniGetUI 2026.1.9",                           "UniGetUI (Package Manager UI)")                 { ExecuteAction = DownloadUniGetUI }
         };
 
-        private async Task DownloadRufus(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private static async Task DownloadRufus(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(0, "Getting latest Rufus release..."));
             try
@@ -104,17 +106,17 @@ namespace UtilitiesModule
             }
         }
 
-        private async Task RunBackupActivation(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private static async Task RunBackupActivation(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             await DownloadCatalog.DownloadAndExecuteFromCatalogAsync(
                 "Utilities.BackupRestoreActivation",
                 progress,
                 reportOutput,
                 cancellationToken,
-                allowedExtensions: new[] { "exe", "msi", "bat", "cmd", "ps1" });
+                allowedExtensions: AllowedExtensions);
         }
 
-        private async Task DownloadVCRedist(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private static async Task DownloadVCRedist(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(0, "Getting latest Visual C++ AIO release..."));
             try
@@ -161,7 +163,7 @@ namespace UtilitiesModule
             }
         }
 
-        private async Task DownloadUniGetUI(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private static async Task DownloadUniGetUI(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(0, "Preparing UniGetUI..."));
             try

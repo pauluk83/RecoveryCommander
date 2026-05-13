@@ -11,7 +11,7 @@ using System.Runtime.Versioning;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 
-namespace RecoveryCommander.Module;
+namespace RecoveryCommander.Modules;
 
 [SupportedOSPlatform("windows")]
 [RecoveryModuleAttribute("ReagentcModule")]
@@ -128,19 +128,19 @@ public sealed class ReagentcModule : IRecoveryModule
             {
                 reportOutput($"Assigning drive letter {letter}: to Volume {usedVolNum.Value}...");
                 var ok = await DiskUtility.RunDiskpartScriptAsync($"select volume {usedVolNum.Value}\r\nassign letter={letter}\r\n", reportOutput, cancellationToken);
-                if (!ok) throw new Exception("Failed to assign drive letter to volume.");
+                if (!ok) throw new InvalidOperationException("Failed to assign drive letter to volume.");
             }
             else
             {
                 reportOutput("Determining current WinRE partition location...");
                 var info = await ReagentcHelper.RunReagentcAsync("/info", progress, output => { }, cancellationToken);
                 var dp = ReagentcHelper.ParseDiskPartitionFromInfo(info);
-                if (dp == null) throw new Exception("Could not find current or legacy recovery partition information.");
+                if (dp == null) throw new InvalidOperationException("Could not find current or legacy recovery partition information.");
                 
                 (usedDisk, usedPart) = dp.Value;
                 reportOutput($"Attempting to mount Disk {usedDisk}, Partition {usedPart} as {letter}:...");
                 var ok = await DiskUtility.RunDiskpartScriptAsync($"select disk {usedDisk}\r\nselect partition {usedPart}\r\nassign letter={letter}\r\n", reportOutput, cancellationToken);
-                if (!ok) throw new Exception("Failed to assign drive letter using diskpart.");
+                if (!ok) throw new InvalidOperationException("Failed to assign drive letter using diskpart.");
             }
 
             using var ofd = new OpenFileDialog

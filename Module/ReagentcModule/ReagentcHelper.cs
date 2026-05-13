@@ -7,7 +7,7 @@ using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 using System.Runtime.Versioning;
 
-namespace RecoveryCommander.Module;
+namespace RecoveryCommander.Modules;
 
 [SupportedOSPlatform("windows")]
 internal static class ReagentcHelper

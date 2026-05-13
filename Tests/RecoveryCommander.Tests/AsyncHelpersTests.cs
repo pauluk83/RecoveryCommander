@@ -18,7 +18,9 @@ public class AsyncHelpersTests : IDisposable
 
     public void Dispose()
     {
-        try { ServiceContainer.Dispose(); } catch { }
+#pragma warning disable CA1031 // Do not catch general exception types
+        try { ServiceContainer.Dispose(); } catch { /* Suppress exceptions during cleanup */ }
+#pragma warning restore CA1031 // Do not catch general exception types
         GC.SuppressFinalize(this);
     }
 
