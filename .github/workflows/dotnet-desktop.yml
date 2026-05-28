@@ -143,15 +143,33 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') && matrix.configuration == 'Release'
         run: Compress-Archive -Path ./publish/Release/* -DestinationPath ./publish/RecoveryCommander-${{ github.ref_name }}.zip -Force
 
+      - name: Prepare standalone exe for release
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.configuration == 'Release'
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $exeName = "RecoveryCommander-${version}.exe"
+          Copy-Item ./publish/Release/RecoveryCommander.exe ./publish/$exeName -Force
+
       - name: Compute SHA256SUMS
         if: startsWith(github.ref, 'refs/tags/v') && matrix.configuration == 'Release'
         shell: pwsh
         run: |
-          $zip = "./publish/RecoveryCommander-${{ github.ref_name }}.zip"
-          $sum = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
-          $line = "$sum  $(Split-Path $zip -Leaf)"
-          $line | Out-File -FilePath ./publish/SHA256SUMS.txt -Encoding ascii -Force
-          Write-Host $line
+          $version = "${{ github.ref_name }}"
+          $zip = "./publish/RecoveryCommander-${version}.zip"
+          $exe = "./publish/RecoveryCommander-${version}.exe"
+          # SHA for zip
+          $zipSum = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
+          $zipLine = "$zipSum  $(Split-Path $zip -Leaf)"
+          # SHA for standalone exe
+          $exeSum = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLower()
+          $exeLine = "$exeSum  $(Split-Path $exe -Leaf)"
+          # Write combined SHA256SUMS
+          @($zipLine, $exeLine) | Out-File -FilePath ./publish/SHA256SUMS.txt -Encoding ascii -Force
+          # Write exe-specific sidecar for AutoUpdateService
+          $exeSum | Out-File -FilePath "./publish/RecoveryCommander-${version}.exe.sha256" -Encoding ascii -NoNewline -Force
+          Write-Host $zipLine
+          Write-Host $exeLine
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') && matrix.configuration == 'Release'
@@ -159,6 +177,8 @@ jobs:
         with:
           files: |
             ./publish/RecoveryCommander-${{ github.ref_name }}.zip
+            ./publish/RecoveryCommander-${{ github.ref_name }}.exe
+            ./publish/RecoveryCommander-${{ github.ref_name }}.exe.sha256
             ./publish/SHA256SUMS.txt
           draft: false
           prerelease: false
