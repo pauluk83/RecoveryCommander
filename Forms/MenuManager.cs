@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using RecoveryCommander.UI;
 using RecoveryCommander.Features;
+using RecoveryCommander.Core;
 using static RecoveryCommander.UI.Theme;
 
 namespace RecoveryCommander.Forms
@@ -31,6 +32,20 @@ namespace RecoveryCommander.Forms
             toolsMenu.DropDownItems.Add(new ToolStripSeparator());
             toolsMenu.DropDownItems.Add("Module Builder", null, (s, e) => DialogFactory.ShowModuleBuilder(host));
 
+            var settingsMenu = new ToolStripMenuItem("Settings");
+            var allowUnverifiedItem = new ToolStripMenuItem("Allow Unverified Downloads")
+            {
+                CheckOnClick = true,
+                Checked = AppFeatureSettings.GetAllowUnverifiedDownloads(),
+                ToolTipText = "Allows catalog entries without pinned SHA-256 hashes to download and run."
+            };
+            allowUnverifiedItem.CheckedChanged += (s, e) =>
+                AppFeatureSettings.SetAllowUnverifiedDownloads(allowUnverifiedItem.Checked);
+            settingsMenu.DropDownItems.Add(allowUnverifiedItem);
+            settingsMenu.DropDownItems.Add(new ToolStripSeparator());
+            settingsMenu.DropDownItems.Add("Download Safety Settings...", null, (s, e) =>
+                DialogFactory.ShowDownloadSafetySettings(host, allowUnverifiedItem));
+
             var helpMenu = new ToolStripMenuItem("Help");
             helpMenu.DropDownItems.Add("About", null, (s, e) => DialogFactory.ShowAboutDialog(parent));
             helpMenu.DropDownItems.Add("Check for Updates", null, async (s, e) => await AutoUpdateDialog.ShowUpdateDialogAsync(host));
@@ -39,10 +54,11 @@ namespace RecoveryCommander.Forms
             helpMenu.DropDownItems.Add("View Architectural Notes", null, (s, e) => DialogFactory.ShowHelpWindow(host, ARCHITECTURAL_NOTES_PATH, "Architectural Notes"));
             helpMenu.DropDownItems.Add("View Changelog", null, (s, e) => DialogFactory.ShowHelpWindow(host, CHANGELOG_PATH, "Changelog"));
 
-            ApplyMenuColors(fileMenu, toolsMenu, helpMenu);
+            ApplyMenuColors(fileMenu, toolsMenu, settingsMenu, helpMenu);
 
             yield return fileMenu;
             yield return toolsMenu;
+            yield return settingsMenu;
             yield return helpMenu;
         }
 

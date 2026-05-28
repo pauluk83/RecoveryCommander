@@ -11,10 +11,10 @@ namespace RecoveryCommander.Forms
 {
     public class ModuleBuilder : Form
     {
-        private TextBox txtName;
-        private TextBox txtDescription;
-        private TextBox txtVersion;
-        private ListBox listActions;
+        private TextBox txtName = null!;
+        private TextBox txtDescription = null!;
+        private TextBox txtVersion = null!;
+        private ListBox listActions = null!;
         private List<ActionMetadata> _actions = new List<ActionMetadata>();
 
         public ModuleBuilder()

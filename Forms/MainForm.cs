@@ -11,6 +11,7 @@
  * 2026-04-28 - 1.2.6 - Updated build version and synchronized project references.
  */
 
+#pragma warning disable CA1031 // General exception types are used for robust error handling in UI operations
 using System;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -506,8 +507,10 @@ namespace RecoveryCommander.Forms
             this.outputBox.Margin = new Padding(0);
 
             var outputShell = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16), Margin = new Padding(0) };
+#pragma warning disable CA2000 // Dispose objects before losing scope - Panel is disposed by outputShell
             var outputHeaderPanel = CreateOutputHeaderPanel();
-            
+#pragma warning restore CA2000
+
             // Create shell input field
             shellInputField = new TextBox 
             { 
@@ -665,7 +668,7 @@ namespace RecoveryCommander.Forms
             };
         }
 
-        private Color GetOutputColor(OutputLevel level) => level switch
+        private static Color GetOutputColor(OutputLevel level) => level switch
         {
             OutputLevel.Success => Color.FromArgb(125, 211, 161),
             OutputLevel.Warning => Color.FromArgb(255, 193, 107),
@@ -714,7 +717,7 @@ namespace RecoveryCommander.Forms
             clearOutputButton.Click += (s, e) => ClearOutputHistory();
 
             outputFilterButton = new ToolStripDropDownButton("Filter");
-            foreach (OutputFilter filter in Enum.GetValues(typeof(OutputFilter)))
+            foreach (OutputFilter filter in Enum.GetValues<OutputFilter>())
             {
                 var item = new ToolStripMenuItem(filter.ToString())
                 {
@@ -1221,7 +1224,7 @@ namespace RecoveryCommander.Forms
             }
         }
 
-        private Panel CreateInfoChip(string label, out Label valueLabel)
+        private static Panel CreateInfoChip(string label, out Label valueLabel)
         {
             var chip = new Panel
             {
@@ -1268,7 +1271,7 @@ namespace RecoveryCommander.Forms
             return chip;
         }
 
-        private Control CreateInfoChip(string label, string value)
+        private static Panel CreateInfoChip(string label, string value)
         {
             var chip = new Panel
             {
@@ -1353,39 +1356,18 @@ namespace RecoveryCommander.Forms
                         categories["Custom"].Add(module);
                 }
 
-                // Clear and add in correct grouped order (FlowLayoutPanel index 0 is TOP)
+                // Clear and add all modules in a single flat list
                 moduleButtonsPanel.Controls.Clear();
-                int controlIndex = 0;
-                
-                // Rebuild loadedModules linearly based on categories to maintain navigation logic
                 loadedModules.Clear();
 
                 foreach (var category in categories)
                 {
-                    if (category.Value.Count == 0) continue;
-
-                    var headerLabel = new Label
-                    {
-                        Text = category.Key.ToUpper(),
-                        Font = Theme.Typography.Caption,
-                        ForeColor = Color.Gray,
-                        AutoSize = false,
-                        Width = moduleButtonsPanel.ClientSize.Width > 0 ? moduleButtonsPanel.ClientSize.Width - 20 : 200,
-                        Height = 24,
-                        TextAlign = ContentAlignment.BottomLeft,
-                        Margin = new Padding(0, 10, 0, 4)
-                    };
-
-                    moduleButtonsPanel.Controls.Add(headerLabel);
-                    moduleButtonsPanel.Controls.SetChildIndex(headerLabel, controlIndex++);
-
                     foreach (var module in category.Value)
                     {
                         loadedModules.Add(module);
                         var moduleButton = CreateModuleButton(module);
                         moduleButtonsPanel.Controls.Add(moduleButton);
-                        moduleButtonsPanel.Controls.SetChildIndex(moduleButton, controlIndex++);
-                        System.Diagnostics.Debug.WriteLine($"[ModuleLoader] Added button {controlIndex-1}: '{module.Name}' in '{category.Key}'");
+                        System.Diagnostics.Debug.WriteLine($"[ModuleLoader] Added button: '{module.Name}'");
                     }
                 }
 
@@ -1465,7 +1447,7 @@ namespace RecoveryCommander.Forms
             return moduleButton;
         }
 
-        private void UpdateModuleButtonStyles(FlowLayoutPanel moduleButtonsPanel, ModernButton selectedButton)
+        private static void UpdateModuleButtonStyles(FlowLayoutPanel moduleButtonsPanel, ModernButton selectedButton)
         {
             foreach (Control ctrl in moduleButtonsPanel.Controls)
             {
@@ -1477,7 +1459,7 @@ namespace RecoveryCommander.Forms
         
         // TreeView removed; selection handled via ListBox
         
-        private string GetModuleIcon(string moduleName)
+        private static string GetModuleIcon(string moduleName)
         {
             return moduleName switch
             {
@@ -1905,7 +1887,7 @@ namespace RecoveryCommander.Forms
             return tile;
         }
         
-        private string GetActionDescription(string actionName)
+        private static string GetActionDescription(string actionName)
         {
             // Add meaningful descriptions based on action names
             return actionName.ToLower() switch
@@ -1926,7 +1908,7 @@ namespace RecoveryCommander.Forms
             };
         }
 
-        private Control BuildModuleOverviewPanel(IRecoveryModule module)
+        private static Panel BuildModuleOverviewPanel(IRecoveryModule module)
         {
             var overviewShell = new Panel
             {
@@ -2268,7 +2250,7 @@ namespace RecoveryCommander.Forms
             }
         }
         
-        private string FormatTimeSpan(TimeSpan ts)
+        private static string FormatTimeSpan(TimeSpan ts)
         {
             if (ts.TotalHours >= 1)
                 return $"{(int)ts.TotalHours}h {ts.Minutes}m";
@@ -2576,7 +2558,7 @@ namespace RecoveryCommander.Forms
         }
         
         
-        private void AdjustTileControls(Panel tile)
+        private static void AdjustTileControls(Panel tile)
         {
             // Find and adjust title label
             var titleLabel = tile.Controls.OfType<Label>().FirstOrDefault(l => l.Font.Size >= 10);

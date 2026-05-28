@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>1.2.6</Version>
+    <Version>1.2.7</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
@@ -9,6 +9,7 @@
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\ReagentcModule\</OutputPath>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <DebugType>embedded</DebugType>
+    <NoWarn>$(NoWarn);CA1303;CA1031;CA1805;CA1305;CA1822;CA1806;CA1051;CA1310;CA1311;CA1304;CA2000;CA1861;CA1862;CA1725;CA2201;CA1816;CA1848;CA1707;CA1860;CA1873</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\RecoveryCommander.Contracts\RecoveryCommander.Contracts.csproj" />
@@ -16,16 +17,16 @@
   <ItemGroup>
     <Compile Include="ReagentcModule.cs" />
     <Compile Include="ReagentcHelper.cs" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Management" Version="10.0.8" />
   </ItemGroup>
   <ItemGroup>
      <ProjectReference Include="..\..\Core\RecoveryCommander.Core.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
   </ItemGroup>
 </Project>

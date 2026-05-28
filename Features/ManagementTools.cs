@@ -1,3 +1,16 @@
+/*
+ * AUDIT HEADER
+ * File: ManagementTools.cs
+ * Module: Features
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial implementation of management tools (Restore Point Manager).
+ * 2026-05-22 - 1.2.7 - Added missing audit header and fixed globalization warnings.
+ */
+
+#pragma warning disable CA1031 // General exception types are used for robust error handling in system operations
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,6 +20,7 @@ using System.Management;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Globalization;
 using Microsoft.Win32;
 using RecoveryCommander.Core;
 
@@ -54,7 +68,7 @@ namespace RecoveryCommander.Features
                     inParams["EventType"] = 100; // BEGIN_SYSTEM_CHANGE
 
                     var outParams = mgmtClass.InvokeMethod("CreateRestorePoint", inParams, null);
-                    var result = Convert.ToInt32(outParams["ReturnValue"]);
+                    var result = Convert.ToInt32(outParams["ReturnValue"], CultureInfo.InvariantCulture);
 
                     return new RestorePointResult
                     {
@@ -90,11 +104,11 @@ namespace RecoveryCommander.Features
                     {
                         var restorePoint = new RestorePoint
                         {
-                            Id = Convert.ToInt32(obj["SequenceNumber"]),
+                            Id = Convert.ToInt32(obj["SequenceNumber"], CultureInfo.InvariantCulture),
                             Description = obj["Description"]?.ToString() ?? "",
-                            CreationTime = Convert.ToDateTime(obj["CreationTime"]),
-                            Type = (RestorePointType)Convert.ToInt32(obj["RestorePointType"]),
-                            EventType = (RestorePointEventType)Convert.ToInt32(obj["EventType"])
+                            CreationTime = Convert.ToDateTime(obj["CreationTime"], CultureInfo.InvariantCulture),
+                            Type = (RestorePointType)Convert.ToInt32(obj["RestorePointType"], CultureInfo.InvariantCulture),
+                            EventType = (RestorePointEventType)Convert.ToInt32(obj["EventType"], CultureInfo.InvariantCulture)
                         };
                         restorePoints.Add(restorePoint);
                     }
@@ -132,7 +146,7 @@ namespace RecoveryCommander.Features
                     inParams["SequenceNumber"] = restorePointId;
 
                     var outParams = mgmtClass.InvokeMethod("Restore", inParams, null);
-                    var result = Convert.ToInt32(outParams["ReturnValue"]);
+                    var result = Convert.ToInt32(outParams["ReturnValue"], CultureInfo.InvariantCulture);
 
                     return new RestorePointResult
                     {
@@ -219,10 +233,10 @@ namespace RecoveryCommander.Features
                 using var searcher = new ManagementObjectSearcher(scope, new SelectQuery("SystemRestore"));
                 var latest = searcher.Get()
                     .Cast<ManagementObject>()
-                    .OrderByDescending(obj => Convert.ToDateTime(obj["CreationTime"]))
+                    .OrderByDescending(obj => Convert.ToDateTime(obj["CreationTime"], CultureInfo.InvariantCulture))
                     .FirstOrDefault();
 
-                return latest != null ? Convert.ToInt32(latest["SequenceNumber"]) : null;
+                return latest != null ? Convert.ToInt32(latest["SequenceNumber"], CultureInfo.InvariantCulture) : null;
             }
             catch
             {

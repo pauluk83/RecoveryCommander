@@ -1,9 +1,22 @@
+/*
+ * AUDIT HEADER
+ * File: AsyncHelpers.cs
+ * Module: Core
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial async helper utilities.
+ * 2026-05-22 - 1.2.7 - Added missing audit header and removed unused RunProcessAndReport.
+ */
+
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Security;
 using RecoveryCommander.Contracts;
 
 namespace RecoveryCommander.Core
@@ -237,18 +250,26 @@ namespace RecoveryCommander.Core
                         else
                         {
                             buffer.Append(c);
-                            
+
                             // If we see a percentage sign, it might be an in-place progress update
                             // Check the buffer for the latest percentage pattern
                             if (c == '%' && buffer.Length >= 2)
                             {
                                 var currentContent = buffer.ToString();
-                                // Look for the latest number preceding a % sign
-                                var match = System.Text.RegularExpressions.Regex.Match(currentContent, @"(\d+)(?:\.\d+)?%", System.Text.RegularExpressions.RegexOptions.RightToLeft);
-                                if (match.Success)
+                                // Look for the latest number preceding a % sign with timeout protection
+                                try
                                 {
-                                    // Report the line fragment as a "live" update
-                                    reportOutput(currentContent.Trim());
+                                    var match = System.Text.RegularExpressions.Regex.Match(currentContent, @"(\d+)(?:\.\d+)?%", System.Text.RegularExpressions.RegexOptions.RightToLeft, TimeSpan.FromMilliseconds(100));
+                                    if (match.Success)
+                                    {
+                                        // Report the line fragment as a "live" update
+                                        reportOutput(currentContent.Trim());
+                                    }
+                                }
+                                catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+                                {
+                                    // Regex timeout - skip this pattern match, continue processing
+                                    Debug.WriteLine("Regex timeout in percentage pattern matching");
                                 }
                             }
                         }
@@ -272,100 +293,6 @@ namespace RecoveryCommander.Core
             }
         }
 
-        /// <summary>
-        /// Run a process synchronously and report its output, with cancellation support
-        /// Consolidated from multiple modules - uses event-driven async reads to avoid deadlocks
-        /// </summary>
-        public static void RunProcessAndReport(ProcessStartInfo psi, Action<string> reportOutput, Func<bool> isCancelled)
-        {
-            ArgumentNullException.ThrowIfNull(psi);
-            ArgumentNullException.ThrowIfNull(reportOutput);
-            ArgumentNullException.ThrowIfNull(isCancelled);
-
-            try
-            {
-                using var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
-
-                // Use event-driven asynchronous reads to avoid potential deadlocks
-                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-                // Store handlers for proper cleanup
-                DataReceivedEventHandler? outputHandler = null;
-                DataReceivedEventHandler? errorHandler = null;
-                
-                try
-                {
-                    outputHandler = (s, e) =>
-                    {
-                        try { if (e.Data != null) reportOutput(e.Data); } catch (InvalidOperationException) { }
-                    };
-                    errorHandler = (s, e) =>
-                    {
-                        try { if (e.Data != null) reportOutput("ERROR: " + e.Data); } catch (InvalidOperationException) { }
-                    };
-                    
-                    proc.OutputDataReceived += outputHandler;
-                    proc.ErrorDataReceived += errorHandler;
-
-                    proc.Exited += (s, e) =>
-                    {
-                        try { tcs.TrySetResult(true); } catch (InvalidOperationException) { }
-                    };
-
-                    proc.Start();
-
-                    try
-                    {
-                        if (proc.StartInfo.RedirectStandardOutput) proc.BeginOutputReadLine();
-                        if (proc.StartInfo.RedirectStandardError) proc.BeginErrorReadLine();
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        reportOutput($"Failed to begin async read: {ex.Message}");
-                    }
-                    catch (System.ComponentModel.Win32Exception ex)
-                    {
-                        reportOutput($"Failed to begin async read: {ex.Message}");
-                    }
-
-                    // Poll for cancellation while waiting for process to exit
-                    while (!proc.HasExited)
-                    {
-                        if (isCancelled())
-                        {
-                            try { proc.Kill(entireProcessTree: true); } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
-                            break;
-                        }
-                        // Wait a short interval before checking again
-                        if (tcs.Task.Wait(200)) break;
-                    }
-
-                    // Ensure the process has exited; give some time for async reads to flush
-                    proc.WaitForExit(2000);
-
-                    // Try to stop async reads gracefully
-                    try { if (proc.StartInfo.RedirectStandardOutput) proc.CancelOutputRead(); } catch (InvalidOperationException) { }
-                    try { if (proc.StartInfo.RedirectStandardError) proc.CancelErrorRead(); } catch (InvalidOperationException) { }
-                }
-                finally
-                {
-                    // Unsubscribe from events to prevent memory leaks
-                    if (outputHandler != null)
-                        proc.OutputDataReceived -= outputHandler;
-                    if (errorHandler != null)
-                        proc.ErrorDataReceived -= errorHandler;
-                }
-            }
-            catch (System.ComponentModel.Win32Exception ex)
-            {
-                reportOutput($"Failed to run process {psi.FileName} {psi.Arguments}: {ex.Message}");
-            }
-            catch (InvalidOperationException ex)
-            {
-                reportOutput($"Failed to run process {psi.FileName} {psi.Arguments}: {ex.Message}");
-            }
-        }
-
         private static string SanitizeUrlForReport(string url)
         {
             if (string.IsNullOrWhiteSpace(url)) return "N/A";
@@ -385,7 +312,9 @@ namespace RecoveryCommander.Core
         {
             ArgumentNullException.ThrowIfNull(url);
 
-            if (string.IsNullOrWhiteSpace(url) || !url.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrWhiteSpace(url)
+                || !Uri.TryCreate(url, UriKind.Absolute, out var sourceUri)
+                || !sourceUri.AbsolutePath.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
             {
                 return url;
             }
@@ -394,7 +323,7 @@ namespace RecoveryCommander.Core
             {
                 var http = ServiceContainer.GetHttpClient();
                 // Use HeadersRead to check size first
-                using var response = await http.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                using var response = await http.GetAsync(sourceUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 // If the file is large, it's likely the actual installer (renamed to .txt)
@@ -413,8 +342,13 @@ namespace RecoveryCommander.Core
                 }
 
                 var resolvedUrl = content.Trim();
-                if (Uri.TryCreate(resolvedUrl, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                if (Uri.TryCreate(resolvedUrl, UriKind.Absolute, out _))
                 {
+                    if (!SecurityHelpers.IsValidDownloadUrl(resolvedUrl, out _))
+                    {
+                        throw new SecurityException("Resolved download URL is not HTTPS or resolves to a blocked/private host.");
+                    }
+
                     reportOutput?.Invoke($"Resolved redirect URL: {SanitizeUrlForReport(resolvedUrl)}");
                     return resolvedUrl;
                 }
@@ -442,11 +376,17 @@ namespace RecoveryCommander.Core
             ArgumentNullException.ThrowIfNull(url);
             ArgumentNullException.ThrowIfNull(destinationPath);
 
-            var http = ServiceContainer.GetHttpClient();
-            using (var resp = await http.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false))
+            if (!SecurityHelpers.IsValidDownloadUrl(url, out _))
             {
+                throw new SecurityException("Unsafe download URL.");
+            }
+
+            var http = ServiceContainer.GetHttpClient();
+            try
+            {
+                using var resp = await http.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 resp.EnsureSuccessStatusCode();
-                
+
                 // Double check for InfinityFree challenge even in direct download
                 if (resp.Content.Headers.ContentType?.MediaType == "text/html")
                 {
@@ -497,6 +437,18 @@ namespace RecoveryCommander.Core
                     }
                 }
             }
+            catch (HttpRequestException)
+            {
+                throw;
+            }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
+            catch (SecurityException)
+            {
+                throw;
+            }
         }
 
         /// <summary>
@@ -520,14 +472,14 @@ namespace RecoveryCommander.Core
                 {
                     reportOutput?.Invoke("Invalid or unsafe download URL.");
                     progress?.Report(new ProgressReport(100, "Failed"));
-                    return;
+                    throw new SecurityException("Invalid or unsafe download URL.");
                 }
                 // Validate/sanitize filename
                 if (!SecurityHelpers.IsValidFileName(fileName, out var sanitizedFileName))
                 {
                     reportOutput?.Invoke("Invalid filename.");
                     progress?.Report(new ProgressReport(100, "Failed"));
-                    return;
+                    throw new ArgumentException("Invalid filename.", nameof(fileName));
                 }
                 // Only allow whitelisted extensions (default: exe, msi, bat, cmd, ps1)
                 allowedExtensions ??= new[] { "exe", "msi", "bat", "cmd", "ps1" };
@@ -535,7 +487,7 @@ namespace RecoveryCommander.Core
                 {
                     reportOutput?.Invoke("File extension not allowed.");
                     progress?.Report(new ProgressReport(100, "Failed"));
-                    return;
+                    throw new SecurityException("File extension not allowed.");
                 }
 
                 // Use a dedicated, unique subdirectory for this specific download to prevent race conditions
@@ -547,7 +499,7 @@ namespace RecoveryCommander.Core
                 {
                     reportOutput?.Invoke("Invalid temp file path.");
                     progress?.Report(new ProgressReport(100, "Failed"));
-                    return;
+                    throw new SecurityException("Invalid temp file path.");
                 }
 
                 // Resolve the actual URL if it's a .txt redirect
@@ -603,6 +555,7 @@ namespace RecoveryCommander.Core
                     {
                         progress?.Report(new ProgressReport(100, "Failed"));
                         reportOutput?.Invoke($"Failed to start {sanitizedFileName}.");
+                        throw new InvalidOperationException($"Failed to start {sanitizedFileName}.");
                     }
                 }
             }
@@ -610,21 +563,31 @@ namespace RecoveryCommander.Core
             {
                 reportOutput?.Invoke("Download cancelled by user.");
                 progress?.Report(new ProgressReport(100, "Cancelled"));
+                throw;
             }
             catch (IOException ex)
             {
                 reportOutput?.Invoke($"File error: {ex.Message}");
                 progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
                 reportOutput?.Invoke($"Network error: {ex.Message}");
                 progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
             }
             catch (UnauthorizedAccessException ex)
             {
                 reportOutput?.Invoke($"Access denied: {ex.Message}");
                 progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
+            }
+            catch (SecurityException ex)
+            {
+                reportOutput?.Invoke($"Security validation failed: {ex.Message}");
+                progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
             }
         }
     }

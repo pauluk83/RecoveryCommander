@@ -4,7 +4,10 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.Versioning;
+using System.Security;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RecoveryCommander.Core;
@@ -41,6 +44,7 @@ namespace RecoveryCommander.Core.Services
             public string ReleaseName { get; init; } = "";
             public long AssetSize { get; init; }
             public DateTime? ReleaseDate { get; init; }
+            public string ExpectedSha256 { get; init; } = "";
             public string? ErrorMessage { get; init; }
         }
 
@@ -85,35 +89,75 @@ namespace RecoveryCommander.Core.Services
                 var latestVersionStr = tagName.TrimStart('v', 'V');
                 var currentVersionStr = GetCurrentVersion();
 
-                // Find the .exe asset in the release
+                // Find the exact RecoveryCommander .exe asset and a matching SHA-256 sidecar.
                 string downloadUrl = "";
+                string checksumUrl = "";
                 long assetSize = 0;
+                string assetName = "";
 
                 foreach (var asset in root.GetProperty("assets").EnumerateArray())
                 {
                     var name = asset.GetProperty("name").GetString() ?? "";
                     if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
-                        name.Contains("RecoveryCommander", StringComparison.OrdinalIgnoreCase))
+                        name.StartsWith("RecoveryCommander", StringComparison.OrdinalIgnoreCase))
                     {
+                        assetName = name;
                         downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
                         assetSize = asset.GetProperty("size").GetInt64();
                         break;
                     }
                 }
 
-                // If no specific RecoveryCommander exe found, take the first .exe
-                if (string.IsNullOrEmpty(downloadUrl))
+                if (!string.IsNullOrEmpty(assetName))
                 {
                     foreach (var asset in root.GetProperty("assets").EnumerateArray())
                     {
                         var name = asset.GetProperty("name").GetString() ?? "";
-                        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        if (name.Equals(assetName + ".sha256", StringComparison.OrdinalIgnoreCase) ||
+                            name.Equals(assetName + ".sha256.txt", StringComparison.OrdinalIgnoreCase) ||
+                            (name.Contains(assetName, StringComparison.OrdinalIgnoreCase) &&
+                             name.Contains("sha256", StringComparison.OrdinalIgnoreCase)))
                         {
-                            downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
-                            assetSize = asset.GetProperty("size").GetInt64();
+                            checksumUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
                             break;
                         }
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(downloadUrl) && !SecurityHelpers.IsValidDownloadUrl(downloadUrl, out _))
+                {
+                    return new UpdateCheckResult
+                    {
+                        CurrentVersion = currentVersionStr,
+                        LatestVersion = latestVersionStr,
+                        ErrorMessage = "Update asset URL failed security validation."
+                    };
+                }
+
+                string expectedSha256 = "";
+                if (!string.IsNullOrWhiteSpace(checksumUrl))
+                {
+                    if (!SecurityHelpers.IsValidDownloadUrl(checksumUrl, out _))
+                    {
+                        return new UpdateCheckResult
+                        {
+                            CurrentVersion = currentVersionStr,
+                            LatestVersion = latestVersionStr,
+                            ErrorMessage = "Update checksum URL failed security validation."
+                        };
+                    }
+
+                    expectedSha256 = await DownloadChecksumAsync(checksumUrl, cancellationToken).ConfigureAwait(false);
+                }
+
+                if (!string.IsNullOrWhiteSpace(downloadUrl) && string.IsNullOrWhiteSpace(expectedSha256))
+                {
+                    return new UpdateCheckResult
+                    {
+                        CurrentVersion = currentVersionStr,
+                        LatestVersion = latestVersionStr,
+                        ErrorMessage = "Update found, but no SHA-256 checksum asset was published. Refusing automatic update."
+                    };
                 }
 
                 bool updateAvailable = false;
@@ -156,7 +200,8 @@ namespace RecoveryCommander.Core.Services
                     ReleaseNotes = releaseNotes,
                     ReleaseName = releaseName,
                     AssetSize = assetSize,
-                    ReleaseDate = releaseDate
+                    ReleaseDate = releaseDate,
+                    ExpectedSha256 = expectedSha256
                 };
             }
             catch (HttpRequestException ex)
@@ -183,6 +228,14 @@ namespace RecoveryCommander.Core.Services
                     ErrorMessage = $"Release data parsing failed: {ex.Message}"
                 };
             }
+            catch (SecurityException ex)
+            {
+                return new UpdateCheckResult
+                {
+                    CurrentVersion = GetCurrentVersion(),
+                    ErrorMessage = $"Update security validation failed: {ex.Message}"
+                };
+            }
             catch (InvalidOperationException ex)
             {
                 return new UpdateCheckResult
@@ -204,6 +257,16 @@ namespace RecoveryCommander.Core.Services
         {
             if (!updateInfo.UpdateAvailable || string.IsNullOrEmpty(updateInfo.DownloadUrl))
                 return false;
+            if (string.IsNullOrWhiteSpace(updateInfo.ExpectedSha256))
+            {
+                progress?.Report((100, "Update verification metadata is missing."));
+                return false;
+            }
+            if (!SecurityHelpers.IsValidDownloadUrl(updateInfo.DownloadUrl, out _))
+            {
+                progress?.Report((100, "Update URL failed security validation."));
+                return false;
+            }
 
             string? tempDir = null;
 
@@ -254,6 +317,13 @@ namespace RecoveryCommander.Core.Services
                 if (!downloadedFileInfo.Exists || downloadedFileInfo.Length < 1024)
                 {
                     progress?.Report((100, "Download verification failed."));
+                    return false;
+                }
+
+                var actualHash = await ComputeSha256Async(downloadPath, cancellationToken).ConfigureAwait(false);
+                if (!actualHash.Equals(updateInfo.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    progress?.Report((100, "Update checksum verification failed."));
                     return false;
                 }
 
@@ -358,11 +428,46 @@ namespace RecoveryCommander.Core.Services
                 }
                 return false;
             }
+            catch (HttpRequestException ex)
+            {
+                progress?.Report((100, $"Update failed (Network): {ex.Message}"));
+                return false;
+            }
+            catch (SecurityException ex)
+            {
+                progress?.Report((100, $"Update failed (Security): {ex.Message}"));
+                return false;
+            }
             catch (UnauthorizedAccessException ex)
             {
                 progress?.Report((100, $"Update failed (Access): {ex.Message}"));
                 return false;
             }
+        }
+
+        private static async Task<string> DownloadChecksumAsync(string checksumUrl, CancellationToken cancellationToken)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, checksumUrl);
+            request.Headers.Add("User-Agent", UserAgent);
+
+            using var response = await GetHttpClient().SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var match = Regex.Match(text, @"\b[a-fA-F0-9]{64}\b", RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                throw new SecurityException("Checksum asset did not contain a SHA-256 hash.");
+            }
+
+            return match.Value.ToLowerInvariant();
+        }
+
+        private static async Task<string> ComputeSha256Async(string path, CancellationToken cancellationToken)
+        {
+            await using var stream = File.OpenRead(path);
+            var hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
+            return Convert.ToHexStringLower(hash);
         }
     }
 }

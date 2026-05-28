@@ -29,3 +29,14 @@ Thumbs.db
 
 # Ignore published output
 publish/
+
+# Website
+Website/
+
+# Scratch/utility files
+*.py
+*.xlsx
+AUDIT_AND_FIX_REPORT.md
+QUICK_FIX_REFERENCE.md
+README_FIXES.md
+SECURITY_AND_QUALITY_FIXES.md

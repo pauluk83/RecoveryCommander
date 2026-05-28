@@ -9,6 +9,8 @@
  * 2026-04-20 - 1.0.0 - Initial utility catalog (CCleaner, Macrium, Office, etc.).
  * 2026-05-02 - 1.2.6 - All download URLs migrated to Core/DownloadCatalog.cs so they can
  *                       carry SHA-256 hashes and version metadata in one place.
+ * 2026-05-21 - Added Brave Browser v1.90.122 Portable to the Utilities actions.
+ * 2026-05-28 - Added uTorrent Pro 3.6.0.47254 Portable to the Utilities actions.
  */
 
 using System.IO;
@@ -56,10 +58,12 @@ namespace RecoveryCommander.Modules
             new("Visual C++ AIO",                              "Visual C++ AIO Redistributable")                { ExecuteAction = DownloadVCRedist },
             new("PC Repair Suite 2.0.0",                       "PC Repair Suite Portable")                      { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.PCRepairSuite", p, o, c) },
             new("Driver Booster PRO 13.4.0.234",               "Driver Booster PRO Portable")                   { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.IObitDriverBooster", p, o, c) },
-            new("Dell OS Recovery Tool 2.3.4.3569",            "Dell OS Recovery Tool Portable")                { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.DellOSRecoveryTool", p, o, c) },
+            new("Dell OS Recovery Tool 2.4.3 Build 2569",      "Dell OS Recovery Tool Portable")                { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.DellOSRecoveryTool", p, o, c) },
             new("MacPaw CleanMyPC 1.11.1.2079",                "MacPaw CleanMyPC Portable")                     { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.CleanMyPc", p, o, c) },
             new("EaseUS Partition Master 20.3.0 Build 202604081519", "EaseUS Partition Master Portable")              { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.EaseUSPartitionMaster", p, o, c) },
-            new("UniGetUI 2026.1.9",                           "UniGetUI (Package Manager UI)")                 { ExecuteAction = DownloadUniGetUI }
+            new("UniGetUI 2026.1.9",                           "UniGetUI (Package Manager UI)")                 { ExecuteAction = DownloadUniGetUI },
+            new("Brave Browser 1.90.122 Portable",              "Brave Browser Portable")                        { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.BraveBrowserPortable", p, o, c) },
+            new("uTorrent Pro 3.6.0.47254 Portable",            "uTorrent Pro Portable")                         { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.uTorrentProPortable", p, o, c) }
         };
 
         private static async Task DownloadRufus(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

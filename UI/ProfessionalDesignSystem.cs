@@ -311,8 +311,9 @@ namespace RecoveryCommander.UI
                 Height = 40,
                 BackColor = Color.Transparent
             };
-            
+
             var angle = 0f;
+#pragma warning disable CA2000 // Dispose objects before losing scope - Timer is disposed by spinner
             var timer = new System.Windows.Forms.Timer { Interval = 16 };
             
             spinner.Paint += (s, e) =>
@@ -359,8 +360,9 @@ namespace RecoveryCommander.UI
             
             container.Controls.Add(spinner);
             container.Controls.Add(label);
-            
+
             // Center the container
+#pragma warning restore CA2000
             container.Location = new Point(
                 (panel.Width - container.Width) / 2,
                 (panel.Height - container.Height) / 2

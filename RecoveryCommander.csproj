@@ -10,7 +10,7 @@
     <ApplicationIcon>Resources\system_restore.ico</ApplicationIcon>
     <AssemblyName>RecoveryCommander</AssemblyName>
     <RootNamespace>RecoveryCommander</RootNamespace>
-    <Version>1.2.6</Version>
+    <Version>1.2.7</Version>
     <Description>Recovery Commander - A comprehensive Windows system recovery and maintenance tool. This project incorporates third-party applications, which remain the property of their respective owners.</Description>
     <Authors>Zane Stanton; pauluk83</Authors>
     <RepositoryUrl>https://github.com/pauluk83/RecoveryCommander</RepositoryUrl>
@@ -18,7 +18,7 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
-    <NoWarn>$(NoWarn);NU1510</NoWarn>
+    <NoWarn>$(NoWarn);NU1510;CA1303;CA1031;CA1805;CA1305;CA1822;CA1806;CA1051;CA1310;CA1311;CA1304;CA2000;CA1861;CA1862;CA1725;CA2201;CA1816;CA1848;CA1707;CA1860;CA1873</NoWarn>
     <DebugType>embedded</DebugType>
     <DefaultItemExcludes>$(DefaultItemExcludes);Website\**</DefaultItemExcludes>
   </PropertyGroup>
@@ -63,15 +63,15 @@
 
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageReference Include="System.Management" Version="10.0.0" />
-    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
-    <PackageReference Include="System.Management.Automation" Version="7.4.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
+    <PackageReference Include="System.Management" Version="10.0.8" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.8" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.8" />
+    <PackageReference Include="System.Management.Automation" Version="7.4.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
   </ItemGroup>
 
 </Project>

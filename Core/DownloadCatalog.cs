@@ -11,6 +11,8 @@
  *                       gradually move from "trust the URL" to "verify before execute".
  *                       Modules look entries up by id and download via DownloadVerifiedAsync,
  *                       which logs a clear warning whenever Sha256 is null.
+ * 2026-05-21 - Added Brave Browser v1.90.122 Portable to the Utilities catalog.
+ * 2026-05-28 - Added uTorrent Pro 3.6.0.47254 Portable to the Utilities catalog.
  */
 
 using System;
@@ -86,8 +88,8 @@ namespace RecoveryCommander.Core
                 "https://www.dropbox.com/scl/fi/2paq4t1yevyprkw5jrp0a/DriverBoosterPortable.txt?rlkey=p6j6ofauo26tp5xnunqhc3pxb&st=bvyegici&raw=1",
                 "Driver Booster PRO 13.4.0.234.exe", Sha256: "fe3e74163f15ea89f5f540ed936b58fd90d4ab8c04acbb6045bfddb67cd9b364", Version: "13.4.0.234", Vendor: "IObit"),
             ["Utilities.DellOSRecoveryTool"] = new("Utilities.DellOSRecoveryTool",
-                "https://www.dropbox.com/scl/fi/n7e76lxvy7r157bifklbl/Dell-OS-Recovery-Toolv2.3.4.3569.txt?rlkey=m5ir6s1ahh77yll82iyenj6j5&raw=1",
-                "Dell OS Recovery Tool 2.3.4.3569.exe", Sha256: "530ad2c493958fdd7761c9dd8a8f666ad15e7f9130fbd9b82d8fd410d0666bfd", Version: "2.3.4.3569", Vendor: "Dell"),
+                "https://www.dropbox.com/scl/fi/v4qca5yiaglssx3q04rwz/Dell-OS-Recovery-Tool-2.4.3-Build-2569.txt?rlkey=c9vyk27r2v3f7ux2id8z0aa13&st=plq1c9zb&raw=1",
+                "Dell OS Recovery Tool 2.4.3 Build 2569.exe", Sha256: "DA82F4224586BF657BDC8865065DC7FA007D1770F1EF996894CCA29630D226E8", Version: "2.4.3 Build 2569", Vendor: "Dell"),
             ["Utilities.Office2024"] = new("Utilities.Office2024",
                 "https://www.dropbox.com/scl/fi/i6ds50lst2edbuc2ildlv/office2024..txt?rlkey=dbhl2bo5y3tj5a7sfjnadeu9y&st=oesmjnyr&raw=1",
                 "Office 2024 (Build 2024).ps1", Sha256: "6de58f6f6ce4f5097b4613b858a6ee997a4c5007025a61d37663808789f978f4", Vendor: "Microsoft"),
@@ -110,6 +112,12 @@ namespace RecoveryCommander.Core
             ["Utilities.UniGetUI"] = new("Utilities.UniGetUI",
                 "https://github.com/Devolutions/UniGetUI/releases/download/v2026.1.9/UniGetUI.x64.zip",
                 "UniGetUI.x64.zip", Version: "2026.1.9", Vendor: "Devolutions"),
+            ["Utilities.BraveBrowserPortable"] = new("Utilities.BraveBrowserPortable",
+                "https://www.dropbox.com/scl/fi/hznli9c7lfglqyy68d8j1/Brave-Browser-v1.90.122-Portable.txt?rlkey=9kthlid5h1zyrvinwllstp620&st=rxdnupij&raw=1",
+                "Brave Browser 1.90.122 Portable.exe", Sha256: "BC232FA2B5323A97B006F53FF92543A20E9BA13DDC97E65A4B937095CBA5431E", Version: "1.90.122", Vendor: "Brave Software"),
+            ["Utilities.uTorrentProPortable"] = new("Utilities.uTorrentProPortable",
+                "https://www.dropbox.com/scl/fi/6z2tie055nc34q6hjim5d/uTorrent-Pro-3.6.0.47254-Portable.txt?rlkey=7ya1g556xxe9ggbep9dbwx2fh&st=l8zu75ru&raw=1",
+                "uTorrent Pro 3.6.0.47254 Portable.exe", Sha256: "D6BFDE38CF8C36A40CDFB2C7FBD2F9B7F57B3F0FD3475762101CCDA25E60238B", Version: "3.6.0.47254", Vendor: "BitTorrent"),
 
             // ===== Driver Manager Module =====
             // (Aliased to UtilitiesModule entry to avoid drift.)
@@ -128,7 +136,8 @@ namespace RecoveryCommander.Core
             ["Malware.NortonPowerEraser"] = new("Malware.NortonPowerEraser",
                 "https://www.norton.com/npe_latest", "NPE.exe", Vendor: "Norton"),
             ["Malware.HitmanPro"] = new("Malware.HitmanPro",
-                "https://dl.surfright.nl/HitmanPro_x64.exe", "HitmanPro_x64.exe", Vendor: "HitmanPro"),
+                "https://www.dropbox.com/scl/fi/3y6ou0pxmmw8dfdw6myth/HitmanPro-3.8.10-Portable.txt?rlkey=tusnqsf0eubx9y2ohzx8qfb6k&st=v1sd248k&raw=1",
+                "HitmanPro_x64.exe", Sha256: "0EB152873849AC543D0918DED705634E0E7060F36CAB941B7D42A4662F674D66", Version: "3.8.10 Portable", Vendor: "HitmanPro"),
             ["Malware.ClamWinPortable"] = new("Malware.ClamWinPortable",
                 "https://portableapps.com/redir2/?a=ClamWinPortable&s=s&d=pa&f=ClamWinPortable_0.103.2.1_Build_1.4.3_English.paf.exe",
                 "ClamWinPortable.paf.exe", Vendor: "ClamWin"),
@@ -180,7 +189,13 @@ namespace RecoveryCommander.Core
             var entry = Get(id);
             if (entry.Sha256 is null)
             {
-                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by URL trust.");
+                if (!AllowUnverifiedDownloads())
+                {
+                    reportOutput?.Invoke($"[supply-chain] BLOCKED: '{entry.Id}' is unverified (no SHA-256 pinned). Pin a hash or enable Allow Unverified Downloads in Settings to override.");
+                    return Task.CompletedTask;
+                }
+
+                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by explicit override.");
             }
             return AsyncHelpers.DownloadAndExecuteAsync(
                 entry.Url,
@@ -206,13 +221,27 @@ namespace RecoveryCommander.Core
             var entry = Get(id);
             if (entry.Sha256 is null)
             {
-                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by URL trust.");
+                if (!AllowUnverifiedDownloads())
+                {
+                    reportOutput?.Invoke($"[supply-chain] BLOCKED: '{entry.Id}' is unverified (no SHA-256 pinned). Pin a hash or enable Allow Unverified Downloads in Settings to override.");
+                    return;
+                }
+
+                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by explicit override.");
             }
             else
             {
                 reportOutput?.Invoke($"[supply-chain] verifying '{entry.Id}' (SHA-256 pinned).");
             }
-            await AsyncHelpers.DownloadFileAsync(entry.Url, destinationPath, progress, cancellationToken, entry.Sha256);
+            var resolvedUrl = await AsyncHelpers.ResolveDownloadUrlAsync(entry.Url, reportOutput, cancellationToken).ConfigureAwait(false);
+            await AsyncHelpers.DownloadFileAsync(resolvedUrl, destinationPath, progress, cancellationToken, entry.Sha256);
         }
+
+        private static bool AllowUnverifiedDownloads()
+            => AppFeatureSettings.GetAllowUnverifiedDownloads()
+            || string.Equals(
+                Environment.GetEnvironmentVariable("RC_ALLOW_UNVERIFIED_DOWNLOAD"),
+                "1",
+                StringComparison.Ordinal);
     }
 }

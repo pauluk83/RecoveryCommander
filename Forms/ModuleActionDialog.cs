@@ -18,13 +18,13 @@ namespace RecoveryCommander.Forms
     {
         public ActionMetadata ActionData { get; private set; } = new ActionMetadata();
 
-        private TextBox txtName;
-        private TextBox txtDescription;
-        private TextBox txtCommand;
-        private TextBox txtArguments;
-        private CheckBox chkAdmin;
-        private ModernButton btnOk;
-        private ModernButton btnCancel;
+        private TextBox txtName = null!;
+        private TextBox txtDescription = null!;
+        private TextBox txtCommand = null!;
+        private TextBox txtArguments = null!;
+        private CheckBox chkAdmin = null!;
+        private ModernButton btnOk = null!;
+        private ModernButton btnCancel = null!;
 
         public ModuleActionDialog()
         {

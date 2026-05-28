@@ -237,22 +237,22 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static bool IsAllowedFileExtension(string fileName, string[] allowedExtensions)
         {
-            if (string.IsNullOrWhiteSpace(fileName))
+            if (string.IsNullOrWhiteSpace(fileName) || allowedExtensions == null || allowedExtensions.Length == 0)
                 return false;
-            
+
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
             if (string.IsNullOrEmpty(extension))
                 return false;
-            
+
             // Remove the dot
             extension = extension.Substring(1);
-            
+
             foreach (var allowed in allowedExtensions)
             {
-                if (extension.Equals(allowed, StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(allowed) && extension.Equals(allowed, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
-            
+
             return false;
         }
     }

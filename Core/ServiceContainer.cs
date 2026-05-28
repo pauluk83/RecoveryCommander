@@ -1,3 +1,15 @@
+/*
+ * AUDIT HEADER
+ * File: ServiceContainer.cs
+ * Module: Core
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial service container implementation.
+ * 2026-05-22 - 1.2.7 - Added missing audit header and improved dependency injection.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -83,22 +95,24 @@ namespace RecoveryCommander.Core
                 {
                     // SSRF Protection: Resolve DNS to IP and check if it's loopback or private.
                     // This protects against DNS rebinding and obfuscated IPs.
-                    var entry = await System.Net.Dns.GetHostEntryAsync(context.DnsEndPoint.Host, cancellationToken);
-                    var ip = entry.AddressList.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6);
-                    
-                    if (ip == null || IsPrivateOrLoopbackIp(ip))
-                        throw new System.Security.SecurityException($"SSRF attempt detected. Host {context.DnsEndPoint.Host} resolved to an invalid or private IP.");
-
-                    var socket = new System.Net.Sockets.Socket(ip.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
+                    System.Net.IPHostEntry? entry = null;
+                    System.Net.Sockets.Socket? socket = null;
                     try
                     {
+                        entry = await System.Net.Dns.GetHostEntryAsync(context.DnsEndPoint.Host, cancellationToken);
+                        var ip = entry.AddressList.FirstOrDefault(a => a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6);
+
+                        if (ip == null || IsPrivateOrLoopbackIp(ip))
+                            throw new System.Security.SecurityException($"SSRF attempt detected. Host {context.DnsEndPoint.Host} resolved to an invalid or private IP.");
+
+                        socket = new System.Net.Sockets.Socket(ip.AddressFamily, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);
                         socket.NoDelay = true;
                         await socket.ConnectAsync(new System.Net.IPEndPoint(ip, context.DnsEndPoint.Port), cancellationToken);
                         return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
                     }
                     catch
                     {
-                        socket.Dispose();
+                        socket?.Dispose();
                         throw;
                     }
                 }

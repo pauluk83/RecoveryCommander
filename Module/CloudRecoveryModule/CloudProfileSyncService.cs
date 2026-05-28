@@ -13,6 +13,15 @@ namespace RecoveryCommander.Modules
 {
     public class CloudProfileSyncService
     {
+        private const int MaxBackupEntries = 100_000;
+        private const long MaxBackupUncompressedBytes = 2L * 1024 * 1024 * 1024;
+        private static readonly HashSet<string> AllowedRestoreFolders = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Desktop",
+            "Documents",
+            "Pictures"
+        };
+
         private readonly IProgress<ProgressReport> _progress;
         private readonly Action<string> _reportOutput;
 
@@ -24,6 +33,7 @@ namespace RecoveryCommander.Modules
 
         public async Task BackupProfileAsync(string provider, CancellationToken cancellationToken)
         {
+            string? stagingDir = null;
             try
             {
                 string? cloudPath = GetCloudPath(provider);
@@ -39,7 +49,7 @@ namespace RecoveryCommander.Modules
 
                 string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
                 string backupFile = Path.Combine(backupDir, $"ProfileBackup_{timestamp}.zip");
-                string stagingDir = Path.Combine(Path.GetTempPath(), $"RC_Backup_Staging_{timestamp}");
+                stagingDir = Path.Combine(Path.GetTempPath(), $"RC_Backup_Staging_{timestamp}");
 
                 _progress.Report(new ProgressReport(10, "Scanning files..."));
                 var sourceFolders = GetProfileFolders();
@@ -50,7 +60,7 @@ namespace RecoveryCommander.Modules
                 int i = 0;
                 foreach (var folder in sourceFolders)
                 {
-                    if (cancellationToken.IsCancellationRequested) return;
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     string folderName = new DirectoryInfo(folder).Name;
                     _progress.Report(new ProgressReport(20 + (i * 10), $"Staging {folderName}..."));
@@ -66,19 +76,28 @@ namespace RecoveryCommander.Modules
                 await Task.Run(() => ZipFile.CreateFromDirectory(stagingDir, backupFile), cancellationToken);
 
                 _progress.Report(new ProgressReport(90, "Cleaning up..."));
-                if (Directory.Exists(stagingDir)) Directory.Delete(stagingDir, true);
 
                 _progress.Report(new ProgressReport(100, "Done."));
                 _reportOutput($"> Backup successful: {backupFile}");
+            }
+            catch (OperationCanceledException)
+            {
+                _progress.Report(new ProgressReport(100, "Cancelled."));
+                _reportOutput("> Backup cancelled.");
             }
             catch (Exception ex)
             {
                 _reportOutput($"> Error during backup: {ex.Message}");
             }
+            finally
+            {
+                TryDeleteDirectory(stagingDir);
+            }
         }
 
         public async Task RestoreProfileAsync(string provider, CancellationToken cancellationToken)
         {
+            string? tempExtract = null;
             try
             {
                 string? cloudPath = GetCloudPath(provider);
@@ -104,23 +123,31 @@ namespace RecoveryCommander.Modules
                 string latestBackup = files.First();
                 _reportOutput($"> Restoring from: {latestBackup}");
 
-                string tempExtract = Path.Combine(Path.GetTempPath(), $"RC_Restore_{DateTime.Now.Ticks}");
+                tempExtract = Path.Combine(Path.GetTempPath(), $"RC_Restore_{DateTime.Now.Ticks}");
                 _progress.Report(new ProgressReport(20, "Extracting..."));
 
-                await Task.Run(() => ZipFile.ExtractToDirectory(latestBackup, tempExtract), cancellationToken);
+                await Task.Run(() => ExtractBackupSafely(latestBackup, tempExtract), cancellationToken);
 
                 _progress.Report(new ProgressReport(50, "Merging files..."));
                 await MergeFoldersAsync(tempExtract, Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), cancellationToken);
 
                 _progress.Report(new ProgressReport(90, "Cleaning temporary files..."));
-                if (Directory.Exists(tempExtract)) Directory.Delete(tempExtract, true);
 
                 _progress.Report(new ProgressReport(100, "Done."));
                 _reportOutput("> Restore completed successfully.");
             }
+            catch (OperationCanceledException)
+            {
+                _progress.Report(new ProgressReport(100, "Cancelled."));
+                _reportOutput("> Restore cancelled.");
+            }
             catch (Exception ex)
             {
                 _reportOutput($"> Error during restore: {ex.Message}");
+            }
+            finally
+            {
+                TryDeleteDirectory(tempExtract);
             }
         }
 
@@ -159,13 +186,13 @@ namespace RecoveryCommander.Modules
             Directory.CreateDirectory(dest);
             foreach (var file in Directory.GetFiles(source))
             {
-                if (ct.IsCancellationRequested) return;
+                ct.ThrowIfCancellationRequested();
                 string destFile = Path.Combine(dest, Path.GetFileName(file));
                 await Task.Run(() => File.Copy(file, destFile, true), ct);
             }
             foreach (var dir in Directory.GetDirectories(source))
             {
-                if (ct.IsCancellationRequested) return;
+                ct.ThrowIfCancellationRequested();
                 await CopyDirectoryAsync(dir, Path.Combine(dest, Path.GetFileName(dir)), ct);
             }
         }
@@ -174,8 +201,14 @@ namespace RecoveryCommander.Modules
         {
             foreach (var dir in Directory.GetDirectories(source))
             {
-                if (ct.IsCancellationRequested) return;
+                ct.ThrowIfCancellationRequested();
                 string folderName = new DirectoryInfo(dir).Name;
+                if (!AllowedRestoreFolders.Contains(folderName))
+                {
+                    _reportOutput($"Skipping unexpected restore folder: {folderName}");
+                    continue;
+                }
+
                 string targetPath = Path.Combine(targetBase, folderName);
 
                 if (Directory.Exists(targetPath))
@@ -192,6 +225,61 @@ namespace RecoveryCommander.Modules
             if (!string.IsNullOrEmpty(GetCloudPath("OneDrive"))) providers.Add("OneDrive");
             if (!string.IsNullOrEmpty(GetCloudPath("Google Drive"))) providers.Add("Google Drive");
             return providers;
+        }
+
+        private static void ExtractBackupSafely(string zipPath, string destinationDirectory)
+        {
+            Directory.CreateDirectory(destinationDirectory);
+            var root = Path.GetFullPath(destinationDirectory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            long totalUncompressedBytes = 0;
+            var entryCount = 0;
+
+            using var archive = ZipFile.OpenRead(zipPath);
+            foreach (var entry in archive.Entries)
+            {
+                entryCount++;
+                if (entryCount > MaxBackupEntries)
+                {
+                    throw new InvalidDataException("Backup archive contains too many entries.");
+                }
+
+                totalUncompressedBytes += entry.Length;
+                if (totalUncompressedBytes > MaxBackupUncompressedBytes)
+                {
+                    throw new InvalidDataException("Backup archive is too large to restore safely.");
+                }
+
+                var destinationPath = Path.GetFullPath(Path.Combine(destinationDirectory, entry.FullName));
+                if (!destinationPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("Backup archive contains an unsafe path.");
+                }
+
+                if (string.IsNullOrEmpty(entry.Name))
+                {
+                    Directory.CreateDirectory(destinationPath);
+                }
+                else
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                    entry.ExtractToFile(destinationPath, overwrite: false);
+                }
+            }
+        }
+
+        private static void TryDeleteDirectory(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return;
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, true);
+                }
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
         }
     }
 }

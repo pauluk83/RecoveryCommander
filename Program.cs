@@ -1,3 +1,15 @@
+/*
+ * AUDIT HEADER
+ * File: Program.cs
+ * Module: Core
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Entry point for RecoveryCommander.
+ * 2026-05-22 - 1.2.7 - Added missing audit header and refined startup warm-up.
+ */
+
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -50,6 +62,7 @@ namespace RecoveryCommander
                 Application.SetCompatibleTextRenderingDefault(false);
 
                 // Create and configure main form
+#pragma warning disable CA2000 // Dispose objects before losing scope - MainForm is disposed by Application.Run()
                 var mainForm = ServiceContainer.GetOptionalService<MainForm>() ?? new MainForm();
                 
                 // Initialize theme colors for Core components
@@ -59,9 +72,10 @@ namespace RecoveryCommander
                 mainForm.Show();
                 
                 logger.LogInformation("Application started successfully");
-                
+
                 // Run the application
                 Application.Run(mainForm);
+#pragma warning restore CA2000
             }
             catch (Exception ex)
             {

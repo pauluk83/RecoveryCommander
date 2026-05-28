@@ -1,4 +1,4 @@
-# RecoveryCommander — v1.2.6
+# RecoveryCommander — v1.2.7
 
 A comprehensive Windows system recovery and maintenance tool with a modern Windows 11-styled interface. RecoveryCommander provides modular system utilities, diagnostic tools, and recovery operations through an extensible plugin architecture.
 
@@ -27,7 +27,7 @@ A comprehensive Windows system recovery and maintenance tool with a modern Windo
 
 ## 📊 Project Status & Recent Updates
 
-*Current Status (Updated 2026-05-12) - Build 1.2.6*
+*Current Status (Updated 2026-05-14) - Build 1.2.7*
 
 - ✅ **Security**: Centralized `DownloadCatalog` with explicit supply-chain policy and SHA-256 pinning hooks.
 - ✅ **Reliability**: Rolling file logs under `%LOCALAPPDATA%\RecoveryCommander\logs` + safer global exception handling.

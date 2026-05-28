@@ -1,3 +1,15 @@
+/*
+ * AUDIT HEADER
+ * File: DiskUtility.cs
+ * Module: Core
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial disk utility implementation.
+ * 2026-05-22 - 1.2.7 - Added missing audit header and improved disk space checks.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.IO;

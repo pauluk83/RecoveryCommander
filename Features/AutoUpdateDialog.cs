@@ -123,6 +123,7 @@ namespace RecoveryCommander.Features
                 Padding = new Padding(0, 0, 0, 2)
             };
 
+#pragma warning disable CA2000 // Dispose objects before losing scope - Label is disposed by form
             var dateLabel = new Label
             {
                 Text = result.ReleaseDate.HasValue 
@@ -146,6 +147,7 @@ namespace RecoveryCommander.Features
             if (result.ReleaseDate.HasValue) headerPanel.Controls.Add(dateLabel);
 
             layout.Controls.Add(headerPanel, 0, 0);
+#pragma warning restore CA2000
 
             // ── Release notes ───────────────────────────────────────────
             var notesBox = new Theme.RoundedRichTextBox

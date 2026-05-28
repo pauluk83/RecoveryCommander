@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using System.Runtime.Versioning;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
@@ -118,6 +119,7 @@ public sealed class ReagentcModule : IRecoveryModule
         char letter = ' ';
         int? usedVolNum = null;
         int? usedDisk = null, usedPart = null;
+        bool mountedTemporaryLetter = false;
 
         try
         {
@@ -129,6 +131,7 @@ public sealed class ReagentcModule : IRecoveryModule
                 reportOutput($"Assigning drive letter {letter}: to Volume {usedVolNum.Value}...");
                 var ok = await DiskUtility.RunDiskpartScriptAsync($"select volume {usedVolNum.Value}\r\nassign letter={letter}\r\n", reportOutput, cancellationToken);
                 if (!ok) throw new InvalidOperationException("Failed to assign drive letter to volume.");
+                mountedTemporaryLetter = true;
             }
             else
             {
@@ -141,6 +144,7 @@ public sealed class ReagentcModule : IRecoveryModule
                 reportOutput($"Attempting to mount Disk {usedDisk}, Partition {usedPart} as {letter}:...");
                 var ok = await DiskUtility.RunDiskpartScriptAsync($"select disk {usedDisk}\r\nselect partition {usedPart}\r\nassign letter={letter}\r\n", reportOutput, cancellationToken);
                 if (!ok) throw new InvalidOperationException("Failed to assign drive letter using diskpart.");
+                mountedTemporaryLetter = true;
             }
 
             using var ofd = new OpenFileDialog
@@ -177,13 +181,13 @@ public sealed class ReagentcModule : IRecoveryModule
         }
         finally
         {
-            if (letter != ' ')
+            if (mountedTemporaryLetter)
             {
                 reportOutput($"Unmounting temporary drive letter {letter}:...");
                 string script = usedVolNum.HasValue 
                     ? $"select volume {usedVolNum.Value}\r\nremove letter={letter}\r\n"
                     : $"select disk {usedDisk}\r\nselect partition {usedPart}\r\nremove letter={letter}\r\n";
-                await DiskUtility.RunDiskpartScriptAsync(script, reportOutput, cancellationToken);
+                await DiskUtility.RunDiskpartScriptAsync(script, reportOutput, CancellationToken.None);
             }
             progress.Report(new ProgressReport(100, "Finished."));
         }
@@ -244,20 +248,23 @@ public sealed class ReagentcModule : IRecoveryModule
 
         string xmlPath = Path.Combine(oemDir, "ResetConfig.xml");
         
-        // FFU utilizes a different restore logic than WIM (sector-based vs file-based)
-        string xmlContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<Reset>
-  <Run Phase=""FactoryReset_AfterDiskFormat"">
-    <Path>cmd.exe /c dism /Apply-Ffu /ImageFile:""{ffuPath}"" /ApplyDrive:\\.\PhysicalDrive0 /CheckIntegrity</Path>
-  </Run>
-  <Run Phase=""FactoryReset_AfterImageApply"">
-    <Path>cmd.exe /c bcdboot C:\Windows</Path>
-  </Run>
-</Reset>";
+        // FFU utilizes a different restore logic than WIM (sector-based vs file-based).
+        // Build XML structurally so special characters in selected paths cannot corrupt it.
+        var xmlContent = new XDocument(
+            new XElement("Reset",
+                new XElement("Run",
+                    new XAttribute("Phase", "FactoryReset_AfterDiskFormat"),
+                    new XElement("Path", $@"cmd.exe /c dism /Apply-Ffu /ImageFile:""{ffuPath}"" /ApplyDrive:\\.\PhysicalDrive0 /CheckIntegrity")),
+                new XElement("Run",
+                    new XAttribute("Phase", "FactoryReset_AfterImageApply"),
+                    new XElement("Path", @"cmd.exe /c bcdboot C:\Windows"))));
 
         try
         {
-            await File.WriteAllTextAsync(xmlPath, xmlContent, System.Text.Encoding.UTF8, cancellationToken);
+            await using (var stream = File.Create(xmlPath))
+            {
+                await xmlContent.SaveAsync(stream, SaveOptions.None, cancellationToken);
+            }
             reportOutput($"SUCCESS: Modern FFU Restore Configured.");
             reportOutput($"Registered: {ffuPath}");
             reportOutput($"Config: {xmlPath}");

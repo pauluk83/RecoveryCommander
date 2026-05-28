@@ -22,6 +22,7 @@ namespace RecoveryCommander.Forms
             form.MaximizeBox = false;
             form.MinimizeBox = false;
 
+#pragma warning disable CA2000 // Dispose objects before losing scope - controls are disposed by form
             var label = new Label { Text = prompt, Left = 20, Top = 20, Width = 340 };
             var textBox = new TextBox { Text = defaultValue, Left = 20, Top = 50, Width = 340 };
             var okButton = new RecoveryCommander.UI.ModernButton { Text = "OK", Left = 220, Top = 100, Width = 120, Height = 36, DialogResult = DialogResult.OK, ButtonStyle = Theme.ButtonStyle.Secondary, CornerRadius = 10, TextAlign = ContentAlignment.MiddleLeft };
@@ -32,6 +33,7 @@ namespace RecoveryCommander.Forms
             form.CancelButton = cancelButton;
 
             return form.ShowDialog() == DialogResult.OK ? textBox.Text : string.Empty;
+#pragma warning restore CA2000
         }
         public static void ShowAboutDialog(Form? parent)
         {
@@ -73,7 +75,8 @@ namespace RecoveryCommander.Forms
             };
             
             var linksFlow = new FlowLayoutPanel { Anchor = AnchorStyles.None, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-            
+
+#pragma warning disable CA2000 // Dispose objects before losing scope - ToolTip is disposed by form
             ToolTip toolTip = new ToolTip();
             
             var ghLogo = new PictureBox { SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(48, 48), Margin = new Padding(0, 0, 20, 0), Cursor = Cursors.Hand };
@@ -96,6 +99,104 @@ namespace RecoveryCommander.Forms
 
             form.Controls.Add(contentPanel);
             form.ShowDialog(parent);
+#pragma warning restore CA2000
+        }
+
+        public static void ShowDownloadSafetySettings(Form? parent, ToolStripMenuItem? linkedMenuItem = null)
+        {
+            using var form = new Form
+            {
+                Text = "Download Safety Settings",
+                Size = new Size(560, 330),
+                MinimumSize = new Size(520, 300),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            Theme.ApplyFormStyle(form);
+            Theme.ApplyTheme(form);
+            Theme.ApplyMicaEffect(form);
+
+#pragma warning disable CA2000 // Controls are disposed by the parent form.
+            var contentPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(28),
+                ColumnCount = 1,
+                RowCount = 4
+            };
+            contentPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            contentPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            contentPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            contentPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            var titleLabel = new Label
+            {
+                Text = "Download safety",
+                AutoSize = true,
+                Font = Theme.Typography.Header,
+                ForeColor = Theme.Text,
+                Margin = new Padding(0, 0, 0, 12)
+            };
+
+            var allowCheckbox = new CheckBox
+            {
+                Text = "Allow unverified downloads",
+                Checked = AppFeatureSettings.GetAllowUnverifiedDownloads(),
+                AutoSize = true,
+                Font = Theme.Typography.Body,
+                ForeColor = Theme.Text,
+                Margin = new Padding(0, 0, 0, 12)
+            };
+
+            var descriptionLabel = new Label
+            {
+                Text = "When this is on, Recovery Commander can download and run catalog tools that do not have a pinned SHA-256 hash. Leave it off for stricter supply-chain protection; turn it on only when you intentionally trust the source and need an unpinned tool to run.",
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                Font = Theme.Typography.Body,
+                ForeColor = Theme.SubtleText,
+                Margin = new Padding(0, 0, 0, 18)
+            };
+
+            var buttonPanel = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.RightToLeft
+            };
+            var closeButton = new ModernButton
+            {
+                Text = "Close",
+                Width = 130,
+                Height = 38,
+                DialogResult = DialogResult.OK,
+                ButtonStyle = Theme.ButtonStyle.Secondary,
+                CornerRadius = 10,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            buttonPanel.Controls.Add(closeButton);
+
+            allowCheckbox.CheckedChanged += (s, e) =>
+            {
+                AppFeatureSettings.SetAllowUnverifiedDownloads(allowCheckbox.Checked);
+                if (linkedMenuItem != null)
+                {
+                    linkedMenuItem.Checked = allowCheckbox.Checked;
+                }
+            };
+
+            contentPanel.Controls.Add(titleLabel, 0, 0);
+            contentPanel.Controls.Add(allowCheckbox, 0, 1);
+            contentPanel.Controls.Add(descriptionLabel, 0, 2);
+            contentPanel.Controls.Add(buttonPanel, 0, 3);
+
+            form.Controls.Add(contentPanel);
+            form.AcceptButton = closeButton;
+            form.ShowDialog(parent);
+#pragma warning restore CA2000
         }
 
         public static void ShowHelpWindow(Form? host, string filePath, string title)

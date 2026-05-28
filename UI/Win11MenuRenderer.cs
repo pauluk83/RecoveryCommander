@@ -18,7 +18,7 @@ using System.Windows.Forms;
 namespace RecoveryCommander.Forms
 {
     // Windows 11-style menu renderer (rounded selection highlight, theme-aware colors).
-    internal class Windows11MenuRenderer : ToolStripProfessionalRenderer
+    internal sealed class Windows11MenuRenderer : ToolStripProfessionalRenderer
     {
         public Windows11MenuRenderer() : base(new Windows11ColorTable()) { }
 
@@ -51,7 +51,7 @@ namespace RecoveryCommander.Forms
     }
 
     // Color table for Windows 11-style menu surfaces.
-    internal class Windows11ColorTable : ProfessionalColorTable
+    internal sealed class Windows11ColorTable : ProfessionalColorTable
     {
         public override Color ToolStripGradientBegin => UI.Theme.Colors.Background;
         public override Color ToolStripGradientMiddle => UI.Theme.Colors.Background;

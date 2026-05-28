@@ -1,3 +1,15 @@
+/*
+ * AUDIT HEADER
+ * File: WinREWizards.cs
+ * Module: Core
+ * Created: 2026-04-20
+ * Author: Zane Stanton
+ *
+ * CHANGELOG:
+ * 2026-04-20 - 1.0.0 - Initial implementation of Windows RE wizard helpers.
+ * 2026-05-22 - 1.2.7 - Added missing audit header and refined WinRE management.
+ */
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

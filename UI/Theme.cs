@@ -1,3 +1,4 @@
+#pragma warning disable CA1031 // General exception types are used for robust error handling in theme operations
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -460,7 +461,7 @@ namespace RecoveryCommander.UI
             public Action<Control>? CustomApply { get; }
         }
 
-        private class ThemedColorTable : ProfessionalColorTable
+        private sealed class ThemedColorTable : ProfessionalColorTable
         {
             public override Color ToolStripGradientBegin => Colors.Surface;
             public override Color ToolStripGradientMiddle => Colors.Surface;
@@ -1021,7 +1022,7 @@ namespace RecoveryCommander.UI
         #endregion
         
         #region Futuristic Theme Classes
-        private class FuturisticMenuRenderer : ToolStripProfessionalRenderer
+        private sealed class FuturisticMenuRenderer : ToolStripProfessionalRenderer
         {
             private readonly FuturisticColorTable _colorTable;
             

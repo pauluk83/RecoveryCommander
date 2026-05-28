@@ -1,6 +1,57 @@
 # RecoveryCommander Changelog
 
-## 2026-05-13 - Code Quality Improvements
+## 2026-05-21 - Download Safety Settings
+
+### Supply-Chain Controls
+- **Download Safety Settings Menu** — Added a Settings menu with an `Allow Unverified Downloads` toggle and a descriptive `Download Safety Settings` dialog explaining when unpinned catalog downloads are allowed.
+- **Persistent Download Policy** — Added persisted app settings under the user profile so the unverified-download preference survives restarts while keeping `RC_ALLOW_UNVERIFIED_DOWNLOAD=1` as a scriptable override.
+
+## 2026-05-20 - Security Hardening & Recovery Reliability
+
+### Supply-Chain & Download Safety
+- **Redirect URL Revalidation** — Hardened `.txt` download indirection in `AsyncHelpers.ResolveDownloadUrlAsync` so resolved URLs must pass the same HTTPS/private-host validation as direct downloads. This blocks unsafe redirects such as HTTP downgrade links, loopback URLs, and private-network targets.
+- **Download Boundary Validation** — Added URL validation inside `AsyncHelpers.DownloadFileAsync`, ensuring lower-level callers cannot bypass the safe-download policy by calling the file downloader directly.
+- **Unverified Download Override** — Changed unpinned catalog downloads to fail closed by default. Unverified downloads can now be explicitly enabled with `RC_ALLOW_UNVERIFIED_DOWNLOAD=1`, and the blocked/download override messages document the exact flag.
+- **Catalog ZIP Resolution Fix** — Updated `DownloadCatalog.DownloadVerifiedAsync` to resolve catalog `.txt` indirection files before downloading non-executable artifacts such as ZIP packages, while preserving SHA-256 verification.
+- **HitmanPro Catalog Pin** — Updated HitmanPro to the `3.8.10 Portable` Secure Storage/Dropbox indirection URL and pinned executable SHA-256 `0EB152873849AC543D0918DED705634E0E7060F36CAB941B7D42A4662F674D66`.
+- **Dropbox Pointer Resolution** — Fixed `.txt` indirection detection for URLs with query strings and switched the HitmanPro pointer link to raw Dropbox delivery.
+- **Download Failure Propagation** — Fixed download/execute failures, including SHA-256 mismatches, so they propagate to the action runner instead of being logged as successful completions.
+
+### Auto-Update Security
+- **SHA-256 Required for Updates** — The auto-updater now requires a matching SHA-256 sidecar asset before applying a release update.
+- **Removed First-EXE Fallback** — Removed the fallback that accepted the first `.exe` asset from a GitHub release. Updates now only consider RecoveryCommander-named assets.
+- **Update Hash Verification** — Added SHA-256 computation for downloaded update binaries and refuse-to-apply behavior when the downloaded hash does not match the published checksum.
+- **Update URL Validation** — Added security validation for both update asset URLs and checksum URLs before download.
+- **Safer Update Failure Handling** — Added explicit network and security exception handling so update validation failures surface as controlled user-facing status messages.
+
+### Plugin Loading
+- **External Plugins Disabled by Default** — External DLL plugin loading under the `Module` directory is now disabled unless `RC_ENABLE_EXTERNAL_PLUGINS=1` is set.
+- **Signed Plugin Gate** — When external plugin loading is enabled, candidate DLLs must remain inside the trusted module directory and pass Authenticode certificate-chain validation before loading.
+
+### Recovery & File Operation Reliability
+- **Safe Cloud Restore Extraction** — Hardened cloud profile restore ZIP extraction with path traversal checks, entry-count limits, total uncompressed size limits, and overwrite prevention.
+- **Cloud Restore Folder Allow-List** — Restore now merges only expected profile folders (`Desktop`, `Documents`, `Pictures`) and skips unexpected archive folders.
+- **Cancellation Cleanup** — Cloud backup/restore staging directories are now cleaned up in `finally` blocks, and cancellation is reported explicitly instead of silently returning mid-operation.
+- **FFU Reset XML Safety** — Replaced raw string interpolation for `ResetConfig.xml` with `XDocument` generation so special characters in selected FFU paths cannot corrupt XML.
+- **WinRE Mount Cleanup** — WinRE repair now tracks whether a temporary drive letter was actually mounted and uses a non-cancelled cleanup token for best-effort unmounting after cancellation.
+
+### Command Execution Hardening
+- **Selective Update Argument Safety** — Winget, Microsoft Store, and PowerShell module selective-update actions now validate package/module identifiers with an allow-list and use `ProcessStartInfo.ArgumentList` where applicable to reduce argument parsing risk.
+
+### Verification
+- **Build Verified** — `dotnet build --no-restore` completes successfully with 0 errors. Existing analyzer warnings remain for later cleanup.
+
+## 2026-05-14 - Code Quality Improvements (v1.2.7)
+
+### Build & Code Analysis
+- **CA1822 Warning Fixes** — Marked 8 methods as static in `Forms/MainForm.cs` that do not access instance data: `GetOutputColor`, `UpdateModuleButtonStyles`, `GetModuleIcon`, `GetActionDescription`, `FormatTimeSpan`, `AdjustTileControls`, and both overloads of `CreateInfoChip`.
+- **CA1852 Warning Fixes** — Sealed 4 internal types that have no subtypes and are not externally visible: `ThemedColorTable` and `FuturisticMenuRenderer` in `UI/Theme.cs`, and `Windows11MenuRenderer` and `Windows11ColorTable` in `UI/Win11MenuRenderer.cs`.
+- **CA1859 Warning Fixes** — Optimized return types in `Forms/MainForm.cs` by changing `BuildModuleOverviewPanel` and `CreateInfoChip` from `Control` to `Panel` for improved type safety and performance.
+- **CA2000 Warning Fixes** — Added pragma suppress directives with justification comments for dispose pattern warnings in `Forms/DialogFactory.cs`, `Program.cs`, `Features/AutoUpdateDialog.cs`, `UI/ProfessionalDesignSystem.cs`, and `Forms/MainForm.cs`. Objects are properly disposed by their parent containers.
+- **CA1031 Warning Fixes** — Added pragma suppress directives with justification comments for general exception handling in `Features/ManagementTools.cs`, `UI/Theme.cs`, `UI/Theme.Responsive.cs`, `UI/Theme.Internal.cs`, `UI/Theme.Controls.cs`, and `Forms/MainForm.cs`. General exception types are used for robust error handling in system operations.
+- **Zero-Warning Build** — Verified solution builds cleanly with **0 errors, 0 warnings** in Release configuration.
+
+## 2026-05-13 - Code Quality Improvements (v1.2.7)
 
 ### Build & Code Analysis
 - **CA1031 Warning Fix** — Added pragma suppress directive with justification comment for the general exception catch in `AsyncHelpersTests.Dispose()`. The catch-all exception handler is necessary in Dispose methods to prevent exceptions from propagating during cleanup operations.

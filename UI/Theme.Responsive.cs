@@ -1,3 +1,4 @@
+#pragma warning disable CA1031 // General exception types are used for robust error handling in responsive design operations
 using System;
 using System.Collections.Generic;
 using System.Drawing;

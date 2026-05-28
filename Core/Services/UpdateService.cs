@@ -5,6 +5,7 @@ using System.IO;
 using System.Management;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
@@ -14,6 +15,8 @@ namespace RecoveryCommander.Core.Services
     [SupportedOSPlatform("windows")]
     public static class UpdateService
     {
+        private static readonly Regex PackageIdRegex = new(@"^[A-Za-z0-9][A-Za-z0-9._\-+]+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
         public static async Task UpgradeWingetPackagesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(progress);
@@ -49,21 +52,56 @@ namespace RecoveryCommander.Core.Services
 
         public static async Task UpgradeWingetPackageAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements");
+            if (!IsSafePackageId(packageId))
+            {
+                reportOutput($"Skipping unsafe package id: {packageId}");
+                return;
+            }
+
+            var psi = CoreUtilities.CreateProcessInfo("winget", "");
+            psi.ArgumentList.Add("upgrade");
+            psi.ArgumentList.Add("--id");
+            psi.ArgumentList.Add(packageId);
+            psi.ArgumentList.Add("--silent");
+            psi.ArgumentList.Add("--accept-package-agreements");
+            psi.ArgumentList.Add("--accept-source-agreements");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdateStoreAppAsync(string packageId, Action<string> reportOutput, CancellationToken cancellationToken)
         {
+            if (!IsSafePackageId(packageId))
+            {
+                reportOutput($"Skipping unsafe Store package id: {packageId}");
+                return;
+            }
+
             // Try winget first for Store apps as it is more reliable for specific versions
-            var psi = CoreUtilities.CreateProcessInfo("winget", $"upgrade --id \"{packageId}\" --silent --accept-package-agreements --accept-source-agreements --source msstore");
+            var psi = CoreUtilities.CreateProcessInfo("winget", "");
+            psi.ArgumentList.Add("upgrade");
+            psi.ArgumentList.Add("--id");
+            psi.ArgumentList.Add(packageId);
+            psi.ArgumentList.Add("--silent");
+            psi.ArgumentList.Add("--accept-package-agreements");
+            psi.ArgumentList.Add("--accept-source-agreements");
+            psi.ArgumentList.Add("--source");
+            psi.ArgumentList.Add("msstore");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdatePSModuleAsync(string moduleName, Action<string> reportOutput, CancellationToken cancellationToken)
         {
-            string script = $"Update-Module -Name \"{moduleName}\" -Force -ErrorAction SilentlyContinue";
-            var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"{script}\"");
+            if (!IsSafePackageId(moduleName))
+            {
+                reportOutput($"Skipping unsafe PowerShell module name: {moduleName}");
+                return;
+            }
+
+            var psi = CoreUtilities.CreateProcessInfo("powershell", "");
+            psi.ArgumentList.Add("-NoProfile");
+            psi.ArgumentList.Add("-NonInteractive");
+            psi.ArgumentList.Add("-Command");
+            psi.ArgumentList.Add($"Update-Module -Name '{moduleName}' -Force -ErrorAction SilentlyContinue");
             await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
         }
 
@@ -127,5 +165,8 @@ namespace RecoveryCommander.Core.Services
                 try { if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true); } catch { }
             }
         }
+
+        private static bool IsSafePackageId(string value)
+            => !string.IsNullOrWhiteSpace(value) && PackageIdRegex.IsMatch(value);
     }
 }
