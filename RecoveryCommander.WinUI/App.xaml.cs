@@ -89,6 +89,16 @@ public partial class App : Application
 
             try
             {
+                // Load theme resources first so XAML parsing can resolve StaticResource references.
+                try
+                {
+                    LoadThemeResources();
+                }
+                catch (Exception ex)
+                {
+                    LogError("LoadThemeResources", ex);
+                }
+
                 this.InitializeComponent();
             }
             catch (Exception ex)
@@ -132,6 +142,34 @@ public partial class App : Application
             LogError("App.Constructor", ex);
             ShowCrashDialog(ex);
             throw;
+        }
+    }
+
+    private void LoadThemeResources()
+    {
+        // Try adding the Theme/Styles.xaml as a merged dictionary using a relative Uri first.
+        try
+        {
+            var rd = new Microsoft.UI.Xaml.ResourceDictionary
+            {
+                Source = new Uri("Theme/Styles.xaml", UriKind.Relative)
+            };
+            this.Resources.MergedDictionaries.Add(rd);
+            return;
+        }
+        catch { /* fall through to file-based load */ }
+
+        // Fallback: load XAML from disk and parse it. This helps when ms-appx URI resolution
+        // fails for unpackaged Release builds.
+        var themePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Theme", "Styles.xaml");
+        if (System.IO.File.Exists(themePath))
+        {
+            var xamlText = System.IO.File.ReadAllText(themePath);
+            var obj = Microsoft.UI.Xaml.Markup.XamlReader.Load(xamlText);
+            if (obj is Microsoft.UI.Xaml.ResourceDictionary parsedRd)
+            {
+                this.Resources.MergedDictionaries.Add(parsedRd);
+            }
         }
     }
 

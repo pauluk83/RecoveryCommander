@@ -2,6 +2,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Windows.UI;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -15,11 +18,45 @@ namespace RecoveryCommanderWinUI;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+    private Border appTitleBar;
+    private Frame rootFrame;
+
     public MainWindow()
     {
         try
         {
-            InitializeComponent();
+            // Build UI in code to avoid ms-appx resource resolution in unpackaged Release builds
+            appTitleBar = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(255, 3, 9, 20)),
+                Height = 40
+            };
+
+            var titleText = new TextBlock
+            {
+                Text = "RecoveryCommander",
+                Foreground = new SolidColorBrush(Colors.White),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Microsoft.UI.Xaml.Thickness(12, 0, 0, 0)
+            };
+            appTitleBar.Child = titleText;
+
+            rootFrame = new Frame();
+
+            var rootGrid = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromArgb(255, 3, 9, 20))
+            };
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            rootGrid.Children.Add(appTitleBar);
+            Grid.SetRow(appTitleBar, 0);
+
+            rootGrid.Children.Add(rootFrame);
+            Grid.SetRow(rootFrame, 1);
+
+            Content = rootGrid;
         }
         catch (Exception ex)
         {
@@ -37,7 +74,7 @@ public sealed partial class MainWindow : Window
         }
 
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
+        SetTitleBar(appTitleBar);
 
         AppWindow.SetIcon("Assets/AppIcon.ico");
         AppWindow.TitleBar.BackgroundColor = Color.FromArgb(255, 3, 9, 20);
@@ -62,7 +99,7 @@ public sealed partial class MainWindow : Window
 #pragma warning disable CA1031 // Navigation failures should never throw — log and continue
         try
         {
-            RootFrame.Navigate(typeof(MainPage));
+            rootFrame.Navigate(typeof(MainPage));
         }
         catch (Exception ex)
         {
