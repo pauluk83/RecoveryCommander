@@ -137,10 +137,10 @@ public sealed class ReagentcModule : IRecoveryModule
 
     private static string FindReagentcGuiExecutable()
     {
+        // For single-file published apps Assembly.Location may be empty — prefer AppContext.BaseDirectory.
         string[] candidateRoots = new[]
         {
             AppContext.BaseDirectory,
-            Path.GetDirectoryName(typeof(ReagentcModule).Assembly.Location) ?? AppContext.BaseDirectory,
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Module", "ReagentcModule", "Reagentc"))
         };
 
