@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- RuntimeIdentifiers removed to prevent subfolder creation -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\system_restore.ico</ApplicationIcon>
+    <AssemblyName>RecoveryCommander</AssemblyName>
+    <RootNamespace>RecoveryCommander</RootNamespace>
+    <Version>1.2.7</Version>
+    <Description>Recovery Commander - A comprehensive Windows system recovery and maintenance tool. This project incorporates third-party applications, which remain the property of their respective owners.</Description>
+    <Authors>Zane Stanton; pauluk83</Authors>
+    <RepositoryUrl>https://github.com/pauluk83/RecoveryCommander</RepositoryUrl>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+    <NoWarn>$(NoWarn);NU1510;CA1303;CA1031;CA1805;CA1305;CA1822;CA1806;CA1051;CA1310;CA1311;CA1304;CA2000;CA1861;CA1862;CA1725;CA2201;CA1816;CA1848;CA1707;CA1860;CA1873</NoWarn>
+    <DebugType>embedded</DebugType>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Website\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="RecoveryCommander.Contracts\RecoveryCommander.Contracts.csproj" />
+    <ProjectReference Include="Core\RecoveryCommander.Core.csproj" />
+    <!-- Modules referenced directly so PublishSingleFile bundles them into the EXE -->
+    <ProjectReference Include="Module\DiagnosticsModule\DiagnosticsModule.csproj" />
+    <ProjectReference Include="Module\SFCModule\SFCModule.csproj" />
+    <ProjectReference Include="Module\DismModule\DismModule.csproj" />
+    <ProjectReference Include="Module\ReagentcModule\ReagentcModule.csproj" />
+    <ProjectReference Include="Module\MalwareRemovalModule\MalwareRemovalModule.csproj" />
+    <ProjectReference Include="Module\SystemPrepModule\SystemPrepModule.csproj" />
+    <ProjectReference Include="Module\UtilitiesModule\UtilitiesModule.csproj" />
+    <ProjectReference Include="Module\DriverManagerModule\DriverManagerModule.csproj" />
+    <ProjectReference Include="Module\CloudRecoveryModule\CloudRecoveryModule.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="ModuleLoader.cs" />
+    <!-- Core is now a project reference -->
+    <Compile Include="Forms\**\*.cs" />
+    <Compile Include="Features\**\*.cs" />
+    <Compile Include="UI\**\*.cs" />
+  </ItemGroup>
+
+  <!-- Include resources and documentation files -->
+  <ItemGroup>
+    <Content Include="Resources\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <EmbeddedResource Include="Resources\system_restore.ico" />
+  </ItemGroup>
+
+
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
+    <PackageReference Include="System.Management" Version="10.0.8" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.9" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.8" />
+    <PackageReference Include="System.Management.Automation" Version="7.4.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
+  </ItemGroup>
+
+</Project>
