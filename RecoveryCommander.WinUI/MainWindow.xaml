@@ -16,7 +16,8 @@
 
         <TitleBar x:Name="AppTitleBar" Title="RecoveryCommander" Background="#030914" Foreground="White">
             <TitleBar.IconSource>
-                <ImageIconSource ImageSource="Assets/AppIcon.ico" />
+                <!-- Use ms-appx URI so the resource resolves correctly in published app -->
+                <ImageIconSource ImageSource="ms-appx:///Assets/AppIcon.ico" />
             </TitleBar.IconSource>
         </TitleBar>
 
