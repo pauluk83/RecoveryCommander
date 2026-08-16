@@ -11,6 +11,7 @@
  *                       carry SHA-256 hashes and version metadata in one place.
  * 2026-05-21 - Added Brave Browser v1.90.122 Portable to the Utilities actions.
  * 2026-05-28 - Added uTorrent Pro 3.6.0.47254 Portable to the Utilities actions.
+ * 2026-05-29 - Added Patch My PC Home Updater Portable auto-run action.
  */
 
 using System.IO;
@@ -47,7 +48,6 @@ namespace RecoveryCommander.Modules
             new("Activation",                                  "Activation")                                   { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.ActivationPublic", p, o, c) },
             new("Install Office 2024 (Build 2024)",            "Install Office 2024 (Build 2024)")             { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.Office2024", p, o, c) },
             new("Office-C2R-Install",                          "Install Office Click-to-Run")                  { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.OfficeC2RPublic", p, o, c) },
-            new("Backup and Restore Activation State 1.0.0",   "Backup and Restore Activation State 1.0.0")    { ExecuteAction = RunBackupActivation },
             new("Christitus Utility",                          "Chris Titus Tech Windows Utility")              { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.ChrisTitusUtility", p, o, c) },
             new("CCleaner 6.40.115.62",                        "CCleaner portable")                             { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.CCleaner", p, o, c) },
             new("Macrium Reflect X 10.0.8843",                 "Macrium Reflect X Portable")                    { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.MacriumPortable", p, o, c) },
@@ -57,13 +57,14 @@ namespace RecoveryCommander.Modules
             new("Rufus",                                       "Rufus")                                         { ExecuteAction = DownloadRufus },
             new("Visual C++ AIO",                              "Visual C++ AIO Redistributable")                { ExecuteAction = DownloadVCRedist },
             new("PC Repair Suite 2.0.0",                       "PC Repair Suite Portable")                      { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.PCRepairSuite", p, o, c) },
-            new("Driver Booster PRO 13.4.0.234",               "Driver Booster PRO Portable")                   { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.IObitDriverBooster", p, o, c) },
+            new("Driver Booster PRO 13.5.0.359",               "Driver Booster PRO Portable")                   { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.IObitDriverBooster", p, o, c) },
             new("Dell OS Recovery Tool 2.4.3 Build 2569",      "Dell OS Recovery Tool Portable")                { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.DellOSRecoveryTool", p, o, c) },
             new("MacPaw CleanMyPC 1.11.1.2079",                "MacPaw CleanMyPC Portable")                     { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.CleanMyPc", p, o, c) },
             new("EaseUS Partition Master 20.3.0 Build 202604081519", "EaseUS Partition Master Portable")              { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.EaseUSPartitionMaster", p, o, c) },
-            new("UniGetUI 2026.1.9",                           "UniGetUI (Package Manager UI)")                 { ExecuteAction = DownloadUniGetUI },
+            new("UniGetUI 2026.2.1",                           "UniGetUI (Package Manager UI)")                 { ExecuteAction = DownloadUniGetUI },
             new("Brave Browser 1.90.122 Portable",              "Brave Browser Portable")                        { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.BraveBrowserPortable", p, o, c) },
-            new("uTorrent Pro 3.6.0.47254 Portable",            "uTorrent Pro Portable")                         { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.uTorrentProPortable", p, o, c) }
+            new("uTorrent Pro 3.6.0.47254 Portable",            "uTorrent Pro Portable")                         { ExecuteAction = (p, o, c) => DownloadCatalog.DownloadAndExecuteFromCatalogAsync("Utilities.uTorrentProPortable", p, o, c) },
+            new("Patch My PC",                                  "Patch My PC Home Updater Portable")              { ExecuteAction = RunPatchMyPcHomeUpdater }
         };
 
         private static async Task DownloadRufus(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
@@ -108,16 +109,6 @@ namespace RecoveryCommander.Modules
                 reportOutput($"Error: {ex.Message}");
                 progress.Report(new ProgressReport(100, "Failed"));
             }
-        }
-
-        private static async Task RunBackupActivation(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
-        {
-            await DownloadCatalog.DownloadAndExecuteFromCatalogAsync(
-                "Utilities.BackupRestoreActivation",
-                progress,
-                reportOutput,
-                cancellationToken,
-                allowedExtensions: AllowedExtensions);
         }
 
         private static async Task DownloadVCRedist(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
@@ -230,13 +221,12 @@ namespace RecoveryCommander.Modules
                 }
 
                 progress.Report(new ProgressReport(95, "Launching UniGetUI..."));
-                reportOutput($"Launching UniGetUI as admin: {exePath}");
+                reportOutput($"Launching UniGetUI: {exePath}");
 
                 var psi = new ProcessStartInfo
                 {
                     FileName = exePath,
-                    UseShellExecute = true,
-                    Verb = "runas",
+                    UseShellExecute = false,
                     WorkingDirectory = Path.GetDirectoryName(exePath)
                 };
 
@@ -250,6 +240,63 @@ namespace RecoveryCommander.Modules
                     else
                     {
                         throw new InvalidOperationException("Failed to start UniGetUI process.");
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                reportOutput("Operation cancelled.");
+                progress.Report(new ProgressReport(100, "Cancelled"));
+            }
+            catch (Exception ex)
+            {
+                reportOutput($"Error: {ex.Message}");
+                progress.Report(new ProgressReport(100, "Failed"));
+            }
+        }
+
+        private static async Task RunPatchMyPcHomeUpdater(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            progress.Report(new ProgressReport(0, "Preparing Patch My PC..."));
+            try
+            {
+                var entry = DownloadCatalog.Get("Utilities.PatchMyPcHomeUpdater");
+                var downloadRoot = Path.Combine(Path.GetTempPath(), "RecoveryCommander_PatchMyPC");
+                var exePath = Path.Combine(downloadRoot, entry.FileName);
+
+                if (!Directory.Exists(downloadRoot)) Directory.CreateDirectory(downloadRoot);
+
+                reportOutput("Downloading Patch My PC Home Updater Portable...");
+                await DownloadCatalog.DownloadVerifiedAsync("Utilities.PatchMyPcHomeUpdater", exePath, progress, reportOutput, cancellationToken);
+
+                if (!File.Exists(exePath))
+                {
+                    progress.Report(new ProgressReport(100, "Blocked"));
+                    reportOutput("Patch My PC was not downloaded. Enable Allow Unverified Downloads in Settings or pin a SHA-256 hash for this catalog entry.");
+                    return;
+                }
+
+                progress.Report(new ProgressReport(95, "Launching Patch My PC..."));
+                reportOutput($"Launching Patch My PC: {exePath} /auto");
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    Arguments = "/auto",
+                    UseShellExecute = false,
+                    WorkingDirectory = downloadRoot
+                };
+
+                using (var proc = Process.Start(psi))
+                {
+                    if (proc != null)
+                    {
+                        progress.Report(new ProgressReport(100, "Launched"));
+                        reportOutput("Patch My PC launched successfully.");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Failed to start Patch My PC process.");
                     }
                 }
             }

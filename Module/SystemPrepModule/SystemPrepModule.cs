@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Runtime.Versioning;
 using System.Linq;
 using RecoveryCommander.Contracts;
@@ -27,10 +26,22 @@ namespace RecoveryCommander.Modules
             _actions = new List<ModuleAction>
             {
                 new ModuleAction("Full System Prep", "Run all maintenance tasks sequentially", ExecuteFullPrepAsync) { Highlight = true },
-                new ModuleAction("Upgrade Winget Packages", "Updates programs via Winget (Selective)", ExecuteWingetUpdatesSelectiveAsync),
-                new ModuleAction("Update Store Apps", "Updates Microsoft Store packages (Selective)", ExecuteStoreUpdatesSelectiveAsync),
-                new ModuleAction("Update PS Modules", "Updates PowerShell Modules (Selective)", ExecutePSUpdatesSelectiveAsync),
-                new ModuleAction("Scan for Windows Updates", "Check and install OS updates (Selective)", ExecuteWindowsUpdatesSelectiveAsync),
+                new ModuleAction("Upgrade Winget Packages", "Updates programs via Winget (Selective)")
+                {
+                    ExecuteActionExtended = ExecuteWingetUpdatesSelectiveAsync
+                },
+                new ModuleAction("Update Store Apps", "Updates Microsoft Store packages (Selective)")
+                {
+                    ExecuteActionExtended = ExecuteStoreUpdatesSelectiveAsync
+                },
+                new ModuleAction("Update PS Modules", "Updates PowerShell Modules (Selective)")
+                {
+                    ExecuteActionExtended = ExecutePSUpdatesSelectiveAsync
+                },
+                new ModuleAction("Scan for Windows Updates", "Check and install OS updates (Selective)")
+                {
+                    ExecuteActionExtended = ExecuteWindowsUpdatesSelectiveAsync
+                },
                 new ModuleAction("Clear All Caches", "Removes browser caches and temp files", ExecuteClearCachesAsync) { IsDestructive = true },
                 new ModuleAction("Deep Clean WinSxS", "Component store cleanup (resetbase)", CleanupService.DeepCleanWinSxSAsync) { IsDestructive = true },
                 new ModuleAction("Apply Privacy Tweaks", "Disable telemetry and web search in Start", ExecuteApplyTweaksAsync) { IsDestructive = true },
@@ -42,20 +53,19 @@ namespace RecoveryCommander.Modules
         public string HealthStatus => "Healthy";
         public bool SupportsAsync => true;
 
-        private async Task ExecuteWingetUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private async Task ExecuteWingetUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(10, "Scanning for Winget updates..."));
             var updates = await UpdateHelpers.GetWingetUpgradesAsync(reportOutput, cancellationToken);
-            
+
             if (updates.Count == 0)
             {
-                MessageBox.Show("All packages are up to date!", "Winget Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 reportOutput("No Winget updates found.");
                 progress.Report(new ProgressReport(100, "Scan complete - No updates."));
                 return;
             }
 
-            var selected = PromptUser(updates, "Select Winget Updates", u => new object[] { u.Name, u.InstalledVersion, u.AvailableVersion, u.Size }, u => u.Size);
+            var selected = PromptUser(updates, "Select Winget Updates", u => new object[] { u.Name, u.InstalledVersion, u.AvailableVersion, u.Size }, u => u.Size, dialogService);
             if (selected == null || !selected.Any()) return;
 
             int count = selected.Count();
@@ -71,20 +81,19 @@ namespace RecoveryCommander.Modules
             progress.Report(new ProgressReport(100, "Winget updates completed."));
         }
 
-        private async Task ExecuteStoreUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private async Task ExecuteStoreUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(10, "Scanning for MS Store updates..."));
             var updates = await UpdateHelpers.GetStoreUpdatesAsync(reportOutput, cancellationToken);
 
             if (updates.Count == 0)
             {
-                MessageBox.Show("All Microsoft Store apps are up to date!", "Store Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 reportOutput("No MS Store updates found.");
                 progress.Report(new ProgressReport(100, "Scan complete - No updates."));
                 return;
             }
 
-            var selected = PromptUser(updates, "Select Microsoft Store Updates", u => new object[] { u.Name, u.InstalledVersion, u.AvailableVersion, u.Size }, u => u.Size);
+            var selected = PromptUser(updates, "Select Microsoft Store Updates", u => new object[] { u.Name, u.InstalledVersion, u.AvailableVersion, u.Size }, u => u.Size, dialogService);
             if (selected == null || !selected.Any()) return;
 
             int count = selected.Count();
@@ -99,19 +108,18 @@ namespace RecoveryCommander.Modules
             progress.Report(new ProgressReport(100, "Store updates completed."));
         }
 
-        private async Task ExecutePSUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private async Task ExecutePSUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(10, "Scanning for PowerShell updates..."));
             var updates = await UpdateHelpers.GetPSModuleUpdatesAsync(reportOutput, cancellationToken);
 
             if (updates.Count == 0)
             {
-                MessageBox.Show("All PowerShell modules are up to date!", "PowerShell Updates", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 reportOutput("No PowerShell module updates found.");
                 return;
             }
 
-            var selected = PromptUser(updates, "Select PS Module Updates", u => new object[] { u.Name, u.InstalledVersion, u.AvailableVersion, u.Size }, u => u.Size);
+            var selected = PromptUser(updates, "Select PS Module Updates", u => new object[] { u.Name, u.InstalledVersion, u.AvailableVersion, u.Size }, u => u.Size, dialogService);
             if (selected == null || !selected.Any()) return;
 
             int count = selected.Count();
@@ -126,19 +134,19 @@ namespace RecoveryCommander.Modules
             progress.Report(new ProgressReport(100, "PS updates completed."));
         }
 
-        private async Task ExecuteWindowsUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+        private async Task ExecuteWindowsUpdatesSelectiveAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
         {
             progress.Report(new ProgressReport(10, "Scanning for Windows updates..."));
             var updates = await UpdateHelpers.GetWindowsUpdatesAsync(reportOutput, cancellationToken);
 
             if (updates.Count == 0)
             {
-                MessageBox.Show("Your Windows OS is up to date!", "Windows Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                dialogService.ShowContentDialog("Your Windows OS is up to date!", "Windows Update");
                 reportOutput("No Windows updates found.");
                 return;
             }
 
-            var selected = PromptUser(updates, "Select Windows Updates", u => new object[] { u.Title, u.Category, u.KBArticle, u.Size }, u => u.Size);
+            var selected = PromptUser(updates, "Select Windows Updates", u => new object[] { u.Title, u.Category, u.KBArticle, u.Size }, u => u.Size, dialogService);
             if (selected == null || !selected.Any()) return;
 
             progress.Report(new ProgressReport(50, "Installing selected Windows updates..."));
@@ -146,31 +154,14 @@ namespace RecoveryCommander.Modules
             progress.Report(new ProgressReport(100, "Windows updates completed."));
         }
 
-        private static IEnumerable<T> PromptUser<T>(List<T> items, string title, Func<T, object[]> rowData, Func<T, string> sizeFetch) where T : class
+        private static IEnumerable<T> PromptUser<T>(List<T> items, string title, Func<T, object[]> rowData, Func<T, string> sizeFetch, IDialogService dialogService) where T : class
         {
-            IEnumerable<T>? selected = null;
-            // Need to run the UI on the UI thread
-            if (Application.OpenForms.Count > 0)
+            // Use the dialog service to show item selection dialog
+            if (dialogService.ShowItemSelectionDialog(items, title, rowData, sizeFetch, out var selectedItems))
             {
-                Application.OpenForms[0]?.Invoke(new Action(() =>
-                {
-                    var cols = new List<DataGridViewColumn>();
-                    // Auto-generate columns based on rowData count (simplified)
-                    cols.Add(new DataGridViewTextBoxColumn { HeaderText = "Name", FillWeight = 50 });
-                    cols.Add(new DataGridViewTextBoxColumn { HeaderText = "Info", FillWeight = 30 });
-                    cols.Add(new DataGridViewTextBoxColumn { HeaderText = "Version", FillWeight = 20 });
-                    cols.Add(new DataGridViewTextBoxColumn { HeaderText = "Size", FillWeight = 15 });
-
-                    using (var form = new UpdateSelectorForm<T>(title, items, cols, rowData, sizeFetch))
-                    {
-                        if (form.ShowDialog() == DialogResult.OK)
-                        {
-                            selected = form.SelectedItems.ToList();
-                        }
-                    }
-                }));
+                return selectedItems;
             }
-            return selected ?? Enumerable.Empty<T>();
+            return Enumerable.Empty<T>();
         }
 
         private async Task ExecuteFullPrepAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)

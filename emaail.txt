@@ -1,0 +1,221 @@
+bphone144@outlook.com -  Py351001 and GitHub
+k.simpsonw@outlook.com -  Py351001 and GitHub bytez api 6baaeb9ddcb87322e1c02113bb309bb0
+james.may.1983@outlook.com - Py351001
+
+
+
+Task: Continue the config-driven 2027 engine in "Income and Expenses 2026.xlsx" — Phase 4 is VERIFIED COMPLETE; build Phases 5 (Month_Template + JAN_2027..DEC_2027), 6 (Dashboard rebuild), 7 (reconciliation, year-flip tests, quirks register). Leave ALL 2026 month sheets, Transaction Log, and legacy Dates sheets intact.
+
+VERIFIED CURRENT STATE (re-checked this session)
+- Ph0-4 DONE. Rent 2027 A12:G92 fully templated: A12 Brought Forward (=DATE(TargetYear,1,1), blank D), A13 first Monday =DATE(TargetYear,1,7)-WEEKDAY(DATE(TargetYear,1,7),3), weekly chains A(n)=A(n-1)+7, D==C5 (rent) / ==C6 (Zane), E running balance, F/G blank; E4 =IFNA(XLOOKUP(TRUE,A12:A92<=AsOfDate,E12:E92,,0,-1),D12); rent-free citation in G10. errorCheck clean on all 5 x 2027 bill sheets.
+- Names live: AsOfDate=Settings_Year!$C$9 (=TODAY()), TargetYear=Settings_Year!$C$5 (=2027), StartMonth=Settings_Year!$C$6, pipActiveDate/Amt=Dates!G8:H19, ucActiveDate/Amt=Dates!G24:H35, listAccounts/listBills/listCards/listPeople/listTxnAccounts (workbook scope; per-sheet duplicates exist on the 5 x 2027 bill sheets — harmless).
+- Broken names confirmed: Dashboard_Income/Dashboard_Expenses/Dashboard_Months (#REF!), MAR_2026_ExpenseAmounts/Items (partial #REF!), 12 x _xlpm.* (#NAME?).
+- tblTransactions = Transactions!A1:H638; raw Income 15,755.91 / Expense 20,273.99. Reconciliation target = bespoke aggregation: Dashboard C38/D38 = 16,676.77 / 14,814.27, Net 1,862.50.
+- Progress folder /workspace/Income and Expenses 2026/progress recreated (was empty — workspace wiped between sessions). Maintain status.md + plan.md there.
+
+Implementation Plan:
+
+PHASE 5 — Month_Template + JAN_2027..DEC_2027
+1. Log Phase-4 completion + deviation D5 (rent anchor = 'Rent 2027'!C6, not row-dependent D44 clone) in progress/status.md; then READ remaining JUL_2026 blocks not yet mapped: JUL_2026!K1:V40 (ACCOUNTS K:P, PEOPLE ACCOUNTS, CREDIT CARDS K22:P28, Steve Paying K31:M33, SUMMARY R:V incl R4/S4/T4/V4, VALIDATION R22:T28), the pie chart definition, per-sheet OFFSET names, and verify quirk Q8 (Lee-specific handling). Also read Close Month B2:F40 fully and Settings_Cards/Settings_Bills tables.
+2. Build 'Month_Template' sheet mirroring JUL_2026 layout exactly (INCOME A:D, EXPENSES F:I, ACCOUNTS K:P, PEOPLE ACCOUNTS, CREDIT CARDS, Steve Paying, SUMMARY R:V, VALIDATION), with a hidden/grey month-index helper cell (m=1..12) and rewired formulas:
+   - Labels from tblAccounts/tblPeople/tblBills/tblCards structured refs (replace Settings!Bn refs).
+   - All SUMIFS -> tblTransactions columns, bounded >=DATE(TargetYear,m,1) and <EDATE(DATE(TargetYear,m,1),1).
+   - PIP: B4=INDEX(pipActiveAmt,m), C4=INDEX(pipActiveDate,m); UC: B5=INDEX(ucActiveAmt,m), C5=INDEX(ucActiveDate,m).
+   - Days Remaining D4/D5, A1 lock banner, H-column Paid ticks (F2-LAMBDA pattern) re-pointed to AsOfDate + TargetYear + helper m.
+   - Bills G7:G11 per-year static refs: 'Ovo 2027'!D15, 'Rent 2027'!C6 (D5 deviation), 'Water 2027'!D15, 'Council Tax 2027'!D16, 'Park Xmas 2027'!B15.
+   - Replicate quirks EXACTLY: Q1 R4=SUM(B4:B5,B7,B12:B20); Q2 S4=SUM(G4:G18,G20,G25:G33); Q3 people income SUMIFS "<>haircut"; Q4 Starling expense "<>haircut" AND "<>Previous Balance"; Q5 Steve Paying L32:M33 manual (blank in template); Q6 card balance = prior month M + spend L - payment D-refs; Q7 PIP first-occurrence per month via active names; Q8 as found in step 1.
+3. JAN_2027 opening balances from tblAccounts[OpeningBalance]/tblPeople[OpeningBalance]/tblCards; FEB_2027..DEC_2027 chain prior-month same-year sheet via static cross-sheet refs (as 2026 does).
+4. Copy template -> JAN_2027..DEC_2027 positioned after DEC_2026, set per-sheet m=1..12, rebuild per-sheet pie chart + OFFSET names as JAN_2027_ExpenseAmounts/Items etc. (uniquely prefixed, no #REF).
+5. Re-point 'Close Month' sheet logic at new month sheets + TargetYear/AsOfDate — read fully first; keep 2026 behaviour intact.
+6. workbook.errorCheck on Month_Template + all 12 x 2027 sheets.
+
+PHASE 6 — Dashboard rebuild
+7. Read Dashboard B2:P69 fully (6 charts, names, C38/D38 panels). Rebuild data layer from tblTransactions + Settings_* via native PivotTables/PivotCharts on a dedicated pivot sheet; add Slicers (Account, Type) + Timeline (Date). KPIs: total income vs expenses, net, cumulative balance, expenses by Account, income by Account.
+8. Preserve bespoke KPI/reconciliation panels (incl. C38/D38 totals) rewired to new tables + TargetYear driver.
+9. Clean broken names: Dashboard_Income/Dashboard_Expenses/Dashboard_Months (#REF!), MAR_2026_* (#REF!), _xlpm.* (#NAME?) — verify nothing intact still references them before deleting (MAR_2026 chart may need its series fixed or left as-is; do NOT break 2026 sheets/charts).
+
+PHASE 7 — Reconcile + tests + quirks register
+10. Set TargetYear=2026: verify each 2027-engine month sheet R4/S4 equals matching legacy 2026 sheet R4/S4; Dashboard C38/D38 = 16,676.77 / 14,814.27, Net 1,862.50.
+11. Flip TargetYear=2027 (no formula edits) — verify PIP/UC July = 301.60/13-Jul-27 and 1,308.22/27-Jul-27, bills pull from 2027 sheets, months compute. Test 2028 (blank/zero gracefully, no errors). Restore 2027.
+12. Add test account/bill/person to Settings_* tables -> confirm flow to dropdowns, month sheets, Dashboard slicers/charts; then remove test rows.
+13. Deliver quirks register (Q1-Q8 + D3 naming deviation + D5 rent anchor + manual rent-free weeks) on Audit or a new sheet, in theme.
+14. Do NOT retire/hide any legacy sheet — await user approval. Update progress/status.md at each phase boundary.
+
+Key Cell Locations:
+- Settings_Year!C9: AsOfDate (=TODAY()); Settings_Year!C5: TargetYear (2027); Settings_Year!C6: StartMonth
+- Dates!G8:H19 / G24:H35: active PIP/UC blocks (pipActive*/ucActive*)
+- 'Rent 2027'!C5 (-116.18 weekly), C6 (500 Zane monthly = anchor, deviation D5), E4 (AsOfDate XLOOKUP — done)
+- Anchors 2027: 'Ovo 2027'!D15, 'Water 2027'!D15, 'Council Tax 2027'!D16, 'Rent 2027'!C6, 'Park Xmas 2027'!B15
+- Anchors 2026 (do not touch): Ovo!D15, Water!D15, 'Council Tax'!D16, 'Rent Statement 2026-2027'!D44, 'Park Xmas'!B15
+- JUL_2026!A1:V107: canonical month layout + quirk formulas
+- Transactions!A1:H638 = tblTransactions
+
+Things to Watch Out For:
+- NEVER touch pip_dates/Uc_dates TABLE names or any 2026 month/bill/Dates sheet content (D3 deviation).
+- Reconciliation target is the bespoke aggregation (16,676.77/14,814.27), NOT raw sums (15,755.91/20,273.99).
+- 'Dates 2026' internal 2027 UC tables are STALE/WRONG — canonical 2027 data is in the 'Dates' sheet.
+- Notes/Comments APIs unsupported: citations as adjacent italic-grey cells.
+- Chart OFFSET names must be uniquely prefixed per sheet to avoid #REF collisions.
+- Don't regress tblTransactions Status formula (AsOfDate + TargetYear keyed, done Ph2b) when copying.
+- Standards: no merged cells; negatives in parentheses; single rule under headers, double under totals; white/grey/blue theme; UK formats, 2dp, zeros as dash; blue inputs / black formulas; no magic numbers.
+- 2026 past-month sheet protection: do not unprotect or edit JAN-JUN_2026; read-only reconciliation comparison only.
+
+## Who
+- UK-based personal finance user; workbook "Income and Expenses 
+X
+2026.xlsx
+" tracks income/expenses, PIP/UC benefits, bills, people-owed balances, credit cards.
+- Runs long multi-phase autonomous builds (config-driven year engine, TargetYear-driven 2027 sheets). Provides precise, verified handoff briefs; expects deviations logged (D-numbered) and quirks preserved exactly (Q-numbered).
+
+## Standards (explicit)
+- No merged cells; negatives in parentheses; single rule under headers, double under totals.
+- White/grey/blue theme; UK date formats; 2dp; zeros as dash; blue inputs / black formulas; no magic numbers.
+- Never hardcode; drivers via named ranges (TargetYear, AsOfDate) and Settings_* tables.
+- Citations as adjacent italic-grey cells (Notes/Comments API unsupported in their env).
+- Never touch locked/legacy 2026 sheets; await approval before hiding/retiring sheets.
+- Maintain /workspace/<workbook>
+/progress/
+status.md
+ + 
+plan.md
+ at phase boundaries (workspace may be wiped between sessions — recreate).
+EOF
+cat > 
+/tmp/
+plan-phase5.md
+ << 'PLAN'
+Task: Execute PHASE 5 ONLY of the 2027 engine build in "Income and Expenses 
+X
+2026.xlsx
+": build Month_Template + JAN_2027..DEC_2027, seed openings from Settings_* tables, extend Close Month, verify with errorCheck. Phases 6-7 are LATER sessions. Leave ALL 2026 month sheets, Transaction Log, and legacy Dates sheets intact. All exploration below is DONE — formulas are verbatim from this session's reads; do not re-derive, but spot-check JUL_2026 refs while building.
+
+STEP 0 — Progress + logging
+- /workspace is EMPTY (wiped). Recreate "/workspace/Income and Expenses 2026/progress/" with 
+status.md
+ + 
+plan.md
+. Log Phase-4 completion, deviation D5 (rent anchor='Rent 2027'!C6, not row-dependent D44 clone), and new deviation D6 (add OpeningBalance column to tblCards — see Step 2). Update 
+status.md
+ at end of phase.
+
+STEP 1 — Preconditions (verified this session; re-verify cheaply)
+- Names live: TargetYear=Settings_Year!$C$5 (2027), AsOfDate=Settings_Year!$C$9 (=TODAY()), StartMonth, pipActiveDate/Amt=Dates!$G$8:$H$19, ucActiveDate/Amt=Dates!$G$24:$H$35, listAccounts/listBills/listCards/listPeople/listTxnAccounts (workbook scope; harmless per-sheet dups on 5 x 2027 bill sheets).
+- errorCheck clean on Ovo 2027/Water 2027/Council Tax 2027/Rent 2027/Park Xmas 2027.
+- tblTransactions=Transactions!A1:H638, cols: Date|Account|Type|Amount|Comments|Status|Year|Month. Status/Year/Month formulas already AsOfDate-keyed — do not regress.
+- Q8 CONFIRMED (Lee haircut): B18 income SUMIFS excludes "<>haircut" (as all people, Q3); PEOPLE L18 = G31 - B18 - SUMIFS(...Lee, Income, month window, Comments="haircut") (haircut income does NOT reduce Lee's owed balance); VALIDATION T23 adds the same Lee-haircut SUMIFS term.
+
+STEP 2 — D6: add OpeningBalance column to Settings_Cards (tblCards)
+- tblCards currently Card|Limit|Active (Settings_Cards!B4:D8). Append column "OpeningBalance" (values £0.00 for all 4 cards; blue input style, £ format). Nothing references tblCards positionally (listCards=tblCards[Card] only). Log as D6.
+
+STEP 3 — Build 'Month_Template' sheet (position after DEC_2026; grey tab; visible)
+Mirror JUL_2026 layout A1:V107 exactly (widths, styles, borders, number formats, CFs). Helper cell V1: m (month index 1..12), grey italic, labelled U1 "m:". Template m=1.
+Formula spec (m = $V$1; replace legacy 'Dates 2026'!$B$1 -> AsOfDate; DATE(2026,7,...) -> DATE(TargetYear,m,...); month window = >=DATE(TargetYear,m,1) and <EDATE(DATE(TargetYear,m,1),1); ALL 'Transaction Log' SUMIFS -> tblTransactions structured refs: [Date],[Account],[Type],[Amount],[Comments]):
+- A1 banner: =IF(AsOfDate>=DATE(TargetYear,m,3)+EDATE(0,1)*0,...) — implement as: =IF(AsOfDate>=EDATE(DATE(TargetYear,m,3),1),"⚠️  THIS MONTH IS LOCKED — Do not edit","") (legacy JUL locks when date >= 3rd of following month).
+- R2: =LET(t,UPPER(TEXT(DATE(TargetYear,m,1),"MMM YYYY")),IF(AsOfDate>=EDATE(DATE(TargetYear,m,3),1),t&" SUMMARY 🔒 LOCKED",t))
+- INCOME A4:D20: A4="PIP", B4=INDEX(pipActiveAmt,m), C4=INDEX(pipActiveDate,m), D4=IF(C4="","",IF(C4-AsOfDate<0,"Paid",C4-AsOfDate)); A5="Universal Credit", B5=INDEX(ucActiveAmt,m), C5=INDEX(ucActiveDate,m), D5 like D4. A6:A11=INDEX(tblAccounts[Name],1..6); B6:B11=SUMIFS(tblTransactions[Amount],tblTransactions[Account],A6,tblTransactions[Type],"Income",[Date] window). A12:A20=INDEX(tblPeople[ShortName],1..9); B12:B20 same SUMIFS + tblTransactions[Comments],"<>haircut" (Q3).
+- EXPENSES F4:I33: F4:F18=INDEX(tblBills[Bill],1..15). Amounts: G4/G5/G6/G12/G13/G14=INDEX(tblBills[Amount],row) (Smarty/PureGym/YouTube/Reassure/Virgin/PensionBee); G7='Ovo 2027'!D15; G8='Rent 2027'!C6 (D5); G9='Water 2027'!D15; G10='Council Tax 2027'!D16; G11='Park Xmas 2027'!B15; G15="-" (Amazon prime, as legacy); G16=0, G17=0 (Contents/TV); G18=SUMIFS(...,[Account],"Petrol",[Type],"Expense",window) (Petrol). F19:F24=INDEX(tblAccounts[Name],1..6); G19,G21:G24=account expense SUMIFS; G20 (Starling) adds [Comments]"<>haircut" AND "<>Previous Balance" (Q4). F25:F33=INDEX(tblPeople[ShortName],1..9); G25:G33=people expense SUMIFS. Due dates I4:I15 from tblBills[DueDate] (INDEX per row; keep literal text like "14th"/"27th"). H4:H15 Paid ticks: =LET(td,AsOfDate,IF(AND(I4<>"",YEAR(td)=TargetYear,MONTH(td)>=m,td>=DATE(TargetYear,m,VALUE(LEFT(I4,LEN(I4)-2)))),"✓","")); H11 (Park Xmas) legacy variant uses G11>0 and day 27: =LET(td,AsOfDate,IF(AND(G11>0,YEAR(td)=TargetYear,MONTH(td)>=m,td>=DATE(TargetYear,m,27)),"✓","")); H16:H33: =IF(Gn>0,"✓","").
+- ACCOUNTS K4:P10: K4:K9=INDEX(tblAccounts[Name],1..6); L4=B6-G19, L5=B7-G20, L6=B8-G21, L7=B9-G22, L8=B10-G23, L9=B11-G24; M4=PrevM!M4+L4 (see Step 4 for Prev), M6:M9 likewise; N4:N9=INDEX(tblAccounts[Target],1..6); O=IFERROR(N-M,0); P=IFERROR(M/N,0); row10 totals as legacy (K10 "Total Balance", L10=SUM(L4:L9) etc.).
+- M5 STARLING MEGA-FORMULA (replicate structure exactly, generalized): =PrevM!M5 + IF(AND(C4<>"",C4<=AsOfDate),B4,0) + IF(AND(C5<>"",C5<=AsOfDate),B5,0) + B6 + B7 + SUM(B12:B20) - SUMPRODUCT((I4:I14<>"")*(AsOfDate>=DATE(TargetYear,m,IFERROR(VALUE(LEFT(I4:I14,LEN(I4:I14)-2)),32)))*IFERROR(G4:G14*1,0)) - IFERROR(G15*1,0) - IFERROR(G16*1,0) - IFERROR(G17*1,0) - G18 - G19 - G20 - SUMPRODUCT(IFERROR(G25:G33*1,0)) - [4 card-payment SUMIFS: tblTransactions[Amount] where [Account]=K24/K25/K26/K27, [Type]="Income", [Date]>=DATE(TargetYear,m,25)] (legacy hardcodes Zable/Vanquis/Capital One/Zilch and day 25; generalize names to K24:K27 refs, keep day 25).
+- PEOPLE ACCOUNTS K12:P21: K12:K20=INDEX(tblPeople[FullName],1..9); L12=G25-B12 ... L20=G33-B20, EXCEPT L18 (Lee, Q8)=G31-B18-SUMIFS(tblTransactions[Amount],[Account],"Lee",[Type],"Income",window,[Comments],"haircut"); M12:M20=PrevM!M+L; N:P="-"; K21 "Total Owed", L21/M21 sums.
+- CREDIT CARDS K24:P28 + helpers D104:D107: K24:K27=INDEX(tblCards[Card],1..4); L24:L27=card expense SUMIFS; D104:D107=card income (payment) SUMIFS (same window); M24:M27=PrevM!M + L - D104..D107 (Q6); N=INDEX(tblCards[Limit],..); O=N-M; P=IFERROR(M/N,0); row 28 totals.
+- Steve Paying K31:M33: headers only; L32:M33 BLANK manual inputs, blue (Q5).
+- SUMMARY R3:V4 + R5/S5/R6/S6: R4=SUM(B4:B5,B7,B12:B20) (Q1); S4=SUM(G4:G18,G20,G25:G33) (Q2); T4=M5; V4=IFERROR(S4/R4,0); S5=R4; S6=S4.
+- VALIDATION R22:T28: T22=IF(ROUND(L5,2)=ROUND(B7-G20,2),"✓ Valid","✗ Error"); S22=SUM(B12:B18); S23=SUM(G25:G31); T23=IF(ROUND(SUM(L12:L18),2)=ROUND(SUM(G25:G31)-SUM(B12:B18)-[Lee haircut SUMIFS as L18],2),...) (Q8); S24 Missing Dates: legacy hardcodes 'Transaction Log'!$A$536:$A$612 row block — generalize to =COUNTIFS(tblTransactions[Date],"",tblTransactions[Account],"<>") (global blank-date check; log as deviation D7); S25 Missing Amounts / S27 Invalid Types / S28 Future Dates: same COUNTIFS pattern on tblTransactions with month window (S28 vs AsOfDate); S26 Duplicates: SUMPRODUCT over tblTransactions[Date]/[Account]/[Type]/[Amount] with window (replace hardcoded rows 3:1062); T24:T28 wrapper texts as legacy.
+- Copy JUL_2026 CF rules (5) to matching template ranges; copy column widths/row heights.
+
+STEP 4 — Instantiate JAN_2027..DEC_2027
+- Copy Month_Template 12x, positioned after DEC_2026 (before 'Dates 2027'), names JAN_2027..DEC_2027, set V1 m=1..12.
+- PrevM refs: FEB_2027..DEC_2027 use static prior-sheet refs (JAN_2027!M4 etc.), as 2026 does. JAN_2027 openings: M4=INDEX(tblAccounts[OpeningBalance],1)+L4 (etc. for M4,M6:M9); M5 mega-formula starts INDEX(tblAccounts[OpeningBalance],2)+...; M12:M20=INDEX(tblPeople[OpeningBalance],1..9)+L; M24:M27=INDEX(tblCards[OpeningBalance],1..4)+L-D104..107. NOTE: Settings OpeningBalance values currently hold Jan-2026 seeds — flag in 
+status.md
+ that user must update them at 2026 year-end (do NOT change values).
+- Per-sheet pie chart: JUL_2026 has 1 Pie chart "Income vs Expenses" fed by workbook names JUL_2026_ExpenseItems/Amounts (=OFFSET($F$4/$G$4,0,0,COUNTIF(...),1)). For each 2027 sheet create names {SHEET}_ExpenseItems =OFFSET('{SHEET}'!$F$4,0,0,COUNTIF('{SHEET}'!$F$4:$F$33,"<>")+COUNTIF('{SHEET}'!$F$4:$F$33,">0"),1) and {SHEET}_ExpenseAmounts =OFFSET('{SHEET}'!$G$4,0,0,COUNTIF('{SHEET}'!$G$4:$G$33,">0"),1); build pie chart per sheet using these names (read JUL_2026 chart series formula first to clone position/size/title). Worksheet.copy may auto-clone names — after copying, DELETE any auto-created broken/duplicate per-sheet names before adding the correct ones (avoid #REF collisions, MAR_2026-style breakage).
+- Do NOT copy protection to 2027 sheets; ensure no _FilterDatabase junk carried over.
+
+STEP 5 — Extend 'Close Month' (keep 2026 behaviour intact)
+- D18:D23 (accounts) and D27:D30 (cards): wrap existing CHOOSE in =IF(TargetYear=2027, CHOOSE(MATCH(C4,{...12 month names...},0),JAN_2027!Mn,...,DEC_2027!Mn), <existing 2026 CHOOSE unchanged>). Same Mn rows: accounts M4:M9 order Backup Space/Starling/Barclays/Monzo/Revolut/Nationwide; cards M24:M27 Vanquis/Zable/Capital One/Zilch. F-column match formulas untouched.
+
+STEP 6 — Verify + wrap up
+- workbook.errorCheck on Month_Template + all 12 x 2027 sheets + Close Month + Settings_Cards. Fix any errors.
+- Sanity: JUL_2027 B4/C4 should show 301.60/13-Jul-27, B5/C5 1308.22/27-Jul-27 (TargetYear=2027 live). R4/S4 compute without error (2027 txns absent -> mostly PIP/UC only).
+- Spot-check FEB_2027!M5 chains JAN_2027!M5; JAN_2027!M24 uses tblCards[OpeningBalance].
+- Update 
+progress/
+status.md
+: Phase 5 complete; deviations D5/D6/D7; note Phases 6-7 pending. Append Changelog row if pattern exists (Changelog!B2:D136 — follow existing format).
+
+Key Cell Locations:
+- JUL_2026!A1:V107: canonical layout (all formulas captured above); D104:D107 card-payment helpers; chart "Income vs Expenses" (Pie)
+- Settings_Accounts!B4:G10=tblAccounts (Name/Type/Target/OpeningBalance/SortOrder/Active); Settings_People!B4:E13=tblPeople (ShortName/FullName/OpeningBalance/Active); Settings_Cards!B4:D8=tblCards (Card/Limit/Active — add OpeningBalance); Settings_Bills!B4:G19=tblBills (Bill/Amount/DueDate/SheetName/Frequency/Active)
+- Dates!G8:H19 pipActive, Dates!G24:H35 ucActive (July 2027 = 13/07/2027 £301.60; 27/07/2027 £1,308.22)
+- Anchors 2027: 'Ovo 2027'!D15, 'Rent 2027'!C6, 'Water 2027'!D15, 'Council Tax 2027'!D16, 'Park Xmas 2027'!B15
+- 'Close Month'!C4 month input; D18:D30 CHOOSE formulas; Transactions!A1:H638=tblTransactions
+
+Things to Watch Out For:
+- NEVER touch pip_dates/Uc_dates TABLE names or any 2026 month/bill/Dates sheet content; JAN-JUN_2026 protected — do not unprotect.
+- Do not regress tblTransactions Status/Year/Month formulas when touching Transactions.
+- Legacy JUL H4:H15 hardcodes month names/years — template versions must ONLY use TargetYear/m/AsOfDate.
+- Bills row-alignment assumption: tblBills rows 1-15 map to F4:F18 in order; INCOME accounts tblAccounts rows 1-6 -> A6:A11; people tblPeople rows 1-9 -> A12:A20. Verify order matches before writing INDEX formulas.
+- G15 "-" and G16/G17 zeros are legacy literals; keep IFERROR(Gn*1,0) guards in M5 so text amounts don't break.
+- 'Dates 2026' internal 2027 UC tables are STALE — canonical 2027 data lives in 'Dates' sheet only.
+- Standards: no merged cells; negatives in parentheses; single rule under headers, double under totals; white/grey/blue; UK formats, 2dp, zeros as dash; blue inputs / black formulas; no magic numbers (m helper + named drivers only); citations as adjacent italic-grey cells (Notes/Comments API unsupported).
+- Do NOT retire/hide any legacy sheet. Phases 6 (Dashboard) and 7 (reconciliation/tests/quirks register) are explicitly OUT OF SCOPE this session.
+
+
+Implementation Plan — 2027 Expenses Sheet Rebuild
+This plan consolidates all 5 configuration sheets onto one mega Settings sheet, rewires the monthly template (Month_Template) to dynamically fetch transactions using TargetYear and month index m, copies the template to generate sheets JAN_2027 to DEC_2027 with unique OFFSET named ranges, and rebuilds the Dashboard as a formula-driven sheet based on TargetYear.
+
+User Review Required
+IMPORTANT
+
+All 2026 monthly sheets, the Transaction Log table, and the Transactions hidden sheet will remain entirely untouched.
+Month lock warning banners (A1 and R2) on monthly sheets will evaluate dynamically based on AsOfDate, TargetYear, and month index m instead of hardcoded Dates 2026!$B$1 checks.
+Legacies like Settings_Year, Settings_Accounts, Settings_People, Settings_Cards, and Settings_Bills sheets will be deleted after consolidating their tables on Settings.
+Open Questions
+No open questions. The requirements are fully detailed.
+
+Proposed Changes
+Phase A: Consolidate Configuration on Settings
+Location: 
+Settings
+ (hidden sheet)
+Change:
+Re-establish the Settings tab as the single source of truth for configuration.
+Consolidate all tables currently on Settings_Year, Settings_Accounts, Settings_People, Settings_Cards, and Settings_Bills onto the Settings sheet.
+Add mirror columns on the Settings sheet (within the tblBills block) showing the latest balance and payment for the 5 utilities from the 2027 bill sheets (Ovo 2027, Water 2027, Council Tax 2027, Rent 2027, Park Xmas 2027) using month-matching XLOOKUP formulas when TargetYear = 2027, falling back to 2026 bill sheets when TargetYear = 2026.
+Repoint the named ranges TargetYear, AsOfDate, and StartMonth to the new positions on Settings.
+Delete Settings_Year, Settings_Accounts, Settings_People, Settings_Cards, and Settings_Bills.
+Phase B: Rewire Month_Template
+Location: 
+Month_Template
+Change:
+Rewire INCOME items PIP and Universal Credit to pull amounts from the Dates sheet dynamically using TargetYear and index m (VLOOKUP/INDEX).
+Repoint all SUMIFS and VLOOKUP ranges referencing hardcoded dates to instead use DATE(TargetYear, m, 1) and EDATE(DATE(TargetYear, m, 1), 1).
+Fix any hardcoded sheets references to dynamically reference prior months (e.g. carry-over balance from prior month) using the m helper.
+Ensure all quirks Q1–Q8 (e.g. Steve paying, Dan paying, credit card spent validation, duplicate checking array formulas) are fully preserved.
+Phase C: Generate 2027 Monthly Sheets
+Location: Workbook structure
+Change:
+Duplicate Month_Template 12 times to create JAN_2027 to DEC_2027 sheets.
+Seed the opening balances on JAN_2027 from the Consolidated Settings table.
+Add a per-sheet pie chart with a unique OFFSET named range for categories and values to prevent sheet-overlap issues.
+Extend the Close Month functionality for 2027 monthly sheets.
+Phase D: Dashboard Rebuild
+Location: 
+Dashboard
+Change:
+Rebuild the dashboard formulas to be dynamically driven by TargetYear (using IF or CHOOSE depending on TargetYear value).
+Retain the exact visual layout and existing charts.
+Verify and clean up any broken named ranges (e.g., #REF!).
+Phase E: Verification & Reconciliation
+Change:
+Perform a TargetYear flip test to verify 2026 and 2027 behavior.
+Test graceful degradation for 2028.
+Verify addition/removal of accounts in the configuration.
+Log findings in the quirks register and run final error check.
+Verification Plan
+Automated Verification
+Run a Python verification script that checks for formula correctness, cell references, and ensures no #REF!, #VALUE!, or other error formulas are introduced.
+Compare sheet balances against the original file for 2026 and 2027.
+Manual Verification
+Review the workbook in Excel.
+Verify chart ranges and check dropdown functionality.

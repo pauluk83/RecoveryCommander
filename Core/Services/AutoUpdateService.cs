@@ -147,17 +147,31 @@ namespace RecoveryCommander.Core.Services
                         };
                     }
 
-                    expectedSha256 = await DownloadChecksumAsync(checksumUrl, cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        expectedSha256 = await DownloadChecksumAsync(checksumUrl, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (SecurityException) when (AppFeatureSettings.ShouldBypassDownloadVerification())
+                    {
+                        expectedSha256 = "";
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(downloadUrl) && string.IsNullOrWhiteSpace(expectedSha256))
                 {
-                    return new UpdateCheckResult
+                    if (AppFeatureSettings.ShouldBypassDownloadVerification())
                     {
-                        CurrentVersion = currentVersionStr,
-                        LatestVersion = latestVersionStr,
-                        ErrorMessage = "Update found, but no SHA-256 checksum asset was published. Refusing automatic update."
-                    };
+                        expectedSha256 = "";
+                    }
+                    else
+                    {
+                        return new UpdateCheckResult
+                        {
+                            CurrentVersion = currentVersionStr,
+                            LatestVersion = latestVersionStr,
+                            ErrorMessage = "Update found, but no SHA-256 checksum asset was published. Refusing automatic update."
+                        };
+                    }
                 }
 
                 bool updateAvailable = false;
@@ -259,8 +273,15 @@ namespace RecoveryCommander.Core.Services
                 return false;
             if (string.IsNullOrWhiteSpace(updateInfo.ExpectedSha256))
             {
-                progress?.Report((100, "Update verification metadata is missing."));
-                return false;
+                if (AppFeatureSettings.ShouldBypassDownloadVerification())
+                {
+                    progress?.Report((95, "Update verification metadata missing; proceeding because download override is enabled."));
+                }
+                else
+                {
+                    progress?.Report((100, "Update verification metadata is missing."));
+                    return false;
+                }
             }
             if (!SecurityHelpers.IsValidDownloadUrl(updateInfo.DownloadUrl, out _))
             {
@@ -323,8 +344,15 @@ namespace RecoveryCommander.Core.Services
                 var actualHash = await ComputeSha256Async(downloadPath, cancellationToken).ConfigureAwait(false);
                 if (!actualHash.Equals(updateInfo.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
                 {
-                    progress?.Report((100, "Update checksum verification failed."));
-                    return false;
+                    if (AppFeatureSettings.ShouldBypassDownloadVerification())
+                    {
+                        progress?.Report((95, "Update checksum mismatch ignored due to download override."));
+                    }
+                    else
+                    {
+                        progress?.Report((100, "Update checksum verification failed."));
+                        return false;
+                    }
                 }
 
                 progress?.Report((95, "Preparing update script..."));

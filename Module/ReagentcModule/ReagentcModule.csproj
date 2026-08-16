@@ -1,11 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>1.2.7</Version>
+    <Version>1.2.8</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
     <OutputPath>..\..\bin\$(Configuration)\$(TargetFramework)\Module\ReagentcModule\</OutputPath>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <DebugType>embedded</DebugType>
@@ -28,5 +27,12 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Reagentc\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 </Project>

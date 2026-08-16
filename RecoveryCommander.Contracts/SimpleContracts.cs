@@ -115,5 +115,8 @@ namespace RecoveryCommander.Contracts
     public interface IDialogService
     {
         void ShowContentDialog(string content, string title);
+        string? ShowOpenFileDialog(string filter, string title, string? initialDirectory = null);
+        string? ShowFolderBrowserDialog(string description);
+        bool ShowItemSelectionDialog<T>(List<T> items, string title, Func<T, object[]> rowData, Func<T, string> sizeFetch, out List<T> selectedItems) where T : class;
     }
 }

@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Xml.Linq;
 using System.Runtime.Versioning;
 using RecoveryCommander.Contracts;
@@ -53,24 +51,34 @@ public sealed class ReagentcModule : IRecoveryModule
             RequiresAdmin = true,
             IconName = "ShieldAlert"
         },
-        new("Repair WinRE Path", "Advanced Repair (Mount/Pick/Set)", ExecuteSetRecoveryImageFromHiddenPartitionAsync)
+        new("Repair WinRE Path", "Advanced Repair (Mount/Pick/Set)")
         {
+            ExecuteActionExtended = ExecuteSetRecoveryImageFromHiddenPartitionAsync,
             Description = "Allows picking a recovery WIM from a hidden partition or directory and manually re-linking it.",
             RequiresAdmin = true,
             IconName = "Settings"
         },
-        new("Complete PBR Setup Wizard", "Guided Push-Button Reset Setup (ScanState + OEM Image)", ExecutePbrSetupWizardAsync)
+        new("Complete PBR Setup Wizard", "Guided Push-Button Reset Setup (ScanState + OEM Image)")
         {
+            ExecuteActionExtended = ExecutePbrSetupWizardAsync,
             Description = "Step-by-step wizard that guides you through capturing system customizations with ScanState and registering an OEM recovery image for complete Push-Button Reset functionality.",
             RequiresAdmin = true,
             Highlight = true,
             IconName = "Wizard"
         },
-        new("Register FFU Restore", "Register Modern FFU Factory Image", ExecuteFfuRegistrationAsync)
+        new("Register FFU Restore", "Register Modern FFU Factory Image")
         {
+            ExecuteActionExtended = ExecuteFfuRegistrationAsync,
             Description = "Registers a Full Flash Update (FFU) image for high-speed factory restore. FFU is sector-based and significantly faster than WIM restores.",
             RequiresAdmin = true,
             IconName = "Lightning"
+        },
+        new("Launch ReAgentC GUI", "Run ReAgentC GUI as Administrator")
+        {
+            ExecuteActionExtended = ExecuteLaunchReagentcGuiAsync,
+            Description = "Launches ReAgentC_GUI.exe from the bundled Reagentc folder with elevated permissions.",
+            RequiresAdmin = true,
+            IconName = "OpenInNewWindow"
         }
     };
 
@@ -85,6 +93,73 @@ public sealed class ReagentcModule : IRecoveryModule
         {
             dialogService.ShowContentDialog(result, "Windows RE Status Information");
         }
+    }
+
+    private Task ExecuteLaunchReagentcGuiAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
+    {
+        progress.Report(new ProgressReport(0, "Preparing ReAgentC GUI launch..."));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string exePath = FindReagentcGuiExecutable();
+        if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
+        {
+            string message = $"Could not find ReAgentC_GUI.exe in the bundled Reagentc folder. Expected at: {exePath}";
+            reportOutput(message);
+            progress.Report(new ProgressReport(100, "ReAgentC GUI launch failed."));
+            dialogService.ShowContentDialog(message, "ReAgentC GUI Launch Failed");
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = exePath,
+                WorkingDirectory = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory,
+                UseShellExecute = true,
+                Verb = "runas"
+            };
+
+            reportOutput($"Launching ReAgentC GUI from {exePath}...");
+            Process.Start(startInfo);
+            progress.Report(new ProgressReport(100, "ReAgentC GUI launch requested."));
+        }
+        catch (Exception ex)
+        {
+            string message = $"Unable to start ReAgentC GUI as administrator: {ex.Message}";
+            reportOutput(message);
+            progress.Report(new ProgressReport(100, "ReAgentC GUI launch failed."));
+            dialogService.ShowContentDialog(message, "ReAgentC GUI Launch Failed");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static string FindReagentcGuiExecutable()
+    {
+        string[] candidateRoots = new[]
+        {
+            AppContext.BaseDirectory,
+            Path.GetDirectoryName(typeof(ReagentcModule).Assembly.Location) ?? AppContext.BaseDirectory,
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Module", "ReagentcModule", "Reagentc"))
+        };
+
+        foreach (string root in candidateRoots.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            string candidate = Path.Combine(root, "Reagentc", "ReAgentC_GUI.exe");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            candidate = Path.Combine(root, "ReAgentC_GUI.exe");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return string.Empty;
     }
 
     private async Task ExecuteResetWinReAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
@@ -113,7 +188,7 @@ public sealed class ReagentcModule : IRecoveryModule
         progress.Report(new ProgressReport(100, "Disabled successfully."));
     }
 
-    private async Task ExecuteSetRecoveryImageFromHiddenPartitionAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    private async Task ExecuteSetRecoveryImageFromHiddenPartitionAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
     {
         progress.Report(new ProgressReport(0, "Starting recovery environment path repair..."));
         char letter = ' ';
@@ -147,18 +222,10 @@ public sealed class ReagentcModule : IRecoveryModule
                 mountedTemporaryLetter = true;
             }
 
-            using var ofd = new OpenFileDialog
-            {
-                Filter = "Recovery WIM (winre.wim)|winre.wim|WIM Files (*.wim)|*.wim|All Files (*.*)|*.*",
-                Title = "Locate winre.wim on the mounted partition",
-                InitialDirectory = $"{letter}:\\",
-                CheckPathExists = true,
-                CheckFileExists = true
-            };
+            var selected = dialogService.ShowOpenFileDialog("Recovery WIM (winre.wim)|winre.wim|WIM Files (*.wim)|*.wim|All Files (*.*)|*.*", "Locate winre.wim on the mounted partition", $"{letter}:\\");
 
-            if (ofd.ShowDialog() == DialogResult.OK && !string.IsNullOrWhiteSpace(ofd.FileName))
+            if (!string.IsNullOrWhiteSpace(selected))
             {
-                var selected = ofd.FileName;
                 var dir = Path.GetDirectoryName(selected) ?? $"{letter}:\\";
                 var fileName = Path.GetFileName(selected);
                 
@@ -193,20 +260,23 @@ public sealed class ReagentcModule : IRecoveryModule
         }
     }
 
-    private async Task ExecutePbrSetupWizardAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    private async Task ExecutePbrSetupWizardAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
     {
         progress.Report(new ProgressReport(0, "Launching Push-Button Reset Setup Wizard..."));
 
+        var wizardService = ServiceContainer.GetOptionalService<IWinReWizardService>();
+        if (wizardService == null)
+        {
+            reportOutput("The WinRE wizard service is not available in this host.");
+            progress.Report(new ProgressReport(100, "Wizard service unavailable."));
+            return;
+        }
+
         try
         {
-            // Run the wizard on a background thread to avoid blocking the UI
-            var result = await Task.Run(() =>
-            {
-                using var wizard = new RecoveryCommander.Core.WinREWizards(reportOutput);
-                return wizard.ShowDialog();
-            }, cancellationToken);
+            bool result = await wizardService.RunPbrSetupWizardAsync(progress, reportOutput, cancellationToken);
 
-            if (result == DialogResult.OK)
+            if (result)
             {
                 reportOutput("Push-Button Reset Setup Wizard completed successfully!");
                 progress.Report(new ProgressReport(100, "PBR Setup Wizard completed."));
@@ -224,25 +294,18 @@ public sealed class ReagentcModule : IRecoveryModule
         }
     }
 
-    private async Task ExecuteFfuRegistrationAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    private async Task ExecuteFfuRegistrationAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
     {
         progress.Report(new ProgressReport(0, "Configuring Modern FFU Factory Reset..."));
 
-        using var ofd = new OpenFileDialog
-        {
-            Filter = "FFU Image (*.ffu)|*.ffu|All Files (*.*)|*.*",
-            Title = "Select the Full Flash Update (FFU) Image for Factory Reset",
-            CheckFileExists = true
-        };
+        string? ffuPath = dialogService.ShowOpenFileDialog("FFU Image (*.ffu)|*.ffu|All Files (*.*)|*.*", "Select the Full Flash Update (FFU) Image for Factory Reset");
 
-        if (ofd.ShowDialog() != DialogResult.OK || string.IsNullOrWhiteSpace(ofd.FileName))
+        if (string.IsNullOrWhiteSpace(ffuPath))
         {
             reportOutput("Registration cancelled.");
             progress.Report(new ProgressReport(100, "Cancelled."));
             return;
         }
-
-        string ffuPath = ofd.FileName;
         string oemDir = @"C:\Recovery\OEM";
         if (!Directory.Exists(oemDir)) Directory.CreateDirectory(oemDir);
 
@@ -270,10 +333,10 @@ public sealed class ReagentcModule : IRecoveryModule
             reportOutput($"Config: {xmlPath}");
             reportOutput("NOTE: FFU restore is sector-accurate. Ensure the FFU was captured from the same physical drive layout.");
             progress.Report(new ProgressReport(100, "FFU Registration Complete."));
-            
-            MessageBox.Show("FFU-based Factory Reset has been configured.\n\n" +
-                "When you initiate 'Reset this PC', Windows will now use DISM to apply your FFU image directly to the physical drive.", 
-                "Modern Reset Configured", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            dialogService.ShowContentDialog("FFU-based Factory Reset has been configured.\n\n" +
+                "When you initiate 'Reset this PC', Windows will now use DISM to apply your FFU image directly to the physical drive.",
+                "Modern Reset Configured");
         }
         catch (Exception ex)
         {

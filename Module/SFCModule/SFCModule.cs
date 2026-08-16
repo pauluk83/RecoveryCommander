@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
-using System.Windows.Forms;
 using System.Runtime.Versioning;
 
 namespace RecoveryCommander.Modules;
@@ -38,8 +37,9 @@ public sealed class SfcModule : IRecoveryModule
             RequiresAdmin = true,
             IconName = "Search"
         },
-        new("Offline Scan", "Offline System Scan", ExecuteOfflineScan)
+        new("Offline Scan", "Offline System Scan")
         {
+            ExecuteActionExtended = ExecuteOfflineScan,
             Description = "Performs an SFC scan on an offline Windows installation or directory.",
             RequiresAdmin = true,
             IconName = "HardDrive"
@@ -52,10 +52,10 @@ public sealed class SfcModule : IRecoveryModule
     private Task ExecuteVerifyOnly(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         => ExecuteActionSafeAsync("Verify Only", "/verifyonly", progress, reportOutput, cancellationToken);
 
-    private Task ExecuteOfflineScan(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
+    private Task ExecuteOfflineScan(IProgress<ProgressReport> progress, Action<string> reportOutput, IDialogService dialogService, CancellationToken cancellationToken)
     {
-        var bootDir = PromptForFolder("Select boot directory (e.g. C:\\)");
-        var winDir = PromptForFolder("Select Windows directory (e.g. C:\\Windows)");
+        var bootDir = PromptForFolder("Select boot directory (e.g. C:\\)", dialogService);
+        var winDir = PromptForFolder("Select Windows directory (e.g. C:\\Windows)", dialogService);
         
         if (string.IsNullOrWhiteSpace(bootDir) || string.IsNullOrWhiteSpace(winDir))
         {
@@ -94,14 +94,8 @@ public sealed class SfcModule : IRecoveryModule
         }
     }
 
-    private static string PromptForFolder(string prompt)
+    private static string PromptForFolder(string prompt, IDialogService dialogService)
     {
-        using var dialog = new FolderBrowserDialog 
-        { 
-            Description = prompt, 
-            ShowNewFolderButton = false,
-            UseDescriptionForTitle = true
-        };
-        return dialog.ShowDialog() == DialogResult.OK ? dialog.SelectedPath : string.Empty;
+        return dialogService.ShowFolderBrowserDialog(prompt) ?? string.Empty;
     }
 }

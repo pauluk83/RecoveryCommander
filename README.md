@@ -1,4 +1,4 @@
-# RecoveryCommander — v1.2.7
+# RecoveryCommander — v1.2.8
 
 A comprehensive Windows system recovery and maintenance tool with a modern Windows 11-styled interface. RecoveryCommander provides modular system utilities, diagnostic tools, and recovery operations through an extensible plugin architecture.
 
@@ -27,19 +27,18 @@ A comprehensive Windows system recovery and maintenance tool with a modern Windo
 
 ## 📊 Project Status & Recent Updates
 
-*Current Status (Updated 2026-05-14) - Build 1.2.7*
+*Current Status (Updated 2026-06-17) - Build 1.2.8*
 
 - ✅ **Security**: Centralized `DownloadCatalog` with explicit supply-chain policy and SHA-256 pinning hooks.
 - ✅ **Reliability**: Rolling file logs under `%LOCALAPPDATA%\RecoveryCommander\logs` + safer global exception handling.
 - ✅ **Quality**: Added xUnit test project (`Tests/RecoveryCommander.Tests`) and CI `dotnet test` coverage upload.
 - ✅ **UX/A11y**: Focus indicators on custom controls, high-contrast palette snapping, scalable toasts + Esc dismiss.
 - ✅ **Maintainability**: Diagnostics command metadata unified; key refactors extracted from `MainForm` monolith.
+- ✅ **UI Fixes**: Converted all major dialogs from ContentDialog to Window-based implementations to overcome WinUI 3 width constraints, resolving text clipping issues.
 
 ---
 
 ## 📁 Project Structure
-
-Project Manifest Overview
 
 ```text
 RecoveryCommander/
@@ -120,8 +119,18 @@ public interface IRecoveryModule
 1. Clone the repository: `git clone https://github.com/pauluk83/RecoveryCommander.git`
 2. Open `RecoveryCommander.sln` in Visual Studio.
 3. Restore NuGet packages.
-4. Build the solution (**Ctrl+Shift+B**).
-5. Run the application (**F5**).
+4. **IMPORTANT**: Before building, update the root `CHANGELOG.md` with all ongoing changes (see Audit Guidelines below).
+5. Build the solution (**Ctrl+Shift+B**).
+6. Run the application (**F5**).
+
+### Audit & Changelog Requirements
+RecoveryCommander follows strict audit-first development practices:
+- **File-Level**: Every source file must have an audit header with a changelog block
+- **Project-Level**: All changes must be mirrored in the root `CHANGELOG.md` before building
+- **Build-Time**: The build process verifies that `CHANGELOG.md` has been updated with recent changes
+- **Permanence**: Changelog entries are never deleted - they provide permanent traceability
+
+For detailed guidelines, see `Resources/AUDIT_GUIDELINES.md`.
 
 ---
 

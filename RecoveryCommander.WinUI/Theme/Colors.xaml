@@ -1,0 +1,38 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Primary Accent: Electric Blue -->
+    <Color x:Key="SystemAccentColor">#00E5FF</Color>
+    <Color x:Key="SystemAccentColorLight1">#40EFFF</Color>
+    <Color x:Key="SystemAccentColorLight2">#80F5FF</Color>
+    <Color x:Key="SystemAccentColorLight3">#BFFFFF</Color>
+    <Color x:Key="SystemAccentColorDark1">#00B8CC</Color>
+    <Color x:Key="SystemAccentColorDark2">#008A99</Color>
+    <Color x:Key="SystemAccentColorDark3">#005C66</Color>
+
+    <SolidColorBrush x:Key="PrimaryAccentBrush" Color="{StaticResource SystemAccentColor}" />
+
+    <!-- Neon Green Success -->
+    <Color x:Key="NeonSuccessColor">#39FF14</Color>
+    <SolidColorBrush x:Key="NeonSuccessBrush" Color="{StaticResource NeonSuccessColor}" />
+
+    <!-- Amber Warning -->
+    <Color x:Key="AmberWarningColor">#FFBF00</Color>
+    <SolidColorBrush x:Key="AmberWarningBrush" Color="{StaticResource AmberWarningColor}" />
+
+    <!-- Command Center Shell Colors -->
+    <Color x:Key="PanelBackgroundColor">#C8071828</Color>
+    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="{StaticResource PanelBackgroundColor}" />
+
+    <Color x:Key="PanelBorderColor">#6636D6FF</Color>
+    <SolidColorBrush x:Key="PanelBorderBrush" Color="{StaticResource PanelBorderColor}" />
+
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#A8B9CA" />
+    <SolidColorBrush x:Key="DimTextBrush" Color="#708396" />
+    <SolidColorBrush x:Key="DeepSurfaceBrush" Color="#D0030B16" />
+    <SolidColorBrush x:Key="ActiveSurfaceBrush" Color="#80276693" />
+
+</ResourceDictionary>
+
+

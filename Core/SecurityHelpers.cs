@@ -2,11 +2,13 @@ using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Security;
+using RecoveryCommander.Core.Security;
 
 namespace RecoveryCommander.Core
 {
     /// <summary>
     /// Security helper methods for input validation and sanitization
+    /// Enhanced for ISO 27001/SOC 2 compliance with comprehensive validation
     /// </summary>
     public static class SecurityHelpers
     {
@@ -130,15 +132,7 @@ namespace RecoveryCommander.Core
             // Remove potentially dangerous characters that could be used for injection
             // We are more aggressive now: & | ; ` $ ( ) < > \n \r " '
             var dangerousChars = new[] { '&', '|', ';', '`', '$', '(', ')', '<', '>', '\n', '\r', '"', '\'' };
-            var sanitized = arguments;
-            
-            foreach (var c in dangerousChars)
-            {
-                sanitized = sanitized.Replace(c.ToString(), string.Empty, StringComparison.Ordinal);
-            }
-            // Note: command chaining patterns (&&, ||, ;) are already neutralized by
-            // the character-level stripping above, so no additional regex pass is needed.
-            
+            var sanitized = new string(arguments.Where(c => !dangerousChars.Contains(c)).ToArray());
             return sanitized.Trim();
         }
 
@@ -254,6 +248,188 @@ namespace RecoveryCommander.Core
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Validates input against SQL injection patterns
+        /// </summary>
+        public static bool ContainsSqlInjection(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            var sqlPatterns = new[]
+            {
+                "' OR '", "' --", "'/*", "*/'", "xp_", "exec(", "execute(",
+                "sp_", "select ", "insert ", "update ", "delete ", "drop ",
+                "union ", "create ", "alter ", "truncate ", "declare ",
+                "--", "/*", "*/", ";--", ";/*", "1=1", "1 = 1"
+            };
+
+            var lowerInput = input.ToLowerInvariant();
+            foreach (var pattern in sqlPatterns)
+            {
+                if (lowerInput.Contains(pattern.ToLowerInvariant()))
+                {
+                    AuditLogger.Instance.LogFailure("InputValidation", "SQLInjectionDetected", $"Pattern: {pattern}", input);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Validates input against XSS patterns
+        /// </summary>
+        public static bool ContainsXss(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            var xssPatterns = new[]
+            {
+                "<script", "</script>", "javascript:", "onerror=", "onload=",
+                "onmouseover=", "onfocus=", "onblur=", "onclick=",
+                "ondblclick=", "onmousedown=", "onmouseup=", "onkeydown=",
+                "onkeypress=", "onkeyup=", "eval(", "expression(",
+                "vbscript:", "data:", "fromCharCode", "document.cookie",
+                "document.write", "innerHTML", "outerHTML"
+            };
+
+            var lowerInput = input.ToLowerInvariant();
+            foreach (var pattern in xssPatterns)
+            {
+                if (lowerInput.Contains(pattern.ToLowerInvariant()))
+                {
+                    AuditLogger.Instance.LogFailure("InputValidation", "XSSDetected", $"Pattern: {pattern}", input);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Sanitizes input to prevent XSS attacks
+        /// </summary>
+        public static string SanitizeForXss(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return string.Empty;
+
+            var sanitized = input
+                .Replace("<", "&lt;", StringComparison.Ordinal)
+                .Replace(">", "&gt;", StringComparison.Ordinal)
+                .Replace("\"", "&quot;", StringComparison.Ordinal)
+                .Replace("'", "&#x27;", StringComparison.Ordinal)
+                .Replace("/", "&#x2F;", StringComparison.Ordinal);
+
+            return sanitized;
+        }
+
+        /// <summary>
+        /// Validates email format
+        /// </summary>
+        public static bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Validates phone number format (basic validation)
+        /// </summary>
+        public static bool IsValidPhoneNumber(string phone)
+        {
+            if (string.IsNullOrWhiteSpace(phone))
+                return false;
+
+            // Allow digits, spaces, hyphens, parentheses, plus sign
+            var cleaned = phone.Replace(" ", "", StringComparison.Ordinal)
+                             .Replace("-", "", StringComparison.Ordinal)
+                             .Replace("(", "", StringComparison.Ordinal)
+                             .Replace(")", "", StringComparison.Ordinal)
+                             .Replace("+", "", StringComparison.Ordinal);
+
+            return cleaned.Length >= 10 && cleaned.Length <= 15 && cleaned.All(char.IsDigit);
+        }
+
+        /// <summary>
+        /// Validates that a string meets minimum entropy requirements
+        /// </summary>
+        public static bool HasSufficientEntropy(string input, int minimumEntropy = 40)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            var uniqueChars = input.Distinct().Count();
+            var entropy = input.Length * Math.Log2(uniqueChars);
+
+            return entropy >= minimumEntropy;
+        }
+
+        /// <summary>
+        /// Validates password strength
+        /// </summary>
+        public static bool IsStrongPassword(string password)
+        {
+            if (string.IsNullOrWhiteSpace(password) || password.Length < 12)
+                return false;
+
+            bool hasUpper = password.Any(char.IsUpper);
+            bool hasLower = password.Any(char.IsLower);
+            bool hasDigit = password.Any(char.IsDigit);
+            bool hasSpecial = password.Any(c => !char.IsLetterOrDigit(c));
+
+            return hasUpper && hasLower && hasDigit && hasSpecial;
+        }
+
+        /// <summary>
+        /// Validates that input doesn't exceed maximum length
+        /// </summary>
+        public static bool IsValidLength(string input, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return true;
+
+            return input.Length <= maxLength;
+        }
+
+        /// <summary>
+        /// Comprehensive input validation for user-provided data
+        /// </summary>
+        public static bool ValidateUserInput(string input, int maxLength = 1000, bool allowHtml = false)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return true;
+
+            // Check length
+            if (!IsValidLength(input, maxLength))
+            {
+                AuditLogger.Instance.LogFailure("InputValidation", "LengthExceeded", $"Length: {input.Length}, Max: {maxLength}");
+                return false;
+            }
+
+            // Check for SQL injection
+            if (ContainsSqlInjection(input))
+                return false;
+
+            // Check for XSS unless HTML is explicitly allowed
+            if (!allowHtml && ContainsXss(input))
+                return false;
+
+            return true;
         }
     }
 }

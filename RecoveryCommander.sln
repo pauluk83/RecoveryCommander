@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecoveryCommander", "RecoveryCommander.csproj", "{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Module", "Module", "{8B5F1146-71F5-B789-E571-DCFF4CD75A63}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SystemPrepModule", "Module\SystemPrepModule\SystemPrepModule.csproj", "{E84A0CAF-704E-45D4-BF5B-57FDC2CE26C1}"
@@ -31,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriverManagerModule", "Modu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudRecoveryModule", "Module\CloudRecoveryModule\CloudRecoveryModule.csproj", "{691EBA4B-EBBC-4C84-8C28-F2C2CAB9C31E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecoveryCommander.WinUI", "RecoveryCommander.WinUI\RecoveryCommander.WinUI.csproj", "{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,18 +41,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Debug|x64.Build.0 = Debug|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Debug|x86.Build.0 = Debug|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Release|x64.ActiveCfg = Release|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Release|x64.Build.0 = Release|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Release|x86.ActiveCfg = Release|Any CPU
-		{33427DFC-4E5B-40F7-A798-DE4FFFF7CBCF}.Release|x86.Build.0 = Release|Any CPU
 		{E84A0CAF-704E-45D4-BF5B-57FDC2CE26C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E84A0CAF-704E-45D4-BF5B-57FDC2CE26C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E84A0CAF-704E-45D4-BF5B-57FDC2CE26C1}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -185,6 +173,18 @@ Global
 		{691EBA4B-EBBC-4C84-8C28-F2C2CAB9C31E}.Release|x64.Build.0 = Release|Any CPU
 		{691EBA4B-EBBC-4C84-8C28-F2C2CAB9C31E}.Release|x86.ActiveCfg = Release|Any CPU
 		{691EBA4B-EBBC-4C84-8C28-F2C2CAB9C31E}.Release|x86.Build.0 = Release|Any CPU
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Debug|Any CPU.Build.0 = Debug|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Debug|x64.ActiveCfg = Debug|x64
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Debug|x64.Build.0 = Debug|x64
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Debug|x86.ActiveCfg = Debug|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Debug|x86.Build.0 = Debug|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Release|Any CPU.ActiveCfg = Release|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Release|Any CPU.Build.0 = Release|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Release|x64.ActiveCfg = Release|x64
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Release|x64.Build.0 = Release|x64
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Release|x86.ActiveCfg = Release|x86
+		{3F206B02-7D8E-4268-BDC9-D51AD5B8B427}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

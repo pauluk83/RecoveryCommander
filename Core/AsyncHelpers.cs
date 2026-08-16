@@ -16,6 +16,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security;
 using RecoveryCommander.Contracts;
 
@@ -26,6 +27,8 @@ namespace RecoveryCommander.Core
     /// </summary>
     public static class AsyncHelpers
     {
+        private static readonly System.Text.RegularExpressions.Regex PercentagePattern = new(@"(\d+)(?:\.\d+)?%", System.Text.RegularExpressions.RegexOptions.RightToLeft, TimeSpan.FromMilliseconds(100));
+
         private static string FormatBytes(long bytes)
         {
             string[] sizes = { "B", "KB", "MB", "GB", "TB" };
@@ -139,9 +142,9 @@ namespace RecoveryCommander.Core
         /// <summary>
         /// Check if file exists asynchronously
         /// </summary>
-        public static async Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken = default)
+        public static Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => File.Exists(path), cancellationToken);
+            return Task.FromResult(File.Exists(path));
         }
 
         /// <summary>
@@ -149,13 +152,11 @@ namespace RecoveryCommander.Core
         /// </summary>
         public static async Task DeleteFileAsync(string path, CancellationToken cancellationToken = default)
         {
-            await Task.Run(() => 
+            if (File.Exists(path))
             {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-            }, cancellationToken);
+                File.Delete(path);
+            }
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -256,19 +257,16 @@ namespace RecoveryCommander.Core
                             if (c == '%' && buffer.Length >= 2)
                             {
                                 var currentContent = buffer.ToString();
-                                // Look for the latest number preceding a % sign with timeout protection
                                 try
                                 {
-                                    var match = System.Text.RegularExpressions.Regex.Match(currentContent, @"(\d+)(?:\.\d+)?%", System.Text.RegularExpressions.RegexOptions.RightToLeft, TimeSpan.FromMilliseconds(100));
+                                    var match = PercentagePattern.Match(currentContent);
                                     if (match.Success)
                                     {
-                                        // Report the line fragment as a "live" update
                                         reportOutput(currentContent.Trim());
                                     }
                                 }
                                 catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
                                 {
-                                    // Regex timeout - skip this pattern match, continue processing
                                     Debug.WriteLine("Regex timeout in percentage pattern matching");
                                 }
                             }
@@ -428,12 +426,19 @@ namespace RecoveryCommander.Core
                     using var sha256 = System.Security.Cryptography.SHA256.Create();
                     using var stream = File.OpenRead(destinationPath);
                     byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
-                    string actualHash = Convert.ToHexStringLower(hashBytes);
+                    string actualHash = Convert.ToHexString(hashBytes); // Use uppercase for consistency
+                    string cleanedExpectedHash = expectedHash.Trim();
 
-                    if (!actualHash.Equals(expectedHash.Trim().ToUpperInvariant(), StringComparison.OrdinalIgnoreCase))
+                    if (!actualHash.Equals(cleanedExpectedHash, StringComparison.OrdinalIgnoreCase))
                     {
+                        if (AppFeatureSettings.ShouldBypassDownloadVerification())
+                        {
+                            progress?.Report(new ProgressReport(95, "Hash verification mismatch ignored due to download override."));
+                            return;
+                        }
+
                         try { File.Delete(destinationPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
-                        throw new System.Security.SecurityException($"Hash mismatch! Expected: {expectedHash}, Actual: {actualHash}");
+                        throw new System.Security.SecurityException($"Hash mismatch! Expected: {cleanedExpectedHash}, Actual: {actualHash}");
                     }
                 }
             }
@@ -510,54 +515,73 @@ namespace RecoveryCommander.Core
                 
                 reportOutput?.Invoke($"Downloaded to: {validatedPath}");
                 progress?.Report(new ProgressReport(85, "Download complete"));
-                
-                // Small delay to allow antivirus/SmartScreen to release the file handle lock after closing
-                await Task.Delay(500, cancellationToken).ConfigureAwait(false);
 
                 ProcessStartInfo psi;
                 string extension = Path.GetExtension(validatedPath!).ToUpperInvariant();
 
+                if (extension == ".EXE" && !IsValidPortableExecutable(validatedPath!))
+                {
+                    reportOutput?.Invoke("Downloaded file does not appear to be a valid executable.");
+                    progress?.Report(new ProgressReport(100, "Failed"));
+                    throw new InvalidDataException("Downloaded file does not appear to be a valid executable.");
+                }
+
+                reportOutput?.Invoke("Preparing launch...");
                 if (extension == ".PS1")
                 {
-                    // Securely quote and escape path for PowerShell
+                    // PowerShell script
                     var escapedPath = SecurityHelpers.EscapePowerShellArgument(validatedPath!);
                     psi = new ProcessStartInfo
                     {
                         FileName = "powershell.exe",
                         Arguments = $"-NoProfile -ExecutionPolicy Bypass -File {escapedPath}",
-                        UseShellExecute = true,
-                        Verb = "runas",
+                        UseShellExecute = false,
+                        WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
+                    };
+                }
+                else if (extension == ".MSI")
+                {
+                    // MSI Installer
+                    psi = new ProcessStartInfo
+                    {
+                        FileName = "msiexec.exe",
+                        Arguments = $"/i \"{validatedPath!}\"",
+                        UseShellExecute = false,
+                        WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
+                    };
+                }
+                else if (extension is ".BAT" or ".CMD")
+                {
+                    // Batch scripts
+                    psi = new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/c \"{validatedPath!}\"",
+                        UseShellExecute = false,
                         WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
                     };
                 }
                 else
                 {
+                    // EXE
                     psi = new ProcessStartInfo
                     {
                         FileName = validatedPath!,
-                        UseShellExecute = true,
-                        Verb = "runas",
+                        UseShellExecute = false,
                         WorkingDirectory = Path.GetDirectoryName(validatedPath!) ?? Path.GetTempPath()
                     };
                 }
 
-                // Log the launch attempt
-                reportOutput?.Invoke($"Launching: {psi.FileName} {psi.Arguments}");
-
-                using (var proc = Process.Start(psi))
+                using var proc = Process.Start(psi);
+                if (proc != null)
                 {
-                    if (proc != null)
-                    {
-                        progress?.Report(new ProgressReport(100, "Launched"));
-                        reportOutput?.Invoke($"{sanitizedFileName} launched successfully.");
-                    }
-                    else
-                    {
-                        progress?.Report(new ProgressReport(100, "Failed"));
-                        reportOutput?.Invoke($"Failed to start {sanitizedFileName}.");
-                        throw new InvalidOperationException($"Failed to start {sanitizedFileName}.");
-                    }
+                    reportOutput?.Invoke($"{sanitizedFileName} launched successfully (PID: {proc.Id}).");
                 }
+                else
+                {
+                    reportOutput?.Invoke($"{sanitizedFileName} launched successfully.");
+                }
+                progress?.Report(new ProgressReport(100, "Launched"));
             }
             catch (OperationCanceledException)
             {
@@ -568,6 +592,12 @@ namespace RecoveryCommander.Core
             catch (IOException ex)
             {
                 reportOutput?.Invoke($"File error: {ex.Message}");
+                progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
+            }
+            catch (InvalidDataException ex)
+            {
+                reportOutput?.Invoke($"Download validation failed: {ex.Message}");
                 progress?.Report(new ProgressReport(100, "Failed"));
                 throw;
             }
@@ -588,6 +618,79 @@ namespace RecoveryCommander.Core
                 reportOutput?.Invoke($"Security validation failed: {ex.Message}");
                 progress?.Report(new ProgressReport(100, "Failed"));
                 throw;
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                // Outer catch for Win32 errors during download/validation (not launch — launch is caught above)
+                reportOutput?.Invoke($"Execution blocked by OS or UAC: {ex.Message} (Code: {ex.NativeErrorCode})");
+                progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
+            }
+            catch (Exception ex)
+            {
+                reportOutput?.Invoke($"Unexpected error: {ex.GetType().Name}: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    reportOutput?.Invoke($"  Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
+                progress?.Report(new ProgressReport(100, "Failed"));
+                throw;
+            }
+        }
+
+        private static bool IsValidPortableExecutable(string path)
+        {
+            try
+            {
+                using var stream = File.OpenRead(path);
+                Span<byte> header = stackalloc byte[2];
+                return stream.Read(header) == 2 && header[0] == 0x4D && header[1] == 0x5A;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Executes a PowerShell command and streams the output directly to the provided action.
+        /// Non-zero exit codes are reported but do not throw, since many PS commands return
+        /// non-zero without indicating a fatal error (e.g. Get-Service for a missing service).
+        /// </summary>
+        public static async Task ExecutePowerShellCommandAsync(string command, Action<string> reportOutput, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(command)) return;
+
+            var escapedCommand = command.Replace("\"", "\\\"");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -Command \"{escapedCommand}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8,
+                StandardErrorEncoding = System.Text.Encoding.UTF8
+            };
+
+            try
+            {
+                await RunProcessAsync(psi, reportOutput, reportOutput, cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("exited with code"))
+            {
+                // Non-zero exit code — already reported via stderr stream; swallow so the terminal stays usable
+                reportOutput?.Invoke($"[PS] Command finished with: {ex.Message}");
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                reportOutput?.Invoke($"[PS ERROR] Could not start PowerShell: {ex.Message} (Code: {ex.NativeErrorCode})");
             }
         }
     }

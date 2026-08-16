@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using RecoveryCommander.Contracts;
 using RecoveryCommander.Core;
 using System.Runtime.Versioning;

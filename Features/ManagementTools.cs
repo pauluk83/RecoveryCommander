@@ -32,40 +32,43 @@ namespace RecoveryCommander.Features
     /// </summary>
     public static class RestorePointManager
     {
+        private static ManagementScope GetManagementScope()
+        {
+            var scope = new ManagementScope("\\\\localhost\\root\\default");
+            scope.Connect();
+            return scope;
+        }
+
         public static async Task<RestorePointResult> CreateRestorePointAsync(string description, RestorePointType type = RestorePointType.ApplicationInstall)
         {
             return await Task.Run(() =>
             {
                 try
                 {
-                    // First check if System Restore is enabled
                     if (!IsSystemRestoreEnabled())
                     {
-                        return new RestorePointResult 
-                        { 
-                            Success = false, 
-                            Message = "System Restore is not enabled on this system. Please enable it first." 
+                        return new RestorePointResult
+                        {
+                            Success = false,
+                            Message = "System Restore is not enabled on this system. Please enable it first."
                         };
                     }
 
-                    // Check if running with administrator privileges
-                    if (!IsRunningAsAdministrator())
+                    if (!CoreUtilities.IsAdministrator())
                     {
-                        return new RestorePointResult 
-                        { 
-                            Success = false, 
-                            Message = "Administrator privileges are required to create restore points." 
+                        return new RestorePointResult
+                        {
+                            Success = false,
+                            Message = "Administrator privileges are required to create restore points."
                         };
                     }
 
-                    var scope = new ManagementScope("\\\\localhost\\root\\default");
-                    scope.Connect();
-
+                    var scope = GetManagementScope();
                     using var mgmtClass = new ManagementClass(scope, new ManagementPath("SystemRestore"), null);
                     var inParams = mgmtClass.GetMethodParameters("CreateRestorePoint");
                     inParams["Description"] = description;
                     inParams["RestorePointType"] = (int)type;
-                    inParams["EventType"] = 100; // BEGIN_SYSTEM_CHANGE
+                    inParams["EventType"] = 100;
 
                     var outParams = mgmtClass.InvokeMethod("CreateRestorePoint", inParams, null);
                     var result = Convert.ToInt32(outParams["ReturnValue"], CultureInfo.InvariantCulture);
@@ -96,9 +99,7 @@ namespace RecoveryCommander.Features
 
                 try
                 {
-                    var scope = new ManagementScope("\\\\localhost\\root\\default");
-                    scope.Connect();
-
+                    var scope = GetManagementScope();
                     using var searcher = new ManagementObjectSearcher(scope, new SelectQuery("SystemRestore"));
                     foreach (ManagementObject obj in searcher.Get())
                     {
@@ -115,7 +116,6 @@ namespace RecoveryCommander.Features
                 }
                 catch (Exception ex)
                 {
-                    // Log error but return empty list
                     System.Diagnostics.Debug.WriteLine($"Error getting restore points: {ex.Message}");
                 }
 
@@ -129,7 +129,7 @@ namespace RecoveryCommander.Features
             {
                 try
                 {
-                    if (!IsRunningAsAdministrator())
+                    if (!CoreUtilities.IsAdministrator())
                     {
                         return new RestorePointResult
                         {
@@ -138,9 +138,7 @@ namespace RecoveryCommander.Features
                         };
                     }
 
-                    var scope = new ManagementScope("\\\\localhost\\root\\default");
-                    scope.Connect();
-
+                    var scope = GetManagementScope();
                     using var mgmtClass = new ManagementClass(scope, new ManagementPath("SystemRestore"), null);
                     var inParams = mgmtClass.GetMethodParameters("Restore");
                     inParams["SequenceNumber"] = restorePointId;
@@ -171,20 +169,6 @@ namespace RecoveryCommander.Features
             {
                 using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore");
                 return key?.GetValue("RPSessionInterval") != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool IsRunningAsAdministrator()
-        {
-            try
-            {
-                var identity = WindowsIdentity.GetCurrent();
-                var principal = new WindowsPrincipal(identity);
-                return principal.IsInRole(WindowsBuiltInRole.Administrator);
             }
             catch
             {
@@ -290,6 +274,20 @@ namespace RecoveryCommander.Features
             @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"
         };
 
+        private static readonly string[] CurrentUserKeys = new[]
+        {
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
+        };
+
+        private static readonly Environment.SpecialFolder[] StartupFolderPaths = new[]
+        {
+            Environment.SpecialFolder.Startup,
+            Environment.SpecialFolder.CommonStartup
+        };
+
+        private static readonly char[] CommandSplitChars = new[] { '"', ' ' };
+
         public static async Task<List<StartupItem>> GetStartupItemsAsync()
         {
             return await Task.Run(async () =>
@@ -327,13 +325,7 @@ namespace RecoveryCommander.Features
                 }
 
                 // HKEY_CURRENT_USER
-                var currentUserKeys = new[]
-                {
-                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
-                    @"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"
-                };
-
-                foreach (var keyPath in currentUserKeys)
+                foreach (var keyPath in CurrentUserKeys)
                 {
                     try
                     {
@@ -376,7 +368,7 @@ namespace RecoveryCommander.Features
                 try
                 {
                     var keyPath = item.Location.Replace("HKLM\\", "").Replace("HKCU\\", "");
-                    var hive = item.Location.StartsWith("HKLM") ? Registry.LocalMachine : Registry.CurrentUser;
+                    var hive = item.Location.StartsWith("HKLM", StringComparison.OrdinalIgnoreCase) ? Registry.LocalMachine : Registry.CurrentUser;
 
                     using var key = hive.OpenSubKey(keyPath, true);
                     if (key != null && key.GetValue(item.Name) != null)
@@ -400,7 +392,7 @@ namespace RecoveryCommander.Features
                 try
                 {
                     var keyPath = item.Location.Replace("HKLM\\", "").Replace("HKCU\\", "");
-                    var hive = item.Location.StartsWith("HKLM") ? Registry.LocalMachine : Registry.CurrentUser;
+                    var hive = item.Location.StartsWith("HKLM", StringComparison.OrdinalIgnoreCase) ? Registry.LocalMachine : Registry.CurrentUser;
 
                     using var key = hive.OpenSubKey(keyPath, true);
                     if (key != null)
@@ -423,7 +415,7 @@ namespace RecoveryCommander.Features
             {
                 try
                 {
-                    if (item.Location.StartsWith("Startup Folder"))
+                    if (item.Location.StartsWith("Startup Folder", StringComparison.OrdinalIgnoreCase))
                     {
                         var filePath = item.Command;
                         if (File.Exists(filePath))
@@ -449,7 +441,7 @@ namespace RecoveryCommander.Features
         {
             try
             {
-                var parts = item.Command.Split(new[] { '"', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = item.Command.Split(CommandSplitChars, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length > 0)
                 {
                     item.ExecutablePath = parts[0].Trim('"');
@@ -473,14 +465,9 @@ namespace RecoveryCommander.Features
         {
             await Task.Run(() =>
             {
-                var startupFolders = new[]
+                foreach (var specialFolder in StartupFolderPaths)
                 {
-                    Environment.GetFolderPath(Environment.SpecialFolder.Startup),
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup)
-                };
-
-                foreach (var folder in startupFolders)
-                {
+                    var folder = Environment.GetFolderPath(specialFolder);
                     if (!Directory.Exists(folder)) continue;
 
                     try

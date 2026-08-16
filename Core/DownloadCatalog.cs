@@ -13,6 +13,7 @@
  *                       which logs a clear warning whenever Sha256 is null.
  * 2026-05-21 - Added Brave Browser v1.90.122 Portable to the Utilities catalog.
  * 2026-05-28 - Added uTorrent Pro 3.6.0.47254 Portable to the Utilities catalog.
+ * 2026-05-29 - Added Patch My PC Home Updater Portable to the Utilities catalog.
  */
 
 using System;
@@ -85,8 +86,8 @@ namespace RecoveryCommander.Core
                 "https://www.dropbox.com/scl/fi/77a4s205yz7qjocfmev9r/PCRepairSuite.txt?rlkey=us4dw96qvw0bpqhemrghs5ru8&st=q6d07jhd&raw=1",
                 "PC Repair Suite 2.0.0.exe", Sha256: "c1aab710605008b8985ed47ead330bdfb12d83d71edb1b77254f5afac6d00dca", Version: "2.0.0"),
             ["Utilities.IObitDriverBooster"] = new("Utilities.IObitDriverBooster",
-                "https://www.dropbox.com/scl/fi/2paq4t1yevyprkw5jrp0a/DriverBoosterPortable.txt?rlkey=p6j6ofauo26tp5xnunqhc3pxb&st=bvyegici&raw=1",
-                "Driver Booster PRO 13.4.0.234.exe", Sha256: "fe3e74163f15ea89f5f540ed936b58fd90d4ab8c04acbb6045bfddb67cd9b364", Version: "13.4.0.234", Vendor: "IObit"),
+                "https://www.dropbox.com/scl/fi/p2f0x40eq8g0vujk3v2yz/IObit-Driver-Booster-Pro-v13.6.0.438.txt?rlkey=1vhl9oq2jyy1ispu5g9iothkm&st=a84bnuxq&raw=1",
+                "Driver Booster PRO 13.6.0.438.exe", Sha256: "B69627C14E8D102A353BE63B7EE77F820FD3EE9B778CC5DF4A9DE3B54721FD64", Version: "13.6.0.438", Vendor: "IObit"),
             ["Utilities.DellOSRecoveryTool"] = new("Utilities.DellOSRecoveryTool",
                 "https://www.dropbox.com/scl/fi/v4qca5yiaglssx3q04rwz/Dell-OS-Recovery-Tool-2.4.3-Build-2569.txt?rlkey=c9vyk27r2v3f7ux2id8z0aa13&st=plq1c9zb&raw=1",
                 "Dell OS Recovery Tool 2.4.3 Build 2569.exe", Sha256: "DA82F4224586BF657BDC8865065DC7FA007D1770F1EF996894CCA29630D226E8", Version: "2.4.3 Build 2569", Vendor: "Dell"),
@@ -98,9 +99,6 @@ namespace RecoveryCommander.Core
             ["Utilities.OfficeC2RPublic"] = new("Utilities.OfficeC2RPublic",
                 "https://c2rsetup.officeapps.live.com/c2r/download.aspx?ProductreleaseID=O365ProPlusRetail&platform=x64&language=en-us&version=O16GA",
                 "OfficeSetup.exe", Vendor: "Microsoft"),
-            ["Utilities.BackupRestoreActivation"] = new("Utilities.BackupRestoreActivation",
-                "https://www.dropbox.com/scl/fi/y3a8j6osto9rpip7buveh/Backup-Activation.txt?rlkey=dd1ms4f8wjz3iav9g13ewnzbw&st=6ex79f52&raw=1",
-                "Backup and Restore Activation State 1.0.0.bat", Sha256: "d47a63b5135008949f847e78141333ef62269aaa7f4ee849cd976c1641552003", Version: "1.0.0"),
             ["Utilities.CleanMyPc"] = new("Utilities.CleanMyPc",
                 "https://www.dropbox.com/scl/fi/bowosjzxmkr16qw5zcfnc/CleanMyPC.txt?rlkey=sz2tafebh67sp6aod6hxjd0pp&st=2be8vsyw&raw=1",
                 "MacPaw CleanMyPC 1.11.1.2079.exe", Sha256: "1b9662dda477e160903f832af87a01ccf8a87325212cc4f09b45f8a0954721f5", Version: "1.11.1.2079", Vendor: "MacPaw"),
@@ -110,14 +108,17 @@ namespace RecoveryCommander.Core
                 "https://www.dropbox.com/scl/fi/dzuyng0lf4shqabcyrcwj/EaseUS-Partition-Master-v20.3.0-Build-202604081519.txt?rlkey=hqssm9cvt6qx7mv8w9brdliza&st=qpojqmee&raw=1",
                 "EaseUS Partition Master 20.3.0 Build 202604081519.exe", Sha256: "f47560eab86071f27a7b0e36e200580d0aba334ad76f0c511fe988b38fc9fbb1", Version: "20.3.0", Vendor: "EaseUS"),
             ["Utilities.UniGetUI"] = new("Utilities.UniGetUI",
-                "https://github.com/Devolutions/UniGetUI/releases/download/v2026.1.9/UniGetUI.x64.zip",
-                "UniGetUI.x64.zip", Version: "2026.1.9", Vendor: "Devolutions"),
+                "https://github.com/Devolutions/UniGetUI/releases/download/v2026.2.7/UniGetUI.x64.zip",
+                "UniGetUI.x64.zip", Sha256: "D2195386B4745B1F77416C5C84D63276076EAEF1B7E0060E656B8D2D0EEB345C", Version: "2026.2.7", Vendor: "Devolutions"),
             ["Utilities.BraveBrowserPortable"] = new("Utilities.BraveBrowserPortable",
                 "https://www.dropbox.com/scl/fi/hznli9c7lfglqyy68d8j1/Brave-Browser-v1.90.122-Portable.txt?rlkey=9kthlid5h1zyrvinwllstp620&st=rxdnupij&raw=1",
                 "Brave Browser 1.90.122 Portable.exe", Sha256: "BC232FA2B5323A97B006F53FF92543A20E9BA13DDC97E65A4B937095CBA5431E", Version: "1.90.122", Vendor: "Brave Software"),
             ["Utilities.uTorrentProPortable"] = new("Utilities.uTorrentProPortable",
                 "https://www.dropbox.com/scl/fi/6z2tie055nc34q6hjim5d/uTorrent-Pro-3.6.0.47254-Portable.txt?rlkey=7ya1g556xxe9ggbep9dbwx2fh&st=l8zu75ru&raw=1",
                 "uTorrent Pro 3.6.0.47254 Portable.exe", Sha256: "D6BFDE38CF8C36A40CDFB2C7FBD2F9B7F57B3F0FD3475762101CCDA25E60238B", Version: "3.6.0.47254", Vendor: "BitTorrent"),
+            ["Utilities.PatchMyPcHomeUpdater"] = new("Utilities.PatchMyPcHomeUpdater",
+                "https://homeupdater.patchmypc.com/public/PatchMyPC-HomeUpdater-Portable.exe",
+                "PatchMyPC-HomeUpdater-Portable.exe", Vendor: "Patch My PC"),
 
             // ===== Driver Manager Module =====
             // (Aliased to UtilitiesModule entry to avoid drift.)
@@ -191,11 +192,12 @@ namespace RecoveryCommander.Core
             {
                 if (!AllowUnverifiedDownloads())
                 {
-                    reportOutput?.Invoke($"[supply-chain] BLOCKED: '{entry.Id}' is unverified (no SHA-256 pinned). Pin a hash or enable Allow Unverified Downloads in Settings to override.");
-                    return Task.CompletedTask;
+                    var msg = $"[supply-chain] BLOCKED: '{entry.Id}' is unverified (no SHA-256 pinned). Pin a hash, enable 'Allow Unverified Downloads' in Settings, or set RC_ALLOW_UNVERIFIED_DOWNLOAD=1 to override.";
+                    reportOutput?.Invoke(msg);
+                    throw new System.Security.SecurityException(msg);
                 }
 
-                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by explicit override.");
+                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by explicit override (RC_ALLOW_UNVERIFIED_DOWNLOAD=1 or settings toggle enabled).");
             }
             return AsyncHelpers.DownloadAndExecuteAsync(
                 entry.Url,
@@ -223,11 +225,12 @@ namespace RecoveryCommander.Core
             {
                 if (!AllowUnverifiedDownloads())
                 {
-                    reportOutput?.Invoke($"[supply-chain] BLOCKED: '{entry.Id}' is unverified (no SHA-256 pinned). Pin a hash or enable Allow Unverified Downloads in Settings to override.");
-                    return;
+                    var msg = $"[supply-chain] BLOCKED: '{entry.Id}' is unverified (no SHA-256 pinned). Pin a hash, enable 'Allow Unverified Downloads' in Settings, or set RC_ALLOW_UNVERIFIED_DOWNLOAD=1 to override.";
+                    reportOutput?.Invoke(msg);
+                    throw new System.Security.SecurityException(msg);
                 }
 
-                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by explicit override.");
+                reportOutput?.Invoke($"[supply-chain] WARN: '{entry.Id}' is unverified (no SHA-256 pinned). Proceeding by explicit override (RC_ALLOW_UNVERIFIED_DOWNLOAD=1 or settings toggle enabled).");
             }
             else
             {
@@ -238,10 +241,6 @@ namespace RecoveryCommander.Core
         }
 
         private static bool AllowUnverifiedDownloads()
-            => AppFeatureSettings.GetAllowUnverifiedDownloads()
-            || string.Equals(
-                Environment.GetEnvironmentVariable("RC_ALLOW_UNVERIFIED_DOWNLOAD"),
-                "1",
-                StringComparison.Ordinal);
+            => AppFeatureSettings.ShouldBypassDownloadVerification();
     }
 }

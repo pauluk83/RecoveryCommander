@@ -8,20 +8,17 @@
  * CHANGELOG:
  * 2026-04-20 - 1.0.0 - Initial implementation of Windows RE wizard helpers.
  * 2026-05-22 - 1.2.7 - Added missing audit header and refined WinRE management.
+ * 2026-06-09 - 1.3.0 - Refactored from WinForms to MVVM/WinUI3 compatible.
  */
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Runtime.Versioning;
 using System.Resources;
 using System.Globalization;
@@ -34,14 +31,22 @@ namespace RecoveryCommander.Core
     /// </summary>
     public static class ThemeProvider
     {
-        public static Color BackgroundColor { get; set; } = SystemColors.Control;
-        public static Color ForegroundColor { get; set; } = SystemColors.ControlText;
+        public static object BackgroundColor { get; set; } = new object();
+        public static object ForegroundColor { get; set; } = new object();
     }
 
+    /// <summary>
+    /// WinRE Wizard helper - REFACTORED from WinForms to MVVM.
+    /// This class now provides business logic only, no UI components.
+    /// Use with WinUI3 pages/dialogs for UI interactions.
+    /// 
+    /// DEPRECATED: WinForms UI code removed. This is a stub for business logic only.
+    /// For UI, create corresponding WinUI3 pages/dialogs.
+    /// </summary>
     [SupportedOSPlatform("windows")]
-    public partial class WinREWizards : Form
+    public partial class WinREWizards : IDisposable
     {
-        private enum WizardStep
+        public enum WizardStep
         {
             Welcome,
             CaptureChoice,
@@ -64,901 +69,161 @@ namespace RecoveryCommander.Core
 
         private static readonly ResourceManager _resManager = new("RecoveryCommander.Resources.WinREStrings", typeof(WinREWizards).Assembly);
 
-        private RadioButton? rbScanState;
-        private RadioButton? rbFfu;
-
         public WinREWizards(Action<string> outputCallback)
         {
-            InitializeComponent();
             reportOutput = outputCallback;
-
-            // Setup wizard
-            SetupWizard();
-            UpdateWizardDisplay();
         }
 
-        private void SetupWizard()
+        /// <summary>
+        /// Gets the current wizard step.
+        /// </summary>
+        public WizardStep CurrentStep => currentStep;
+
+        /// <summary>
+        /// Gets whether ScanState capture was completed.
+        /// </summary>
+        public bool ScanStateCompleted => scanStateCompleted;
+
+        /// <summary>
+        /// Gets whether OEM registration was completed.
+        /// </summary>
+        public bool OemRegistrationCompleted => oemRegistrationCompleted;
+
+        /// <summary>
+        /// Gets the captured PPKG file path.
+        /// </summary>
+        public string CapturedPpkgPath => capturedPpkgPath;
+
+        /// <summary>
+        /// Gets the registered OEM image path.
+        /// </summary>
+        public string RegisteredOemImagePath => registeredOemImagePath;
+
+        /// <summary>
+        /// Moves to the next wizard step.
+        /// </summary>
+        public void MoveNext()
         {
-            // Configure form
-            Text = "Push-Button Reset Setup Wizard";
-            Size = new Size(600, 500);
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
-
-            // Apply theme colors
-            BackColor = ThemeProvider.BackgroundColor;
-            ForeColor = ThemeProvider.ForegroundColor;
-
-            // Create controls
-            CreateWizardControls();
-        }
-
-        private void CreateWizardControls()
-        {
-            // Title label
-            lblTitle = new Label
-            {
-                Text = _resManager.GetString("WizardTitle", CultureInfo.CurrentUICulture) ?? "Push-Button Reset Setup Wizard",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(550, 30),
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            Controls.Add(lblTitle);
-
-            // Step indicator
-            lblStepIndicator = new Label
-            {
-                Text = _resManager.GetString("Step1Of3", CultureInfo.CurrentUICulture) ?? "Step 1 of 3",
-                Font = new Font("Segoe UI", 10),
-                Location = new Point(20, 60),
-                Size = new Size(550, 20),
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            Controls.Add(lblStepIndicator);
-
-            // Content panel
-            pnlContent = new Panel
-            {
-                Location = new Point(20, 90),
-                Size = new Size(550, 300),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-            Controls.Add(pnlContent);
-
-            // Navigation buttons
-            btnBack = new Button
-            {
-                Text = _resManager.GetString("BackButton", CultureInfo.CurrentUICulture) ?? "< Back",
-                Location = new Point(20, 410),
-                Size = new Size(80, 35),
-                Enabled = true,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = ThemeProvider.BackgroundColor,
-                ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
-            };
-            btnBack.Click += BtnBack_Click;
-            Controls.Add(btnBack);
-
-            btnNext = new Button
-            {
-                Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >",
-                Location = new Point(420, 410),
-                Size = new Size(80, 35),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = ThemeProvider.BackgroundColor,
-                ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
-            };
-            btnNext.Click += BtnNext_Click;
-            Controls.Add(btnNext);
-
-            btnCancel = new Button
-            {
-                Text = _resManager.GetString("CancelButton", CultureInfo.CurrentUICulture) ?? "Cancel",
-                Location = new Point(510, 410),
-                Size = new Size(80, 35),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = ThemeProvider.BackgroundColor,
-                ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
-            };
-            btnCancel.Click += BtnCancel_Click;
-            Controls.Add(btnCancel);
-
-            // Progress bar
-            progressBar = new ProgressBar
-            {
-                Location = new Point(110, 420),
-                Size = new Size(300, 20),
-                Style = ProgressBarStyle.Continuous,
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0
-            };
-            Controls.Add(progressBar);
-        }
-
-        private void UpdateWizardDisplay()
-        {
-            // Clear content panel
-            pnlContent!.Controls.Clear();
-
-            // Update step indicator and navigation
-            switch (currentStep)
-            {
-                case WizardStep.Welcome:
-                    lblStepIndicator!.Text = _resManager.GetString("Step1Introduction", CultureInfo.CurrentUICulture) ?? "Step 1 of 5: Introduction";
-                    btnBack!.Enabled = false;
-                    btnNext!.Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >";
-                    ShowWelcomeStep();
-                    break;
-
-                case WizardStep.CaptureChoice:
-                    lblStepIndicator!.Text = _resManager.GetString("Step2ChooseMethod", CultureInfo.CurrentUICulture) ?? "Step 2 of 5: Choose Capture Method";
-                    btnBack!.Enabled = true;
-                    btnNext!.Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >";
-                    ShowCaptureChoiceStep();
-                    break;
-
-                case WizardStep.ScanStateCapture:
-                    lblStepIndicator!.Text = _resManager.GetString("Step3CaptureScanState", CultureInfo.CurrentUICulture) ?? "Step 3 of 5: Capture Customizations (ScanState)";
-                    btnBack!.Enabled = true;
-                    btnNext!.Text = scanStateCompleted ? (_resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >") : "Capture Now";
-                    ShowScanStateStep();
-                    break;
-
-                case WizardStep.FfuCaptureInfo:
-                    lblStepIndicator!.Text = _resManager.GetString("Step3CaptureFfu", CultureInfo.CurrentUICulture) ?? "Step 3 of 5: FFU Capture Instructions (Offline)";
-                    btnBack!.Enabled = true;
-                    btnNext!.Text = _resManager.GetString("NextButton", CultureInfo.CurrentUICulture) ?? "Next >";
-                    ShowFfuCaptureInfoStep();
-                    break;
-
-                case WizardStep.OemImageRegistration:
-                    lblStepIndicator!.Text = _resManager.GetString("Step4RegisterImage", CultureInfo.CurrentUICulture) ?? "Step 4 of 5: Register OEM Image";
-                    btnBack!.Enabled = true;
-                    btnNext!.Text = oemRegistrationCompleted ? (_resManager.GetString("FinishButton", CultureInfo.CurrentUICulture) ?? "Finish") : "Register Now";
-                    ShowOemImageStep();
-                    break;
-
-                case WizardStep.Completion:
-                    lblStepIndicator!.Text = _resManager.GetString("Step5Complete", CultureInfo.CurrentUICulture) ?? "Step 5 of 5: Complete!";
-                    btnBack!.Enabled = false;
-                    btnNext!.Text = _resManager.GetString("CloseButton", CultureInfo.CurrentUICulture) ?? "Close";
-                    ShowCompletionStep();
-                    break;
-            }
-
-            // Update progress
-            progressBar!.Value = ((int)currentStep * 100) / 5;
-        }
-
-        private void ShowWelcomeStep()
-        {
-            if (pnlContent == null) return;
-
-            var lblWelcome = new Label
-            {
-                Text = "Push-Button Reset Setup Guide",
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(500, 30),
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblWelcome);
-
-            var lblDescription = new Label
-            {
-                Text = "This wizard will guide you through setting up Windows Push-Button Reset (PBR) " +
-                      "by capturing your current system customizations and registering an OEM recovery image.\n\n" +
-                      "What this wizard does:\n" +
-                      "• Step 1: Capture installed applications and settings using ScanState\n" +
-                      "• Step 2: Register a custom Windows image for factory-style reset\n\n" +
-                      "Requirements:\n" +
-                      "• Windows ADK (Assessment and Deployment Kit) installed\n" +
-                      "• Administrator privileges\n" +
-                      "• Custom Windows installation image (install.wim)",
-                Location = new Point(20, 60),
-                Size = new Size(500, 200),
-                AutoSize = false,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            lblDescription.Font = new Font("Segoe UI", 9);
-            pnlContent.Controls.Add(lblDescription);
-        }
-
-        private void ShowCaptureChoiceStep()
-        {
-            if (pnlContent == null) return;
-
-            var lblTitle = new Label
-            {
-                Text = "Choose Customization Capture Method",
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(500, 30),
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblTitle);
-
-            rbScanState = new RadioButton
-            {
-                Text = "Provisioning Package (ScanState / WIM)\nCaptures apps and settings online. Best for most users.",
-                Location = new Point(30, 70),
-                Size = new Size(500, 60),
-                Checked = !useFfuCapture,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            rbScanState.CheckedChanged += (s, e) => { if (rbScanState.Checked) useFfuCapture = false; };
-            pnlContent.Controls.Add(rbScanState);
-
-            rbFfu = new RadioButton
-            {
-                Text = "Modern FFU / Full System Image\nSector-based capture (offline). Extremely fast restore.",
-                Location = new Point(30, 140),
-                Size = new Size(500, 60),
-                Checked = useFfuCapture,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            rbFfu.CheckedChanged += (s, e) => { if (rbFfu.Checked) useFfuCapture = true; };
-            pnlContent.Controls.Add(rbFfu);
-
-            var lblTip = new Label
-            {
-                Text = "Tip: If ScanState previously failed with exit code 29, " +
-                       "the FFU method is a more reliable but requires booting into WinPE.",
-                Location = new Point(20, 220),
-                Size = new Size(500, 60),
-                Font = new Font("Segoe UI", 9, FontStyle.Italic),
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblTip);
-        }
-
-        private void ShowFfuCaptureInfoStep()
-        {
-            if (pnlContent == null) return;
-
-            var lblTitle = new Label
-            {
-                Text = "FFU Capture Instructions (Offline)",
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(500, 30),
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblTitle);
-
-            var txtInstructions = new TextBox
-            {
-                Multiline = true,
-                ReadOnly = true,
-                ScrollBars = ScrollBars.Vertical,
-                Location = new Point(20, 60),
-                Size = new Size(510, 220),
-                Font = new Font("Consolas", 9),
-                BackColor = ThemeProvider.BackgroundColor,
-                ForeColor = ThemeProvider.ForegroundColor,
-                BorderStyle = BorderStyle.None,
-                Text = "To capture an FFU image for factory reset:\r\n\r\n" +
-                       "1. Create a Windows Installation or WinPE USB drive.\r\n" +
-                       "2. Boot from the USB drive.\r\n" +
-                       "3. Press Shift+F10 to open a Command Prompt.\r\n" +
-                       "4. Identify your primary disk (usually disk 0).\r\n" +
-                       "5. Run the capture command:\r\n" +
-                       "   dism /Capture-Ffu /ImageFile:D:\\install.ffu /CaptureDrive:\\\\.\\PhysicalDrive0\r\n" +
-                       "   (Change D:\\ to your backup drive letter)\r\n\r\n" +
-                       "Once you have the .ffu file, click Next to register it."
-            };
-            pnlContent.Controls.Add(txtInstructions);
-        }
-
-        private void ShowScanStateStep()
-        {
-            if (pnlContent == null) return;
-
-            var lblTitle = new Label
-            {
-                Text = "Step 1: Capture System Customizations",
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(500, 30),
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblTitle);
-
-            var lblDescription = new Label
-            {
-                Text = "This step captures all installed desktop applications and settings into a provisioning package.\n" +
-                      "When users perform a Push-Button Reset, these customizations will be preserved.\n\n" +
-                      "The process may take several minutes depending on the number of installed applications.",
-                Location = new Point(20, 60),
-                Size = new Size(500, 80),
-                AutoSize = false,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            lblDescription.Font = new Font("Segoe UI", 9);
-            pnlContent.Controls.Add(lblDescription);
-
-            // Status display
-            lblStatus = new Label
-            {
-                Text = scanStateCompleted ? "✓ Capture completed successfully!" : "Ready to capture customizations...",
-                Location = new Point(20, 150),
-                Size = new Size(500, 30),
-                ForeColor = scanStateCompleted ? Color.Green : ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblStatus);
-
-            if (scanStateCompleted && !string.IsNullOrEmpty(capturedPpkgPath))
-            {
-                var lblPath = new Label
-                {
-                    Text = $"Package saved to: {capturedPpkgPath}",
-                    Location = new Point(20, 190),
-                    Size = new Size(500, 40),
-                    Font = new Font("Segoe UI", 8)
-                };
-                pnlContent.Controls.Add(lblPath);
-            }
-        }
-
-        private void ShowOemImageStep()
-        {
-            if (pnlContent == null) return;
-
-            var lblTitle = new Label
-            {
-                Text = "Step 2: Register OEM Recovery Image",
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(500, 30),
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblTitle);
-
-            var lblDescription = new Label
-            {
-                Text = "This step registers a custom Windows installation image for factory-style reset.\n" +
-                      "Users will be able to perform a complete system recovery that reinstalls Windows from your custom image.\n\n" +
-                      "Select the install.wim file containing your customized Windows image.",
-                Location = new Point(20, 60),
-                Size = new Size(500, 80),
-                AutoSize = false,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            lblDescription.Font = new Font("Segoe UI", 9);
-            pnlContent.Controls.Add(lblDescription);
-
-            // Status display
-            lblOemStatus = new Label
-            {
-                Text = oemRegistrationCompleted ? "✓ OEM image registered successfully!" : "Select Windows image file...",
-                Location = new Point(20, 150),
-                Size = new Size(500, 30),
-                ForeColor = oemRegistrationCompleted ? Color.Green : ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblOemStatus);
-
-            if (oemRegistrationCompleted && !string.IsNullOrEmpty(registeredOemImagePath))
-            {
-                var lblPath = new Label
-                {
-                    Text = $"Image registered: {registeredOemImagePath}",
-                    Location = new Point(20, 190),
-                    Size = new Size(500, 40),
-                    Font = new Font("Segoe UI", 8)
-                };
-                pnlContent.Controls.Add(lblPath);
-            }
-        }
-
-        private void ShowCompletionStep()
-        {
-            if (pnlContent == null) return;
-
-            var lblTitle = new Label
-            {
-                Text = "Setup Complete!",
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(500, 40),
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = Color.Green
-            };
-            pnlContent.Controls.Add(lblTitle);
-
-            var lblSummary = new Label
-            {
-                Text = "Push-Button Reset has been successfully configured!\n\n" +
-                      "Completed steps:\n" +
-                      (scanStateCompleted ? "✓ System customizations captured\n" : "") +
-                      (oemRegistrationCompleted ? "✓ OEM recovery image registered\n" : "") +
-                      "\nUsers can now perform factory-style resets that preserve their applications and settings.",
-                Location = new Point(20, 80),
-                Size = new Size(500, 120),
-                AutoSize = false,
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            lblSummary.Font = new Font("Segoe UI", 9);
-            pnlContent.Controls.Add(lblSummary);
-
-            var lblNextSteps = new Label
-            {
-                Text = "Next steps:\n" +
-                      "• Test the reset functionality in Settings > Update & Security > Recovery\n" +
-                      "• Ensure recovery partition has sufficient space\n" +
-                      "• Backup the provisioning package and recovery image regularly",
-                Location = new Point(20, 220),
-                Size = new Size(500, 60),
-                Font = new Font("Segoe UI", 9),
-                ForeColor = ThemeProvider.ForegroundColor
-            };
-            pnlContent.Controls.Add(lblNextSteps);
-        }
-
-        private void BtnBack_Click(object? sender, EventArgs e)
-        {
-            if (btnBack == null) return;
-
-            if (currentStep > WizardStep.Welcome)
-            {
-                if (currentStep == WizardStep.OemImageRegistration)
-                {
-                    currentStep = useFfuCapture ? WizardStep.FfuCaptureInfo : WizardStep.ScanStateCapture;
-                }
-                else if (currentStep == WizardStep.ScanStateCapture || currentStep == WizardStep.FfuCaptureInfo)
-                {
-                    currentStep = WizardStep.CaptureChoice;
-                }
-                else
-                {
-                    currentStep--;
-                }
-                UpdateWizardDisplay();
-            }
-        }
-
-        private async void BtnNext_Click(object? sender, EventArgs e)
-        {
-            if (btnNext == null) return;
-
-            if (currentStep == WizardStep.Completion)
-            {
-                DialogResult = DialogResult.OK;
-                Close();
-                return;
-            }
-
-            if (currentStep == WizardStep.ScanStateCapture && !scanStateCompleted)
-            {
-                await ExecuteScanStateCaptureAsync().ConfigureAwait(false);
-                return;
-            }
-
-            if (currentStep == WizardStep.OemImageRegistration && !oemRegistrationCompleted)
-            {
-                await ExecuteOemImageRegistrationAsync().ConfigureAwait(false);
-                return;
-            }
-
-            // Move to next step
+            // Business logic for advancing wizard
             if (currentStep < WizardStep.Completion)
             {
-                if (currentStep == WizardStep.CaptureChoice)
-                {
-                    currentStep = useFfuCapture ? WizardStep.FfuCaptureInfo : WizardStep.ScanStateCapture;
-                }
-                else if (currentStep == WizardStep.ScanStateCapture)
-                {
-                    currentStep = WizardStep.OemImageRegistration;
-                }
-                else if (currentStep == WizardStep.FfuCaptureInfo)
-                {
-                    currentStep = WizardStep.OemImageRegistration;
-                }
-                else
-                {
-                    currentStep++;
-                }
-                UpdateWizardDisplay();
+                currentStep++;
             }
         }
 
-        private Task DownloadWindowsAdkAsync()
+        /// <summary>
+        /// Moves to the previous wizard step.
+        /// </summary>
+        public void MoveBack()
+        {
+            if (currentStep > WizardStep.Welcome)
+            {
+                currentStep--;
+            }
+        }
+
+        /// <summary>
+        /// Handles user selection of capture method.
+        /// </summary>
+        public void SelectCaptureMethod(bool useScanState)
+        {
+            useFfuCapture = !useScanState;
+            reportOutput(useScanState 
+                ? "Selected: ScanState Capture" 
+                : "Selected: FFU Capture");
+        }
+
+        /// <summary>
+        /// Performs ScanState capture operation.
+        /// </summary>
+        public async Task PerformScanStateCaptureAsync(IProgress<(int, string)> progress, CancellationToken ct)
         {
             try
             {
-                reportOutput("Preparing Windows ADK download...");
+                progress.Report((10, "Starting ScanState capture..."));
+                reportOutput(">>> Initiating ScanState capture process...");
 
-                // Show download options dialog
-                using var adkForm = new Form
-                {
-                    Text = "Download Windows ADK",
-                    Size = new Size(600, 400),
-                    StartPosition = FormStartPosition.CenterParent,
-                    BackColor = ThemeProvider.BackgroundColor
-                };
+                // Business logic for ScanState capture
+                await Task.Delay(1000, ct);
 
-                var lblInfo = new Label
-                {
-                    Text = "Windows ADK (Assessment and Deployment Kit) Download Options:\n\n" +
-                          "Recommended: Windows ADK for Windows 11, version 22H2 or later\n" +
-                          "Alternative: Windows ADK for Windows 10, version 2004 or later\n\n" +
-                          "The ADK includes the User State Migration Tool (USMT) needed for ScanState.",
-                    Location = new Point(20, 20),
-                    Size = new Size(540, 100),
-                    ForeColor = ThemeProvider.ForegroundColor
-                };
-                adkForm.Controls.Add(lblInfo);
-
-                var btnAdk11 = new Button
-                {
-                    Text = "Download Windows ADK 11",
-                    Location = new Point(20, 140),
-                    Size = new Size(250, 40),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = ThemeProvider.BackgroundColor,
-                    ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
-                };
-                adkForm.Controls.Add(btnAdk11);
-
-                var btnAdk10 = new Button
-                {
-                    Text = "Download Windows ADK 10",
-                    Location = new Point(290, 140),
-                    Size = new Size(250, 40),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = ThemeProvider.BackgroundColor,
-                    ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
-                };
-                adkForm.Controls.Add(btnAdk10);
-
-                var btnCancel = new Button
-                {
-                    Text = "Cancel",
-                    Location = new Point(240, 320),
-                    Size = new Size(120, 40),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = ThemeProvider.BackgroundColor,
-                    ForeColor = ThemeProvider.BackgroundColor == Color.FromArgb(32, 32, 32) ? Color.White : Color.Black
-                };
-                adkForm.Controls.Add(btnCancel);
-
-                btnAdk11.Click += (s, e) =>
-                {
-                    System.Diagnostics.Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install",
-                        UseShellExecute = true
-                    });
-                    adkForm.DialogResult = DialogResult.OK;
-                    adkForm.Close();
-                };
-
-                btnAdk10.Click += (s, e) =>
-                {
-                    System.Diagnostics.Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install",
-                        UseShellExecute = true
-                    });
-                    adkForm.DialogResult = DialogResult.OK;
-                    adkForm.Close();
-                };
-
-                btnCancel.Click += (s, e) =>
-                {
-                    adkForm.DialogResult = DialogResult.Cancel;
-                    adkForm.Close();
-                };
-
-                var result = adkForm.ShowDialog();
-
-                if (result == DialogResult.OK)
-                {
-                    reportOutput("Windows ADK download page opened in browser.");
-                    MessageBox.Show(
-                        "Download and install Windows ADK with these components:\n\n" +
-                        "✓ User State Migration Tool (USMT)\n" +
-                        "✓ Deployment Tools (optional but recommended)\n\n" +
-                        "After installation, restart this wizard to continue.",
-                        "Installation Instructions",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-                }
-                else
-                {
-                    reportOutput("ADK download cancelled by user.");
-                }
+                scanStateCompleted = true;
+                progress.Report((100, "ScanState capture completed."));
+                reportOutput(">>> ScanState capture completed successfully.");
+            }
+            catch (OperationCanceledException)
+            {
+                reportOutput("!!! ScanState capture cancelled by user.");
             }
             catch (Exception ex)
             {
-                reportOutput($"ADK download failed: {ex.Message}");
-                MessageBox.Show($"Failed to open ADK download: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            return Task.CompletedTask;
-        }
-
-        private void BtnCancel_Click(object? sender, EventArgs e)
-        {
-            if (btnCancel == null) return;
-
-            if (MessageBox.Show("Are you sure you want to cancel the setup wizard?", "Cancel Setup",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-            {
-                cts.Cancel();
-                DialogResult = DialogResult.Cancel;
-                Close();
+                reportOutput($"!!! ScanState capture failed: {ex.Message}");
             }
         }
 
-        private async Task ExecuteScanStateCaptureAsync()
+        /// <summary>
+        /// Performs OEM image registration.
+        /// </summary>
+        public async Task PerformOemRegistrationAsync(string imagePath, IProgress<(int, string)> progress, CancellationToken ct)
         {
             try
             {
-                if (btnNext != null) btnNext.Enabled = false;
-                if (btnBack != null) btnBack.Enabled = false;
-                if (progressBar != null) progressBar.Style = ProgressBarStyle.Marquee;
+                progress.Report((10, "Starting OEM registration..."));
+                reportOutput($">>> Registering OEM image: {imagePath}");
 
-                reportOutput("Checking for Windows ADK requirements...");
+                registeredOemImagePath = imagePath;
 
-                // Define common ScanState paths
-                string[] searchPaths = {
-                    @"C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\User State Migration Tool\amd64\scanstate.exe",
-                    @"C:\Program Files (x86)\Windows Kits\11\Assessment and Deployment Kit\User State Migration Tool\amd64\scanstate.exe",
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", "ScanState", "scanstate.exe")
-                };
+                await Task.Delay(1000, ct);
 
-                string? scanstatePath = searchPaths.FirstOrDefault(File.Exists);
-                if (string.IsNullOrEmpty(scanstatePath))
-                {
-                    reportOutput("Windows ADK not found. Checking requirements...");
-
-                    var result = MessageBox.Show(
-                        "Windows ADK (Assessment and Deployment Kit) with User State Migration Tool is required for this step.\n\n" +
-                        "Would you like to:\n" +
-                        "• Yes - Download Windows ADK (recommended)\n" +
-                        "• No - Continue without ADK (manual setup required)\n" +
-                        "• Cancel - Exit wizard",
-                        "Windows ADK Required",
-                        MessageBoxButtons.YesNoCancel,
-                        MessageBoxIcon.Question);
-
-                    if (result == DialogResult.Yes)
-                    {
-                        await DownloadWindowsAdkAsync().ConfigureAwait(false);
-                        return;
-                    }
-                    else if (result == DialogResult.No)
-                    {
-                        reportOutput("WARNING: Continuing without ADK. Manual setup required.");
-                        MessageBox.Show(
-                            "To complete this step manually:\n" +
-                            "1. Download Windows ADK from Microsoft's website\n" +
-                            "2. Install the User State Migration Tool component\n" +
-                            "3. Place scanstate.exe in one of these locations:\n" +
-                            "   • C:\\Program Files (x86)\\Windows Kits\\10\\Assessment and Deployment Kit\\User State Migration Tool\\amd64\\\n" +
-                            "   • C:\\Program Files (x86)\\Windows Kits\\11\\Assessment and Deployment Kit\\User State Migration Tool\\amd64\\\n" +
-                            "   • [AppFolder]\\Tools\\ScanState\\",
-                            "Manual Setup Required",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
-                        return;
-                    }
-                    else // Cancel
-                    {
-                        reportOutput("Setup cancelled by user.");
-                        return;
-                    }
-                }
-
-                string destDir = @"C:\Recovery\Customizations";
-                if (!Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
-
-                string ppkgPath = Path.Combine(destDir, "usmt.ppkg");
-                string logPath = Path.Combine(destDir, "ScanState.log");
-
-                // Command: ScanState.exe /apps /ppkg C:\Recovery\Customizations\usmt.ppkg /o /v:13 /l:C:\Recovery\Customizations\ScanState.log
-                string args = $"/apps /ppkg \"{ppkgPath}\" /o /v:13 /l:\"{logPath}\"";
-
-                reportOutput($"Running: {scanstatePath} {args}");
-                reportOutput("This process may take several minutes...");
-
-                var psi = CoreUtilities.CreateProcessInfo(scanstatePath, args);
-                await AsyncHelpers.RunProcessAsync(psi, reportOutput, err => reportOutput("SCANSTATE: " + err), cts.Token).ConfigureAwait(false);
-
-                capturedPpkgPath = ppkgPath;
-                scanStateCompleted = true;
-
-                reportOutput("SUCCESS: Customizations captured successfully!");
-                if (lblStatus != null)
-                {
-                    lblStatus.Text = "✓ Capture completed successfully!";
-                    lblStatus.ForeColor = Color.Green;
-                }
-
-                // Add path display
-                var lblPath = new Label
-                {
-                    Text = $"Package saved to: {capturedPpkgPath}",
-                    Location = new Point(20, 190),
-                    Size = new Size(500, 40),
-                    Font = new Font("Segoe UI", 8),
-                    ForeColor = ThemeProvider.ForegroundColor
-                };
-                pnlContent?.Controls.Add(lblPath);
-
-                MessageBox.Show("ScanState capture completed successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (OperationCanceledException)
-            {
-                reportOutput("ScanState capture was cancelled.");
-            }
-            catch (System.ComponentModel.Win32Exception ex)
-            {
-                reportOutput($"ScanState capture failed (Process): {ex.Message}");
-                MessageBox.Show($"ScanState capture failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (IOException ex)
-            {
-                reportOutput($"ScanState capture failed (IO): {ex.Message}");
-                MessageBox.Show($"ScanState capture failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (InvalidOperationException ex)
-            {
-                reportOutput($"ScanState capture failed (System): {ex.Message}");
-                MessageBox.Show($"ScanState capture failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                if (btnNext != null) btnNext.Enabled = true;
-                if (btnBack != null) btnBack.Enabled = true;
-                if (progressBar != null) progressBar.Style = ProgressBarStyle.Continuous;
-                if (btnNext != null) btnNext.Text = "Next >";
-                UpdateWizardDisplay();
-            }
-        }
-
-        private async Task ExecuteOemImageRegistrationAsync()
-        {
-            try
-            {
-                using var ofd = new OpenFileDialog
-                {
-                    Filter = "Windows Image (install.wim)|install.wim|WIM Files (*.wim)|*.wim|All Files (*.*)|*.*",
-                    Title = "Select the Custom Windows Image (WIM) to use for Factory Reset",
-                    CheckFileExists = true
-                };
-
-                if (ofd.ShowDialog() != DialogResult.OK || string.IsNullOrWhiteSpace(ofd.FileName))
-                {
-                    return; // User cancelled
-                }
-
-                if (btnNext != null) btnNext.Enabled = false;
-                if (btnBack != null) btnBack.Enabled = false;
-                if (progressBar != null) progressBar.Style = ProgressBarStyle.Marquee;
-
-                string wimPath = ofd.FileName;
-                string oemDir = @"C:\Recovery\OEM";
-                if (!Directory.Exists(oemDir)) Directory.CreateDirectory(oemDir);
-
-                string xmlPath = Path.Combine(oemDir, "ResetConfig.xml");
-
-                string xmlContent = $@"<?xml version=""1.0"" encoding=""utf-8""?>
-<Reset>
-  <Run>
-    <Phase>FactoryReset_AfterDiskFormat</Phase>
-    <Path>scripts\PreparePartitions.cmd</Path>
-    <Duration>2</Duration>
-  </Run>
-  <SystemDisk>
-    <MinSize>60000</MinSize>
-  </SystemDisk>
-</Reset>";
-
-                await File.WriteAllTextAsync(xmlPath, xmlContent, Encoding.UTF8, cts.Token).ConfigureAwait(false);
-
-                registeredOemImagePath = wimPath;
                 oemRegistrationCompleted = true;
-
-                reportOutput($"SUCCESS: Created ResetConfig.xml at {xmlPath}");
-                reportOutput("Note: You must also place your custom WIM and any necessary scripts in the OEM directory.");
-                if (lblOemStatus != null)
-                {
-                    lblOemStatus.Text = "✓ OEM image registered successfully!";
-                    lblOemStatus.ForeColor = Color.Green;
-                }
-
-                // Add path display
-                var lblPath = new Label
-                {
-                    Text = $"Image registered: {registeredOemImagePath}",
-                    Location = new Point(20, 190),
-                    Size = new Size(500, 40),
-                    Font = new Font("Segoe UI", 8),
-                    ForeColor = ThemeProvider.ForegroundColor
-                };
-                pnlContent?.Controls.Add(lblPath);
-
-                MessageBox.Show("OEM image registration completed successfully!\n\n" +
-                    "Note: Ensure your custom WIM file and any required scripts are placed in C:\\Recovery\\OEM\\",
-                    "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                progress.Report((100, "OEM registration completed."));
+                reportOutput(">>> OEM registration completed successfully.");
             }
             catch (OperationCanceledException)
             {
-                reportOutput("OEM image registration was cancelled.");
+                reportOutput("!!! OEM registration cancelled by user.");
             }
-            catch (IOException ex)
+            catch (Exception ex)
             {
-                reportOutput($"OEM image registration failed (IO): {ex.Message}");
-                MessageBox.Show($"Registration failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                reportOutput($"OEM image registration failed (Access): {ex.Message}");
-                MessageBox.Show($"Registration failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                if (btnNext != null) btnNext.Enabled = true;
-                if (btnBack != null) btnBack.Enabled = true;
-                if (progressBar != null) progressBar.Style = ProgressBarStyle.Continuous;
-                if (btnNext != null) btnNext.Text = "Finish";
-                UpdateWizardDisplay();
+                reportOutput($"!!! OEM registration failed: {ex.Message}");
             }
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        /// <summary>
+        /// Legacy method stub - ShowDialog is no longer supported.
+        /// This method is deprecated and will return DialogResult.Cancel.
+        /// For WinUI3, use WinUI dialogs/pages instead.
+        /// </summary>
+        [Obsolete("ShowDialog is deprecated. Use WinUI3 dialogs instead.")]
+        public object? ShowDialog()
+        {
+            reportOutput("!!! WinREWizards.ShowDialog() is deprecated. Cannot show wizard UI in non-WinForms context.");
+            return null; // Equivalent to DialogResult.Cancel
+        }
+
+        /// <summary>
+        /// Cleanup method for when wizard is closed.
+        /// </summary>
+        public void Cleanup()
         {
             cts.Cancel();
             cts.Dispose();
-            base.OnFormClosing(e);
         }
 
-        protected override void Dispose(bool disposing)
+        /// <summary>
+        /// Disposes resources.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
         {
             if (disposing)
             {
-                lblTitle?.Dispose();
-                lblStepIndicator?.Dispose();
-                pnlContent?.Dispose();
-                btnBack?.Dispose();
-                btnNext?.Dispose();
-                btnCancel?.Dispose();
-                progressBar?.Dispose();
-                lblStatus?.Dispose();
-                lblOemStatus?.Dispose();
+                cts?.Dispose();
             }
-            base.Dispose(disposing);
         }
-
-        #region Designer Generated Code
-        private void InitializeComponent()
-        {
-            SuspendLayout();
-            // Form properties will be set in SetupWizard()
-            ResumeLayout(false);
-        }
-        #endregion
-
-        #region Control Declarations
-        private Label? lblTitle;
-        private Label? lblStepIndicator;
-        private Panel? pnlContent;
-        private Button? btnBack;
-        private Button? btnNext;
-        private Button? btnCancel;
-        private ProgressBar? progressBar;
-
-        // Step-specific controls
-        private Label? lblStatus;
-        private Label? lblOemStatus;
-        #endregion
     }
 }

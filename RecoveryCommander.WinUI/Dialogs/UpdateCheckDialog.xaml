@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="RecoveryCommanderWinUI.Dialogs.UpdateCheckDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Update Available"
+    PrimaryButtonText="Download &amp; Install"
+    SecondaryButtonText="Remind Later"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <ScrollView>
+        <StackPanel Spacing="16" Padding="0,16,0,0">
+            <StackPanel Spacing="8">
+                <TextBlock Text="A new version is available" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                <StackPanel Spacing="4" Orientation="Horizontal">
+                    <TextBlock Text="Current version:" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="CurrentVersionText" Text="1.0.0" />
+                </StackPanel>
+                <StackPanel Spacing="4" Orientation="Horizontal">
+                    <TextBlock Text="Latest version:" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="LatestVersionText" Text="2.0.0" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock Text="Release Notes:" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+
+            <TextBlock 
+                x:Name="ReleaseNotesText"
+                Text="New features and improvements included in this release."
+                TextWrapping="WrapWholeWords"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                MaxHeight="200" />
+
+            <TextBlock 
+                x:Name="ErrorMessage"
+                Text="An error occurred while checking for updates."
+                Foreground="{ThemeResource ErrorTextFillColorPrimaryBrush}"
+                Visibility="Collapsed"
+                TextWrapping="WrapWholeWords" />
+        </StackPanel>
+    </ScrollView>
+</ContentDialog>
+
+

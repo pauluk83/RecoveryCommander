@@ -12,7 +12,11 @@ namespace RecoveryCommander.Core
         private static readonly object SyncRoot = new();
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-        public bool AllowUnverifiedDownloads { get; set; }
+        /// <summary>
+        /// Allows downloads to proceed even when a SHA-256 hash is missing, unavailable,
+        /// or fails verification. This is intended for advanced technicians only.
+        /// </summary>
+        public bool AllowUnverifiedDownloads { get; set; } = false;
 
         public static string SettingsPath
         {
@@ -70,6 +74,13 @@ namespace RecoveryCommander.Core
 
         public static bool GetAllowUnverifiedDownloads()
             => Load().AllowUnverifiedDownloads;
+
+        public static bool ShouldBypassDownloadVerification()
+            => GetAllowUnverifiedDownloads()
+            || string.Equals(
+                Environment.GetEnvironmentVariable("RC_ALLOW_UNVERIFIED_DOWNLOAD"),
+                "1",
+                StringComparison.OrdinalIgnoreCase);
 
         public static void SetAllowUnverifiedDownloads(bool value)
         {

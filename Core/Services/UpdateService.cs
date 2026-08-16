@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using RecoveryCommander.Contracts;
+using RecoveryCommander.Core.Security;
 
 namespace RecoveryCommander.Core.Services
 {
@@ -16,6 +17,14 @@ namespace RecoveryCommander.Core.Services
     public static class UpdateService
     {
         private static readonly Regex PackageIdRegex = new(@"^[A-Za-z0-9][A-Za-z0-9._\-+]+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        private static readonly HashSet<string> AllowedUpdateSources = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "winget",
+            "msstore",
+            "nuget",
+            "pypi",
+            "chocolatey"
+        };
 
         public static async Task UpgradeWingetPackagesAsync(IProgress<ProgressReport> progress, Action<string> reportOutput, CancellationToken cancellationToken)
         {
@@ -150,15 +159,43 @@ namespace RecoveryCommander.Core.Services
         private static async Task InstallWingetAsync(Action<string> reportOutput, CancellationToken cancellationToken)
         {
             string url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle";
+            
+            // Validate URL for security
+            if (!SecurityHelpers.IsValidDownloadUrl(url, out var validUri))
+            {
+                AuditLogger.Instance.LogFailure("UpdateService", "InvalidDownloadUrl", "Winget installer URL validation failed");
+                reportOutput("Security validation failed for winget installer URL");
+                return;
+            }
+
             // Use unique temp directory to prevent pre-population attacks
             string tempDir = Path.Combine(Path.GetTempPath(), $"winget_install_{Guid.NewGuid():N}"[..16]);
             Directory.CreateDirectory(tempDir);
             string temp = Path.Combine(tempDir, "winget_installer.msixbundle");
+            
             try
             {
+                AuditLogger.Instance.LogSuccess("UpdateService", "WingetInstallStart", url);
+                
                 await AsyncHelpers.DownloadFileAsync(url, temp, null, cancellationToken).ConfigureAwait(false);
+                
+                // Verify file integrity
+                if (!File.Exists(temp) || new FileInfo(temp).Length == 0)
+                {
+                    AuditLogger.Instance.LogFailure("UpdateService", "WingetDownloadFailed", "Downloaded file is empty or missing");
+                    reportOutput("Winget installer download failed verification");
+                    return;
+                }
+
                 var psi = CoreUtilities.CreateProcessInfo("powershell", $"-NoProfile -NonInteractive -Command \"Add-AppxPackage -Path '{temp}'\"");
                 await AsyncHelpers.RunProcessAsync(psi, reportOutput, null, cancellationToken).ConfigureAwait(false);
+                
+                AuditLogger.Instance.LogSuccess("UpdateService", "WingetInstallComplete");
+            }
+            catch (Exception ex)
+            {
+                AuditLogger.Instance.LogFailure("UpdateService", "WingetInstallError", ex.Message);
+                reportOutput($"Winget installation failed: {ex.Message}");
             }
             finally
             {

@@ -47,8 +47,8 @@ namespace RecoveryCommander.Core
         public static T GetService<T>() where T : class
         {
             if (_serviceProvider == null)
-                throw new InvalidOperationException("ServiceContainer not initialized");
-            return _serviceProvider.GetRequiredService<T>();
+                Initialize();
+            return _serviceProvider!.GetRequiredService<T>();
         }
 
         /// <summary>
@@ -57,8 +57,8 @@ namespace RecoveryCommander.Core
         public static T? GetOptionalService<T>() where T : class
         {
             if (_serviceProvider == null)
-                return null;
-            return _serviceProvider.GetService<T>();
+                Initialize();
+            return _serviceProvider!.GetService<T>();
         }
 
         /// <summary>
@@ -148,9 +148,9 @@ namespace RecoveryCommander.Core
         public static HttpClient GetHttpClient()
         {
             if (_serviceProvider == null)
-                throw new InvalidOperationException("ServiceContainer not initialized");
+                Initialize();
                 
-            var factory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
+            var factory = _serviceProvider!.GetRequiredService<IHttpClientFactory>();
             return factory.CreateClient("RecoveryCommander");
         }
 

@@ -1,0 +1,35 @@
+<ContentDialog
+    x:Class="RecoveryCommanderWinUI.Dialogs.WinREWizardDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Push-Button Reset Setup Wizard"
+    PrimaryButtonText="Close"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    Padding="20">
+
+    <Grid RowSpacing="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Spacing="6">
+            <TextBlock x:Name="StepTitle" Text="Welcome" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock x:Name="StepDescription" Text="This wizard guides you through ScanState capture and OEM image registration for Push-Button Reset." TextWrapping="Wrap" />
+        </StackPanel>
+
+        <ProgressBar x:Name="WizardProgressBar" Grid.Row="1" Height="8" Minimum="0" Maximum="100" Value="0" IsIndeterminate="False" />
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Left">
+            <Button x:Name="ActionButton" Content="Start ScanState Capture" Click="ActionButton_Click" MinWidth="180" />
+            <Button x:Name="SelectImageButton" Content="Select OEM Image" Click="SelectImageButton_Click" MinWidth="180" Visibility="Collapsed" />
+        </StackPanel>
+
+        <TextBox x:Name="OutputTextBox" Grid.Row="3" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" ScrollViewer.VerticalScrollBarVisibility="Auto" Height="240" />
+    </Grid>
+</ContentDialog>
+
+

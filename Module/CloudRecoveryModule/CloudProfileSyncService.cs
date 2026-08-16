@@ -110,11 +110,10 @@ namespace RecoveryCommander.Modules
                     return;
                 }
 
-                var files = Directory.GetFiles(backupDir, "ProfileBackup_*.zip")
-                                    .OrderByDescending(f => f)
-                                    .ToList();
+                var files = Directory.GetFiles(backupDir, "ProfileBackup_*.zip");
+                var latestFile = files.OrderByDescending(f => f).FirstOrDefault();
 
-                if (files.Count == 0)
+                if (string.IsNullOrEmpty(latestFile))
                 {
                     _reportOutput("> No backup archives found.");
                     return;

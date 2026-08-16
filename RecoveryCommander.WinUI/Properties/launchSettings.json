@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "RecoveryCommander.WinUI (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "RecoveryCommander.WinUI (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

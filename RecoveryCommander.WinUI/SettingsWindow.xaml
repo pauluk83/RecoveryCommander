@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<local:BaseWindowDialog
+    x:Class="RecoveryCommanderWinUI.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:RecoveryCommanderWinUI.Dialogs"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    <Grid Background="#030914">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#181818" Padding="16,12">
+            <TextBlock Text="Settings" Foreground="White" FontSize="18" FontWeight="SemiBold"/>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Padding="20" Spacing="16">
+                <TextBlock Text="General Settings" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                
+                <CheckBox x:Name="AutoUpdateCheck" Content="Check for updates automatically" Foreground="White" IsChecked="True" Margin="0,0,0,8"/>
+                <CheckBox x:Name="TelemetryCheck" Content="Send anonymous usage data" Foreground="White" IsChecked="False" Margin="0,0,0,8"/>
+                <CheckBox x:Name="NotificationsCheck" Content="Enable desktop notifications" Foreground="White" IsChecked="True" Margin="0,0,0,8"/>
+                <CheckBox x:Name="MinimizeToTrayCheck" Content="Minimize to system tray" Foreground="White" IsChecked="False" Margin="0,0,0,8"/>
+                
+                <Rectangle Height="1" Fill="#40FFFFFF" Margin="0,8,0,16"/>
+                
+                <TextBlock Text="Security Settings" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+                    <CheckBox x:Name="AllowUnverifiedDownloadsCheck" Content="Allow download verification bypass" Foreground="White"/>
+                    <HyperlinkButton x:Name="UnverifiedDownloadsHelpButton"
+                        Content="What is this?"
+                        Foreground="#18CFFF"
+                        FontSize="11"
+                        Padding="0"
+                        VerticalAlignment="Center"
+                        Click="UnverifiedDownloadsHelpButton_Click"/>
+                </StackPanel>
+                <TextBlock Text="When enabled, downloads can continue even when SHA-256 data is missing, unavailable, or fails verification. This overrides blocked downloads for advanced troubleshooting." Foreground="#88AABB" FontSize="10" TextWrapping="Wrap" Margin="28,0,0,8"/>
+                <CheckBox x:Name="RequireAdminCheck" Content="Require administrator privileges" Foreground="White" IsChecked="True" Margin="0,0,0,8"/>
+                <CheckBox x:Name="ConfirmDangerousActionsCheck" Content="Confirm dangerous actions" Foreground="White" IsChecked="True" Margin="0,0,0,8"/>
+                
+                <Rectangle Height="1" Fill="#40FFFFFF" Margin="0,8,0,16"/>
+                
+                <TextBlock Text="UI Settings" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                
+                <CheckBox x:Name="AnimationsCheck" Content="Enable animations" Foreground="White" IsChecked="True" Margin="0,0,0,8"/>
+                <CheckBox x:Name="SoundEffectsCheck" Content="Enable sound effects" Foreground="White" IsChecked="False" Margin="0,0,0,8"/>
+                <CheckBox x:Name="CompactModeCheck" Content="Compact mode" Foreground="White" IsChecked="False" Margin="0,0,0,8"/>
+                
+                <Rectangle Height="1" Fill="#40FFFFFF" Margin="0,8,0,16"/>
+                
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                    <Button Content="Reset to Defaults" Width="140" Height="36" Background="#40FFFFFF" Foreground="White" BorderThickness="0" CornerRadius="4"/>
+                    <Button Content="Save" Width="100" Height="36" Background="#18CFFF" Foreground="White" BorderThickness="0" CornerRadius="4" Click="SaveButton_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</local:BaseWindowDialog>
+
+

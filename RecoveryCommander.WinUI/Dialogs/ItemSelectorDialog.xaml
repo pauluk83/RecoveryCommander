@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="RecoveryCommanderWinUI.Dialogs.ItemSelectorDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Select Items"
+    PrimaryButtonText="OK"
+    SecondaryButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Button Bar -->
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Select All" Click="SelectAllButton_Click" />
+            <Button Content="Clear All" Click="ClearAllButton_Click" />
+        </StackPanel>
+
+        <!-- Items List -->
+        <ListBox 
+            Grid.Row="1"
+            x:Name="ItemsListBox"
+            ItemsSource="{Binding Items}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnSpacing="12" Padding="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="100" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Checkbox -->
+                        <CheckBox 
+                            Grid.Column="0"
+                            IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                            VerticalAlignment="Center" />
+
+                        <!-- Name -->
+                        <TextBlock 
+                            Grid.Column="1"
+                            Text="{Binding Name}"
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold" />
+
+                        <!-- Description -->
+                        <TextBlock 
+                            Grid.Column="2"
+                            Text="{Binding Description}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            FontSize="12"
+                            VerticalAlignment="Center" />
+
+                        <!-- Size -->
+                        <TextBlock 
+                            Grid.Column="3"
+                            Text="{Binding Size}"
+                            TextAlignment="Right"
+                            VerticalAlignment="Center"
+                            FontSize="12" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Footer with size info -->
+        <TextBlock 
+            Grid.Row="2"
+            x:Name="TotalSizeText"
+            Text="{Binding TotalSizeText}"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Style="{ThemeResource CaptionTextBlockStyle}" />
+    </Grid>
+</ContentDialog>
+
+

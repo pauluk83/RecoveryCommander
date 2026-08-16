@@ -10,7 +10,7 @@ RecoveryCommander follows a strict philosophy of explicit control and modularity
 
 - **Designer-Free UI**: Avoids auto-generated `.Designer.cs` files. All layouts, controls, and event bindings are written directly in C# for maximum transparency and precise control.
 - **Plugin Architecture**: Each module implements the `IRecoveryModule` contract. The application dynamically discovers and loads these modules via reflection at runtime.
-- **Audit-First Development**: Every source file carries a permanent audit header and changelog block. Changes are mirrored in the project-wide `changelog.md` to maintain a perfect traceability trail.
+- **Audit-First Development**: Every source file carries a permanent audit header and changelog block. Changes are mirrored in the project-wide `CHANGELOG.md` to maintain a perfect traceability trail.
 - **Clean Code & Archive Management**: Redundant or deprecated code is aggressively purged or moved to the `\Archive` folder (ignored during builds) to ensure zero-waste deployments.
 - **High-Performance Backgrounding**: All recovery operations run on background threads with safe progress callbacks, ensuring the UI remains responsive even during heavy system repairs.
 
@@ -74,7 +74,7 @@ The application is built to feel native to **Windows 11**:
 +------------------------------------------------------------------+
 |  [ Progress Bar: 75% ----------------------------]  [ Cancel ]   |
 +------------------------------------------------------------------+
-|  STATUS: Connected | CPU: 12% | RAM: 4.2GB | Ver: 1.2.6          |
+|  STATUS: Connected | CPU: 12% | RAM: 4.2GB | Ver: 1.2.8          |
 +------------------------------------------------------------------+
 ```
 
@@ -90,6 +90,25 @@ The application is built to feel native to **Windows 11**:
     - **ZipSlip Protection**: Post-extraction path validation.
     - **Shell Injection Hardening**: Direct process execution without shell expansion.
     - **Privacy Masking**: Real-time scrubbing of sensitive infrastructure IDs from logs.
+
+---
+
+## 🪟 WinUI 3 Dialog Architecture (v1.2.8)
+
+### Window-Based Dialog System
+To overcome WinUI 3 ContentDialog's built-in width constraints (~548px MaxWidth), all major dialogs have been converted to Window-based implementations:
+
+- **BaseWindowDialog**: Base class providing async `ShowAsync()` capability and window centering logic.
+- **ModuleBuilderWindow**: 1400x850 window for generating C# module scaffold code.
+- **StartupManagerWindow**: 1300x700 window for managing Windows startup programs.
+- **RestorePointManagerWindow**: 1200x700 window for system restore point management.
+- **NetworkRepairWindow**: 1250x750 window for network diagnostic and repair tools.
+
+### Dialog System Benefits
+- **No Width Limitations**: Window-based dialogs bypass ContentDialog's hardcoded MaxWidth.
+- **Async Show Pattern**: Consistent `ShowAsync()` method using `TaskCompletionSource`.
+- **Centering**: Automatic centering on the main window for consistent UX.
+- **Lifecycle Events**: Proper handling of Loaded/Activated events for async initialization.
 
 ---
 
