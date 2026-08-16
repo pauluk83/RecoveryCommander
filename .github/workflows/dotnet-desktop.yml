@@ -72,7 +72,7 @@ jobs:
         continue-on-error: true
 
       - name: Publish Executable
-        run: dotnet publish RecoveryCommander.WinUI/RecoveryCommander.WinUI.csproj --configuration ${{ matrix.configuration }} --runtime win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true --output ./publish/${{ matrix.configuration }}
+        run: dotnet publish RecoveryCommander.WinUI/RecoveryCommander.WinUI.csproj --configuration ${{ matrix.configuration }} --runtime win-x64 --self-contained false --output ./publish/${{ matrix.configuration }}
 
       # ----- Authenticode signing (tag-only, secret-gated) -----
       - name: Decide if signing is enabled
