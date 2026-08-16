@@ -26,7 +26,8 @@ public sealed partial class MainWindow : Window
             try
             {
                 var logPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "RecoveryCommander_Crash.log");
-                System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] MainWindow.InitializeComponent Exception:\n{ex.ToString()}\n\n");
+                var hr = System.Runtime.InteropServices.Marshal.GetHRForException(ex);
+                System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] MainWindow.InitializeComponent Exception:\nHResult: 0x{hr:X8}\n{ex.ToString()}\n\n");
             }
             catch
             {
