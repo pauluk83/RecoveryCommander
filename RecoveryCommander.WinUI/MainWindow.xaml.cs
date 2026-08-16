@@ -41,6 +41,8 @@ public sealed partial class MainWindow : Window
         }
 
         // Navigate the root frame to the main page on startup.
+        // Broad catch is intentional: navigation errors must not crash the app; log and continue.
+#pragma warning disable CA1031 // Navigation failures should never throw — log and continue
         try
         {
             RootFrame.Navigate(typeof(MainPage));
@@ -48,10 +50,18 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             // Log navigation error
-            System.IO.File.AppendAllText(
-                System.IO.Path.Combine(System.IO.Path.GetTempPath(), "RecoveryCommander_Navigation.log"),
-                $"Navigation Error: {ex.Message}\n{ex.StackTrace}\n");
+            try
+            {
+                System.IO.File.AppendAllText(
+                    System.IO.Path.Combine(System.IO.Path.GetTempPath(), "RecoveryCommander_Navigation.log"),
+                    $"Navigation Error: {ex.Message}\n{ex.StackTrace}\n");
+            }
+            catch
+            {
+                // Swallow any logging failures — nothing more we can do at startup.
+            }
         }
+#pragma warning restore CA1031
     }
 }
 

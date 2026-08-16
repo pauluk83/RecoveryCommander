@@ -217,7 +217,7 @@ public sealed partial class NetworkRepairWindow : BaseWindowDialog
         }
     }
 
-    private async Task<bool> ConfirmAsync(string title, string message)
+    private static async Task<bool> ConfirmAsync(string title, string message)
     {
         var dialog = new ContentDialog
         {
