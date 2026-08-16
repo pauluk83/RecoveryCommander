@@ -35,12 +35,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Install .NET SDK
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -48,7 +48,7 @@ jobs:
         run: mkdir -p bin/${{ matrix.configuration }}/net10.0-windows/win-x64/publish/Module
 
       - name: Restore Dependencies
-        run: dotnet restore $env:Solution_Name
+        run: dotnet restore $env:Solution_Name --runtime win-x64
 
       - name: Build Solution
         run: dotnet build $env:Solution_Name --configuration ${{ matrix.configuration }} --no-restore
