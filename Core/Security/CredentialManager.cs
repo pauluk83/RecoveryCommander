@@ -116,9 +116,9 @@ namespace RecoveryCommander.Core.Security
 
                     return new Credential
                     {
-                        Username = credential.UserName,
+                        Username = credential.UserName ?? string.Empty,
                         Password = password,
-                        TargetName = credential.TargetName
+                        TargetName = credential.TargetName ?? string.Empty
                     };
                 }
                 finally
@@ -263,7 +263,7 @@ namespace RecoveryCommander.Core.Security
         private static extern bool CredDelete(string targetName, int type, uint flags);
 
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        private static extern bool CredEnumerate(string filter, uint flags, out int count, out IntPtr credentials);
+        private static extern bool CredEnumerate(string? filter, uint flags, out int count, out IntPtr credentials);
 
         [DllImport("advapi32.dll", SetLastError = true)]
         private static extern bool CredFree(IntPtr credential);

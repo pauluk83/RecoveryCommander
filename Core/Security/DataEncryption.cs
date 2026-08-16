@@ -248,9 +248,8 @@ namespace RecoveryCommander.Core.Security
         /// </summary>
         public static string ComputeHash(string data)
         {
-            using var sha256 = SHA256.Create();
             var bytes = Encoding.UTF8.GetBytes(data);
-            var hash = sha256.ComputeHash(bytes);
+            var hash = SHA256.HashData(bytes);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
@@ -259,9 +258,8 @@ namespace RecoveryCommander.Core.Security
         /// </summary>
         public static string ComputeFileHash(string filePath)
         {
-            using var sha256 = SHA256.Create();
             using var fs = File.OpenRead(filePath);
-            var hash = sha256.ComputeHash(fs);
+            var hash = SHA256.HashData(fs);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
     }

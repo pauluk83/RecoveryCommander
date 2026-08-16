@@ -423,9 +423,8 @@ namespace RecoveryCommander.Core
                 if (!string.IsNullOrWhiteSpace(expectedHash))
                 {
                     progress?.Report(new ProgressReport(95, "Verifying integrity..."));
-                    using var sha256 = System.Security.Cryptography.SHA256.Create();
                     using var stream = File.OpenRead(destinationPath);
-                    byte[] hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+                    byte[] hashBytes = await System.Security.Cryptography.SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
                     string actualHash = Convert.ToHexString(hashBytes); // Use uppercase for consistency
                     string cleanedExpectedHash = expectedHash.Trim();
 

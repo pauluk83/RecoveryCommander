@@ -217,9 +217,8 @@ namespace RecoveryCommander.Core.Security
 
         private string ComputeFileHash(string filePath)
         {
-            using var sha256 = SHA256.Create();
             var bytes = File.ReadAllBytes(filePath);
-            var hash = sha256.ComputeHash(bytes);
+            var hash = SHA256.HashData(bytes);
             return Convert.ToHexString(hash).ToLowerInvariant();
         }
 
