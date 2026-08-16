@@ -1,5 +1,19 @@
 # RecoveryCommander Changelog
 
+## 2026-08-16 - Dependabot merges & CI fixes
+
+### Dependency updates & CI
+- Merged several Dependabot PRs bumping build/dependency versions (actions and packages): #34, #33, #32, #31, #30, #28, #26.
+- Updated GitHub Actions workflow to restore runtime packs for `win-x64` and bumped `actions/checkout` → `v7` and `actions/setup-dotnet` → `v6` to resolve CI runtime-pack and runner deprecation issues.
+
+### Code fixes
+- Replaced usages of `SHA256.ComputeHash` / `ComputeHashAsync` with static `SHA256.HashData` / `HashDataAsync` to satisfy analyzer guidance and modern APIs (`Core/Security/*`, `Core/AsyncHelpers.cs`).
+- Fixed nullable interop issues in `Core/Security/CredentialManager.cs` by coalescing unmanaged strings and adjusting P/Invoke signature.
+
+### Notes
+- CI workflow has been updated and merged to `main`; run a full CI build to validate end-to-end.
+
+
 ## 2026-07-20 - ISO 27001/SOC 2 Security Compliance
 
 ### Security & Compliance

@@ -249,6 +249,11 @@ namespace RecoveryCommander.Modules
                     throw new InvalidDataException("Backup archive is too large to restore safely.");
                 }
 
+                if (Path.IsPathRooted(entry.FullName))
+                {
+                    throw new InvalidDataException("Backup archive contains a rooted entry.");
+                }
+
                 var destinationPath = Path.GetFullPath(Path.Combine(destinationDirectory, entry.FullName));
                 if (!destinationPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
                 {

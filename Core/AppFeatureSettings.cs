@@ -23,6 +23,11 @@ namespace RecoveryCommander.Core
             get
             {
                 var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                if (string.IsNullOrWhiteSpace(appData))
+                {
+                    appData = AppContext.BaseDirectory;
+                }
+
                 return Path.Combine(appData, "RecoveryCommander", "settings.json");
             }
         }
