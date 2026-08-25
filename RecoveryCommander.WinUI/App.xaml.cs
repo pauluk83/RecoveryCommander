@@ -157,7 +157,9 @@ public partial class App : Application
         {
             appResources = this.Resources;
         }
+#pragma warning disable CA1031 // Resource access can transiently fail in unpackaged builds — broad catch is intentional here
         catch (Exception ex)
+#pragma warning restore CA1031
         {
             // This can happen if called from constructor immediately after InitializeComponent
             // in Release publish builds (WinUI hydration race). Log it; the OnLaunched
@@ -182,7 +184,9 @@ public partial class App : Application
             object __ = appResources["MutedTextBrush"];
             return true;
         }
+#pragma warning disable CA1031 // Resource key probing must return false on any failure — broad catch is intentional here
         catch { return false; }
+#pragma warning restore CA1031
     }
 
     private static bool MergeXamlFileFromDisk(Microsoft.UI.Xaml.ResourceDictionary appResources, string baseDir, string relPath)
@@ -225,7 +229,9 @@ public partial class App : Application
             LogError("LoadThemeResources [dbg] disk-load NOT-RD", new InvalidOperationException($"{relPath} -> {obj?.GetType().Name}"));
             return false;
         }
+#pragma warning disable CA1031 // Disk-based XAML loading is best-effort — broad catch is intentional here
         catch (Exception ex)
+#pragma warning restore CA1031
         {
             LogError("LoadThemeResources [dbg] disk-load FAILED " + relPath, ex);
             return false;
@@ -242,14 +248,16 @@ public partial class App : Application
             for (var i = 0; i < merged.Count; i++)
             {
                 var src = merged[i].Source?.ToString() ?? "(null)";
-                var dk = merged[i].Count.ToString();
+                var dk = merged[i].Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 state += $" | MD[{i}] Type={merged[i].GetType().Name} Source={src} Keys={dk}";
             }
             LogError("LoadThemeResources [dbg] core-state", new InvalidOperationException(state));
             LogError("LoadThemeResources [dbg] core-keyprobe-PRE",
                 new InvalidOperationException($"PrimaryAccentBrush resolves = {ProbeThemeLoaded(appResources)}"));
         }
+#pragma warning disable CA1031 // Debug logging must never throw — broad catch is intentional here
         catch (Exception preEx) { LogError("LoadThemeResources [dbg] pre-state probe FAILED", preEx); }
+#pragma warning restore CA1031
         #endregion
 
         // Step 0: Always ensure XamlControlsResources (default WinUI styles for Button,
@@ -257,6 +265,8 @@ public partial class App : Application
         // App.xaml's entire MergedDictionaries can be 0 entries (this.Resources hydration
         // failure / ms-appx URI resolution failure). Without this, every standard control
         // has no ControlTemplate -> XamlParseException at any page parse.
+        // NOTE: In unpackaged builds, XamlControlsResources may fail to load from ms-appx:///
+        // URIs. This is acceptable as long as our custom theme provides the necessary styles.
         var needXamlControls = true;
         var md0 = appResources.MergedDictionaries;
         for (var i = 0; i < md0.Count; i++)
@@ -275,7 +285,13 @@ public partial class App : Application
                 LogError("LoadThemeResources [dbg] xaml-controls",
                     new InvalidOperationException("Added XamlControlsResources explicitly via code"));
             }
-            catch (Exception xcrEx) { LogError("LoadThemeResources [dbg] xaml-controls FAILED", xcrEx); }
+#pragma warning disable CA1031 // XamlControlsResources loading is best-effort — broad catch is intentional here
+            catch (Exception xcrEx)
+            {
+                LogError("LoadThemeResources [dbg] xaml-controls FAILED - will rely on custom theme", xcrEx);
+                // Continue anyway - our custom theme should provide necessary styles
+            }
+#pragma warning restore CA1031
         }
 
         // KEY-BASED hasTheme detection: only skip if PrimaryAccentBrush + MutedTextBrush resolve.
@@ -420,12 +436,18 @@ public partial class App : Application
             {
                 LoadThemeResources();
             }
-#pragma warning disable CA1031 // Theme loading is best-effort; never let it crash launch.
-            catch (Exception ex)
+            catch (System.Runtime.InteropServices.COMException ex)
             {
                 LogError("OnLaunched.LoadThemeResources", ex);
             }
-#pragma warning restore CA1031
+            catch (Microsoft.UI.Xaml.Markup.XamlParseException ex)
+            {
+                LogError("OnLaunched.LoadThemeResources", ex);
+            }
+            catch (System.IO.IOException ex)
+            {
+                LogError("OnLaunched.LoadThemeResources", ex);
+            }
 
             _window = new MainWindow();
             _dialogService = new DialogService(_window);
