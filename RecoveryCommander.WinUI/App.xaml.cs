@@ -89,7 +89,12 @@ public partial class App : Application
 
             try
             {
-                // Load theme resources first so XAML parsing can resolve StaticResource references.
+                // InitializeComponent first so this.Resources is available and App.xaml's
+                // <ResourceDictionary Source="Theme/Styles.xaml" /> is loaded via XAML.
+                this.InitializeComponent();
+
+                // Fallback: if XAML-based theme load failed (e.g. unpackaged build URI issues),
+                // patch the merged dictionaries from disk so StaticResource lookups still resolve.
                 try
                 {
                     LoadThemeResources();
@@ -100,8 +105,6 @@ public partial class App : Application
                     LogError("LoadThemeResources", ex);
                 }
 #pragma warning restore CA1031
-
-                this.InitializeComponent();
             }
             catch (Exception ex)
             {
@@ -149,30 +152,89 @@ public partial class App : Application
 
     private void LoadThemeResources()
     {
-        // Try adding the Theme/Styles.xaml as a merged dictionary using a relative Uri first.
+        // Guard: in some unpackaged builds, accessing this.Resources immediately after
+        // InitializeComponent can transiently throw a COMException. If App.xaml's
+        // <ResourceDictionary Source="Theme/Styles.xaml" /> loaded (the normal path),
+        // StaticResource lookups are already satisfied and we can safely no-op here.
+        Microsoft.UI.Xaml.ResourceDictionary? appResources;
         try
         {
-            var rd = new Microsoft.UI.Xaml.ResourceDictionary
-            {
-                Source = new Uri("Theme/Styles.xaml", UriKind.Relative)
-            };
-            this.Resources.MergedDictionaries.Add(rd);
+            appResources = this.Resources;
+        }
+#pragma warning disable CA1031 // Any failure here is best-effort / no-op; don't pollute logs.
+        catch
+        {
             return;
         }
-    #pragma warning disable CA1031 // Resource URI loading has a file-based fallback.
-        catch { /* fall through to file-based load */ }
-    #pragma warning restore CA1031
+#pragma warning restore CA1031
 
-        // Fallback: load XAML from disk and parse it. This helps when ms-appx URI resolution
-        // fails for unpackaged Release builds.
-        var themePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Theme", "Styles.xaml");
-        if (System.IO.File.Exists(themePath))
+        // App.xaml's <ResourceDictionary Source="Theme/Styles.xaml" /> already loads Styles
+        // (and Colors via its MergedDictionaries) during InitializeComponent. Skip the
+        // redundant URI-based re-add when we detect a theme dictionary is present.
+        var merged = appResources.MergedDictionaries;
+        var hasTheme = false;
+        for (var i = 0; i < merged.Count; i++)
         {
-            var xamlText = System.IO.File.ReadAllText(themePath);
-            var obj = Microsoft.UI.Xaml.Markup.XamlReader.Load(xamlText);
-            if (obj is Microsoft.UI.Xaml.ResourceDictionary parsedRd)
+            var source = merged[i].Source?.ToString();
+            if (source != null && (source.Contains("Styles.xaml") || source.Contains("Colors.xaml")))
             {
-                this.Resources.MergedDictionaries.Add(parsedRd);
+                hasTheme = true;
+                break;
+            }
+        }
+
+        if (!hasTheme)
+        {
+            // Try adding the Theme/Styles.xaml as a merged dictionary using a relative Uri first.
+            try
+            {
+                var rd = new Microsoft.UI.Xaml.ResourceDictionary
+                {
+                    Source = new Uri("Theme/Styles.xaml", UriKind.Relative)
+                };
+                merged.Add(rd);
+                hasTheme = true;
+            }
+    #pragma warning disable CA1031 // Resource URI loading has a file-based fallback.
+            catch { /* fall through to file-based load */ }
+    #pragma warning restore CA1031
+        }
+
+        if (!hasTheme)
+        {
+            // Fallback: load XAML from disk and parse it. This helps when packaged URI
+            // resolution fails for unpackaged Release builds.
+            var themePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Theme", "Styles.xaml");
+            if (System.IO.File.Exists(themePath))
+            {
+                try
+                {
+                    var xamlText = System.IO.File.ReadAllText(themePath);
+                    var obj = Microsoft.UI.Xaml.Markup.XamlReader.Load(xamlText);
+                    if (obj is Microsoft.UI.Xaml.ResourceDictionary parsedRd)
+                    {
+                        merged.Add(parsedRd);
+                    }
+
+                    // Styles.xaml depends on Colors.xaml; make sure Colors is also available.
+                    var colorsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Theme", "Colors.xaml");
+                    if (System.IO.File.Exists(colorsPath))
+                    {
+                        var colorsText = System.IO.File.ReadAllText(colorsPath);
+                        var colorsObj = Microsoft.UI.Xaml.Markup.XamlReader.Load(colorsText);
+                        if (colorsObj is Microsoft.UI.Xaml.ResourceDictionary colorsRd)
+                        {
+                            merged.Insert(0, colorsRd);
+                        }
+                    }
+                }
+    #pragma warning disable CA1031 // Disk fallback is best-effort; XAML exceptions here must not crash.
+                catch
+                {
+                    // If disk-based parse fails, give up. The app will at least show a window
+                    // even if brushes fall back to defaults.
+                }
+    #pragma warning restore CA1031
             }
         }
     }

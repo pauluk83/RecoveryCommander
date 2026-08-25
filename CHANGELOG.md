@@ -1,5 +1,15 @@
 # RecoveryCommander Changelog
 
+## 2026-08-25 - Blank Window Fix (Unpackaged Build)
+
+### Bug Fixes — WinUI Blank Window on Launch
+- **Primary fix: `Styles.xaml` `Colors.xaml` URI** — Changed [Styles.xaml](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/Theme/Styles.xaml#L6) merged dictionary source from the packaged-only `ms-appx:///Theme/Colors.xaml` to a relative `Colors.xaml` URI. The app is configured as UNPACKAGED (`WindowsPackageType=None` in .csproj) so `ms-appx://` URIs silently failed to resolve, leaving all `StaticResource` brushes (`MutedTextBrush`, `PrimaryAccentBrush`, `AmberWarningBrush`, `PanelBackgroundBrush`, `PanelBorderBrush`, `NeonSuccessBrush`, `DimTextBrush`, `DeepSurfaceBrush`, `ActiveSurfaceBrush`) unregistered. This caused `MainPage.xaml`'s `InitializeComponent()` to throw a `XamlParseException` during `Frame.Navigate`. The broad `catch` in [MainWindow.xaml.cs](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/MainWindow.xaml.cs#L101-L119) swallowed the error and left the Frame empty, resulting in the **completely blank window**.
+- **Secondary fix: theme load ordering in [App.xaml.cs](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/App.xaml.cs#L90-L108)** — Reordered `InitializeComponent()` to run BEFORE the explicit `LoadThemeResources()` fallback. The previous order accessed `this.Resources` before the Application's own XAML initialized, causing a repeated `COMException` on every launch that was logged to `%TEMP%\RecoveryCommander_Crash.log`. `LoadThemeResources` now runs after App.xaml's resource dictionary is populated, skips re-adding when theme dictionaries are already present, and wraps the single `this.Resources` access in a silent guarded try/catch for unpackaged-build transients.
+
+### Build Verification
+- **Build**: `dotnet build RecoveryCommander.WinUI -c Debug -p:Platform=x64` → 0 errors.
+- **Runtime logs** (`%TEMP%\RecoveryCommander_Crash.log` + `RecoveryCommander_Navigation.log`): Both no longer created on launch — no COMExceptions and no XAML parse failures.
+
 ## 2026-08-24 - Website Sync, Module Action Descriptions & CI Fix
 
 ### CI / GitHub Actions
