@@ -16,6 +16,8 @@
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <SelfContainedResourceLanguages>en-US</SelfContainedResourceLanguages>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <GenerateLibraryLayout>true</GenerateLibraryLayout>
+    <GenerateProjectPriFile>true</GenerateProjectPriFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -122,14 +124,20 @@
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">False</PublishTrimmed>
   </PropertyGroup>
 
-  <!-- Copy dynamic modules and Assets folder to the publish directory -->
+  <!-- Copy dynamic modules, Assets folder, Theme folder, and PRI files to the publish directory -->
   <Target Name="CopyRequiredDependenciesToPublish" AfterTargets="Publish">
     <ItemGroup>
       <ModuleFiles Include="$(TargetDir)*Module.dll" />
       <ModuleFiles Include="$(TargetDir)*Module.pdb" Condition="Exists('$(TargetDir)*Module.pdb')" />
       <AssetFiles Include="$(TargetDir)Assets\**\*" />
+      <ThemeFiles Include="$(TargetDir)Theme\**\*" />
+      <PriFiles Include="$(TargetDir)*.pri" />
     </ItemGroup>
     <Copy SourceFiles="@(ModuleFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(AssetFiles)" DestinationFiles="@(AssetFiles->'$(PublishDir)Assets\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ThemeFiles)" DestinationFiles="@(ThemeFiles->'$(PublishDir)Theme\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(PriFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <!-- Rename RecoveryCommander.WinUI.pri to RecoveryCommander.pri for unpackaged apps -->
+    <Move SourceFiles="$(PublishDir)RecoveryCommander.WinUI.pri" DestinationFiles="$(PublishDir)RecoveryCommander.pri" Condition="Exists('$(PublishDir)RecoveryCommander.WinUI.pri')" />
   </Target>
 </Project>

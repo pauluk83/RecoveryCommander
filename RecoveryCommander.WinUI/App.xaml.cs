@@ -152,91 +152,158 @@ public partial class App : Application
 
     private void LoadThemeResources()
     {
-        // Guard: in some unpackaged builds, accessing this.Resources immediately after
-        // InitializeComponent can transiently throw a COMException. If App.xaml's
-        // <ResourceDictionary Source="Theme/Styles.xaml" /> loaded (the normal path),
-        // StaticResource lookups are already satisfied and we can safely no-op here.
         Microsoft.UI.Xaml.ResourceDictionary? appResources;
         try
         {
             appResources = this.Resources;
         }
-#pragma warning disable CA1031 // Any failure here is best-effort / no-op; don't pollute logs.
-        catch
+        catch (Exception ex)
         {
+            // This can happen if called from constructor immediately after InitializeComponent
+            // in Release publish builds (WinUI hydration race). Log it; the OnLaunched
+            // hook will call LoadThemeResources() again BEFORE MainWindow construction,
+            // by which time this.Resources is always hydrated.
+            LogError("LoadThemeResources [dbg] get_Resources COMException — OnLaunched will retry", ex);
             return;
         }
-#pragma warning restore CA1031
 
-        // App.xaml's <ResourceDictionary Source="Theme/Styles.xaml" /> already loads Styles
-        // (and Colors via its MergedDictionaries) during InitializeComponent. Skip the
-        // redundant URI-based re-add when we detect a theme dictionary is present.
-        var merged = appResources.MergedDictionaries;
-        var hasTheme = false;
-        for (var i = 0; i < merged.Count; i++)
+        LoadThemeResourcesCore(appResources);
+    }
+
+    private static bool ProbeThemeLoaded(Microsoft.UI.Xaml.ResourceDictionary appResources)
+    {
+        // Probe for actual registered keys rather than trusting Source strings.
+        // This correctly catches the case where App.xaml's <ResourceDictionary Source="Theme/Styles.xaml"/>
+        // resolves Source at parse time but fails to actually populate its MergedDictionaries
+        // in unpackaged Release builds (ms-appx:/// resolution failure).
+        try
         {
-            var source = merged[i].Source?.ToString();
-            if (source != null && (source.Contains("Styles.xaml") || source.Contains("Colors.xaml")))
+            object _ = appResources["PrimaryAccentBrush"];
+            object __ = appResources["MutedTextBrush"];
+            return true;
+        }
+        catch { return false; }
+    }
+
+    private static bool MergeXamlFileFromDisk(Microsoft.UI.Xaml.ResourceDictionary appResources, string baseDir, string relPath)
+    {
+        var fullPath = System.IO.Path.Combine(baseDir, relPath);
+        if (!System.IO.File.Exists(fullPath))
+        {
+            LogError("LoadThemeResources [dbg] disk-load MISSING", new InvalidOperationException(fullPath));
+            return false;
+        }
+        try
+        {
+            var xaml = System.IO.File.ReadAllText(fullPath);
+
+            // Styles.xaml declares <ResourceDictionary Source="Colors.xaml"/> in its own
+            // MergedDictionaries. When loading via XamlReader.Load(string) with no BaseUri,
+            // XamlReader cannot resolve that relative URI and falls back to ms-resource://,
+            // which always fails in UNPACKAGED builds. Since we already load Colors.xaml
+            // BEFORE Styles (see LoadThemeResourcesCore), we can safely strip that
+            // inner reference from the Styles.xaml text before parsing.
+            var fileName = System.IO.Path.GetFileName(fullPath);
+            if (string.Equals(fileName, "Styles.xaml", System.StringComparison.OrdinalIgnoreCase))
             {
-                hasTheme = true;
+                xaml = System.Text.RegularExpressions.Regex.Replace(
+                    xaml,
+                    @"<ResourceDictionary\.MergedDictionaries>[\s\S]*?</ResourceDictionary\.MergedDictionaries>\s*",
+                    string.Empty,
+                    System.Text.RegularExpressions.RegexOptions.Multiline);
+                LogError("LoadThemeResources [dbg] styles-prep",
+                    new InvalidOperationException("Stripped Styles.xaml inner MergedDictionaries before XamlReader.Load"));
+            }
+
+            var obj = Microsoft.UI.Xaml.Markup.XamlReader.Load(xaml);
+            if (obj is Microsoft.UI.Xaml.ResourceDictionary rd)
+            {
+                appResources.MergedDictionaries.Insert(0, rd);
+                LogError("LoadThemeResources [dbg] disk-load OK", new InvalidOperationException($"{relPath} inserted, Keys={rd.Count}"));
+                return true;
+            }
+            LogError("LoadThemeResources [dbg] disk-load NOT-RD", new InvalidOperationException($"{relPath} -> {obj?.GetType().Name}"));
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LogError("LoadThemeResources [dbg] disk-load FAILED " + relPath, ex);
+            return false;
+        }
+    }
+
+    private static void LoadThemeResourcesCore(Microsoft.UI.Xaml.ResourceDictionary appResources)
+    {
+        #region debug-point theme-core-start
+        try
+        {
+            var merged = appResources.MergedDictionaries;
+            var state = $"Core BaseDir={AppContext.BaseDirectory}, MergedDictCount={merged.Count}";
+            for (var i = 0; i < merged.Count; i++)
+            {
+                var src = merged[i].Source?.ToString() ?? "(null)";
+                var dk = merged[i].Count.ToString();
+                state += $" | MD[{i}] Type={merged[i].GetType().Name} Source={src} Keys={dk}";
+            }
+            LogError("LoadThemeResources [dbg] core-state", new InvalidOperationException(state));
+            LogError("LoadThemeResources [dbg] core-keyprobe-PRE",
+                new InvalidOperationException($"PrimaryAccentBrush resolves = {ProbeThemeLoaded(appResources)}"));
+        }
+        catch (Exception preEx) { LogError("LoadThemeResources [dbg] pre-state probe FAILED", preEx); }
+        #endregion
+
+        // Step 0: Always ensure XamlControlsResources (default WinUI styles for Button,
+        // TextBlock, etc.) is present. App.xaml merges it but in Release publish builds,
+        // App.xaml's entire MergedDictionaries can be 0 entries (this.Resources hydration
+        // failure / ms-appx URI resolution failure). Without this, every standard control
+        // has no ControlTemplate -> XamlParseException at any page parse.
+        var needXamlControls = true;
+        var md0 = appResources.MergedDictionaries;
+        for (var i = 0; i < md0.Count; i++)
+        {
+            if (md0[i] is Microsoft.UI.Xaml.Controls.XamlControlsResources)
+            {
+                needXamlControls = false;
                 break;
             }
         }
-
-        if (!hasTheme)
+        if (needXamlControls)
         {
-            // Try adding the Theme/Styles.xaml as a merged dictionary using a relative Uri first.
             try
             {
-                var rd = new Microsoft.UI.Xaml.ResourceDictionary
-                {
-                    Source = new Uri("Theme/Styles.xaml", UriKind.Relative)
-                };
-                merged.Add(rd);
-                hasTheme = true;
+                md0.Insert(0, new Microsoft.UI.Xaml.Controls.XamlControlsResources());
+                LogError("LoadThemeResources [dbg] xaml-controls",
+                    new InvalidOperationException("Added XamlControlsResources explicitly via code"));
             }
-    #pragma warning disable CA1031 // Resource URI loading has a file-based fallback.
-            catch { /* fall through to file-based load */ }
-    #pragma warning restore CA1031
+            catch (Exception xcrEx) { LogError("LoadThemeResources [dbg] xaml-controls FAILED", xcrEx); }
         }
 
-        if (!hasTheme)
+        // KEY-BASED hasTheme detection: only skip if PrimaryAccentBrush + MutedTextBrush resolve.
+        if (ProbeThemeLoaded(appResources))
         {
-            // Fallback: load XAML from disk and parse it. This helps when packaged URI
-            // resolution fails for unpackaged Release builds.
-            var themePath = System.IO.Path.Combine(AppContext.BaseDirectory, "Theme", "Styles.xaml");
-            if (System.IO.File.Exists(themePath))
-            {
-                try
-                {
-                    var xamlText = System.IO.File.ReadAllText(themePath);
-                    var obj = Microsoft.UI.Xaml.Markup.XamlReader.Load(xamlText);
-                    if (obj is Microsoft.UI.Xaml.ResourceDictionary parsedRd)
-                    {
-                        merged.Add(parsedRd);
-                    }
-
-                    // Styles.xaml depends on Colors.xaml; make sure Colors is also available.
-                    var colorsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Theme", "Colors.xaml");
-                    if (System.IO.File.Exists(colorsPath))
-                    {
-                        var colorsText = System.IO.File.ReadAllText(colorsPath);
-                        var colorsObj = Microsoft.UI.Xaml.Markup.XamlReader.Load(colorsText);
-                        if (colorsObj is Microsoft.UI.Xaml.ResourceDictionary colorsRd)
-                        {
-                            merged.Insert(0, colorsRd);
-                        }
-                    }
-                }
-    #pragma warning disable CA1031 // Disk fallback is best-effort; XAML exceptions here must not crash.
-                catch
-                {
-                    // If disk-based parse fails, give up. The app will at least show a window
-                    // even if brushes fall back to defaults.
-                }
-    #pragma warning restore CA1031
-            }
+            LogError("LoadThemeResources [dbg] SKIP — key-probe already TRUE", new InvalidOperationException("no-op"));
+            return;
         }
+
+        var baseDir = AppContext.BaseDirectory;
+
+        // Always try disk-load of Colors FIRST (dependency order: Styles depends on Colors).
+        var colorsOk = MergeXamlFileFromDisk(appResources, baseDir, System.IO.Path.Combine("Theme", "Colors.xaml"));
+
+        // Then Styles.
+        var stylesOk = MergeXamlFileFromDisk(appResources, baseDir, System.IO.Path.Combine("Theme", "Styles.xaml"));
+
+        // If Styles loaded successfully, re-merge its Colors dependency once more because
+        // compiled merged dictionaries can load out of order.
+        if (stylesOk && !colorsOk)
+        {
+            MergeXamlFileFromDisk(appResources, baseDir, System.IO.Path.Combine("Theme", "Colors.xaml"));
+        }
+
+        // Final probe
+        var finalProbe = ProbeThemeLoaded(appResources);
+        LogError("LoadThemeResources [dbg] core-keyprobe-POST",
+            new InvalidOperationException($"PrimaryAccentBrush resolves = {finalProbe}. ColorsOk={colorsOk}, StylesOk={stylesOk}. Final MD Count={appResources.MergedDictionaries.Count}"));
     }
 
     private static bool IsRunningAsAdministrator()
@@ -344,6 +411,22 @@ public partial class App : Application
     {
         try
         {
+            // CRITICAL: Load (or retry loading) theme resources BEFORE MainWindow construction.
+            // In Release publish builds, constructor-time this.Resources can throw COMException;
+            // by OnLaunched time, it is always hydrated. This MUST run before Frame.Navigate
+            // constructs MainPage, because MainPage.InitializeComponent() resolves every
+            // StaticResource brush and failing to resolve throws XamlParseException.
+            try
+            {
+                LoadThemeResources();
+            }
+#pragma warning disable CA1031 // Theme loading is best-effort; never let it crash launch.
+            catch (Exception ex)
+            {
+                LogError("OnLaunched.LoadThemeResources", ex);
+            }
+#pragma warning restore CA1031
+
             _window = new MainWindow();
             _dialogService = new DialogService(_window);
             _window.Activate();

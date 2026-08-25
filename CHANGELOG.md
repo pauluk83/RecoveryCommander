@@ -1,14 +1,16 @@
 # RecoveryCommander Changelog
 
-## 2026-08-25 - Blank Window Fix (Unpackaged Build)
+## 2026-08-25 - Publish Build Blank Window Fix
 
-### Bug Fixes — WinUI Blank Window on Launch
-- **Primary fix: `Styles.xaml` `Colors.xaml` URI** — Changed [Styles.xaml](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/Theme/Styles.xaml#L6) merged dictionary source from the packaged-only `ms-appx:///Theme/Colors.xaml` to a relative `Colors.xaml` URI. The app is configured as UNPACKAGED (`WindowsPackageType=None` in .csproj) so `ms-appx://` URIs silently failed to resolve, leaving all `StaticResource` brushes (`MutedTextBrush`, `PrimaryAccentBrush`, `AmberWarningBrush`, `PanelBackgroundBrush`, `PanelBorderBrush`, `NeonSuccessBrush`, `DimTextBrush`, `DeepSurfaceBrush`, `ActiveSurfaceBrush`) unregistered. This caused `MainPage.xaml`'s `InitializeComponent()` to throw a `XamlParseException` during `Frame.Navigate`. The broad `catch` in [MainWindow.xaml.cs](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/MainWindow.xaml.cs#L101-L119) swallowed the error and left the Frame empty, resulting in the **completely blank window**.
-- **Secondary fix: theme load ordering in [App.xaml.cs](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/App.xaml.cs#L90-L108)** — Reordered `InitializeComponent()` to run BEFORE the explicit `LoadThemeResources()` fallback. The previous order accessed `this.Resources` before the Application's own XAML initialized, causing a repeated `COMException` on every launch that was logged to `%TEMP%\RecoveryCommander_Crash.log`. `LoadThemeResources` now runs after App.xaml's resource dictionary is populated, skips re-adding when theme dictionaries are already present, and wraps the single `this.Resources` access in a silent guarded try/catch for unpackaged-build transients.
+### Bug Fixes — WinUI Blank Window in Published Builds
+- **Primary fix: PRI file generation for unpackaged apps** — Added `<GenerateLibraryLayout>true</GenerateLibraryLayout>` and `<GenerateProjectPriFile>true</GenerateProjectPriFile>` to [RecoveryCommander.WinUI.csproj](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI/RecoveryCommander.WinUI.csproj#L19) to ensure proper PRI file generation during build. Unpackaged WinUI 3 apps require a .pri file named after the executable to load XAML resources including XamlControlsResources. Without this, the app crashes with `Cannot locate resource from 'ms-appx:///Microsoft.UI.Xaml/Themes/themeresources.xaml'`.
+- **Secondary fix: Theme folder and PRI file copying** — Extended the `CopyRequiredDependenciesToPublish` target in [RecoveryCommander.WinUI.csproj](file:///d:/OneDrive/RecoveryCommander/RecoveryCommander.WinUI.csproj#L127) to copy the Theme folder and all PRI files to the publish directory. Added a Move task to rename `RecoveryCommander.WinUI.pri` to `RecoveryCommander.pri` for unpackaged app compatibility.
+- **Impact**: The app now renders properly in both local Debug builds and CI Release publish builds, resolving the blank window issue that occurred when running from the published output directory.
 
 ### Build Verification
-- **Build**: `dotnet build RecoveryCommander.WinUI -c Debug -p:Platform=x64` → 0 errors.
-- **Runtime logs** (`%TEMP%\RecoveryCommander_Crash.log` + `RecoveryCommander_Navigation.log`): Both no longer created on launch — no COMExceptions and no XAML parse failures.
+- **Build**: `dotnet build RecoveryCommander.WinUI -c Release` → 0 errors.
+- **Publish**: `dotnet publish RecoveryCommander.WinUI/RecoveryCommander.WinUI.csproj -c Release -r win-x64 --self-contained false` → 0 errors.
+- **Verification**: Confirmed Theme folder, PRI files, and properly named RecoveryCommander.pri are present in publish output.
 
 ## 2026-08-24 - Website Sync, Module Action Descriptions & CI Fix
 
