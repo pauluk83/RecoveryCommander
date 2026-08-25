@@ -122,7 +122,13 @@
                                 <GridView Grid.Row="1" ItemsSource="{Binding SelectedModule.Actions}" SelectionMode="None" IsItemClickEnabled="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="0">
                                     <GridView.ItemTemplate>
                                         <DataTemplate>
-                                            <Button Content="{Binding DisplayName, FallbackValue='{Binding Name}'}" Style="{StaticResource NeonButtonStyle}" Command="{Binding ElementName=RootGrid, Path=DataContext.RunActionCommand}" CommandParameter="{Binding}" Width="210" Height="58" Margin="5"/>
+                                            <Button Content="{Binding DisplayName, FallbackValue='{Binding Name}'}" Style="{StaticResource NeonButtonStyle}" Command="{Binding ElementName=RootGrid, Path=DataContext.RunActionCommand}" CommandParameter="{Binding}" MinWidth="210" MinHeight="58" Margin="5">
+                                                <Button.ContentTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center"/>
+                                                    </DataTemplate>
+                                                </Button.ContentTemplate>
+                                            </Button>
                                         </DataTemplate>
                                     </GridView.ItemTemplate>
                                 </GridView>

@@ -4,7 +4,6 @@ using Microsoft.UI.Windowing;
 using Windows.UI;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -58,6 +57,7 @@ public sealed partial class MainWindow : Window
 
             Content = rootGrid;
         }
+    #pragma warning disable CA1031 // Startup logging must capture any construction failure before rethrowing.
         catch (Exception ex)
         {
             try
@@ -72,6 +72,7 @@ public sealed partial class MainWindow : Window
             }
             throw;
         }
+#pragma warning restore CA1031
 
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(appTitleBar);

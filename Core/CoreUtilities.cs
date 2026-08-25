@@ -40,12 +40,22 @@ namespace RecoveryCommander.Core
         #region Application Information
         public static string GetApplicationVersion()
         {
-            return Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+            var assembly = Assembly.GetExecutingAssembly();
+            var informationalVersion = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                .InformationalVersion;
+
+            if (!string.IsNullOrWhiteSpace(informationalVersion))
+            {
+                return informationalVersion.Split('+', 2)[0];
+            }
+
+            return assembly.GetName().Version?.ToString() ?? AppMetadata.Version;
         }
 
         public static string GetApplicationName()
         {
-            return Assembly.GetExecutingAssembly().GetName().Name ?? "RecoveryCommander";
+            return AppMetadata.ProductName;
         }
 
         public static string GetBuildDate()

@@ -94,10 +94,12 @@ public partial class App : Application
                 {
                     LoadThemeResources();
                 }
+#pragma warning disable CA1031 // Theme loading has a file-based fallback.
                 catch (Exception ex)
                 {
                     LogError("LoadThemeResources", ex);
                 }
+#pragma warning restore CA1031
 
                 this.InitializeComponent();
             }
@@ -157,7 +159,9 @@ public partial class App : Application
             this.Resources.MergedDictionaries.Add(rd);
             return;
         }
+    #pragma warning disable CA1031 // Resource URI loading has a file-based fallback.
         catch { /* fall through to file-based load */ }
+    #pragma warning restore CA1031
 
         // Fallback: load XAML from disk and parse it. This helps when ms-appx URI resolution
         // fails for unpackaged Release builds.

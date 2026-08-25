@@ -1,5 +1,45 @@
 # RecoveryCommander Changelog
 
+## 2026-08-24 - Website Sync, Module Action Descriptions & CI Fix
+
+### CI / GitHub Actions
+- **CodeQL workflow fix** — Added `--runtime win-x64` to the `dotnet restore` step in `codeql.yml`, matching the main build workflow. This resolves the "runtime pack not downloaded" failure that caused CodeQL analysis to exit with code 1.
+
+### Website
+- **Version bump** — Updated website to v1.2.9: hero badge, download link, `softwareVersion` in JSON-LD schema, and script cache-buster all updated.
+- **Module data sync** — Rewrote all `moduleData` feature entries in `script.js` so every action string exactly matches the `Name — DisplayName` pair declared in the corresponding C# module file (REAgentc, SFC, Diagnostics, Utilities, System Prep, Malware Removal, Driver Manager, Cloud Recovery, DISM).
+- **Audit headers updated** — Added today's changelog entry to `index.html` and `script.js` audit headers.
+
+### Download Catalog
+- **Office 2024 key rotation (×2)** — `Utilities.Office2024` in `DownloadCatalog.cs` updated twice today due to back-to-back Dropbox share-key changes:
+  - Rotation 1: `st=wgxzze0y` / SHA `1C08E172...C209F53`
+  - Rotation 2: `st=1w0rjtex` / SHA `ECF23B7E...053C83` *(current)*
+
+### UI / XAML
+- **Dynamic module action buttons** — Changed action button sizing in `MainPage.xaml` from fixed `Width="210" Height="58"` to `MinWidth="210" MinHeight="58"` with a `TextWrapping="Wrap"` `ContentTemplate`. Long action names now wrap onto a second line instead of being cut off.
+
+
+
+### Versioning & Dependencies
+- **Application version** — Updated the app, Core, and Contracts metadata to build `1.2.9`.
+- **Dependency maintenance** — Updated `System.Management.Automation` to `7.6.5` and `System.Diagnostics.PerformanceCounter` to `10.0.1`.
+
+## 2026-08-21 - EaseUS Partition Master Update
+
+### Utilities
+- **EaseUS Partition Master 20.8.0** — Updated the download catalog, Utilities module label, and website listing to version 20.8.0 with the new Dropbox download source and SHA-256 integrity pin.
+
+## 2026-08-17 - Version & Website Sync
+
+### Versioning
+- **Unified release metadata** — Standardized the app version to `1.2.8` across the main project, core utilities, and the website release references.
+- **Single-source app metadata** — Added `Core/AppMetadata.cs` so the product name, version, release tag, and menu names are declared once for the app-side reporting.
+
+### Website & UI parity
+- **Menu sync** — Updated the website’s module list to match the app’s actual menu structure: DISM, REAgentc, System File Checker, Diagnostics, Utilities, System Prep, Malware Removal, Driver Manager, and Cloud Recovery.
+- **Tool sync** — Aligned the website’s sidebar/tool descriptions with the app’s actual tools: Restore Point Manager, Startup Manager, Network Repair & Optimization, Media Tools, and Module Builder.
+- **Catalog alignment** — Corrected utility/version labels to match the app’s installed catalog entries and release metadata.
+
 ## 2026-08-16 - Dependabot merges & CI fixes
 
 ### Dependency updates & CI

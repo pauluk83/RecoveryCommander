@@ -40,7 +40,7 @@ jobs:
           queries: security-and-quality
 
       - name: Restore
-        run: dotnet restore RecoveryCommander.sln
+        run: dotnet restore RecoveryCommander.sln --runtime win-x64
 
       - name: Build
         run: dotnet build RecoveryCommander.sln --configuration Release --no-restore

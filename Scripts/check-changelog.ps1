@@ -21,8 +21,7 @@ if (-not (Test-Path $changelogPath)) {
 $gitStatus = git -C $ProjectRoot status --porcelain 2>$null
 
 if ($gitStatus) {
-    Write-Host "WARNING: Uncommitted changes detected." -ForegroundColor Yellow
-    Write-Host "Please ensure CHANGELOG.md is updated before building." -ForegroundColor Yellow
+    Write-Host "INFO: Uncommitted changes detected; changelog verification will continue." -ForegroundColor Cyan
     
     # Check if CHANGELOG.md is among the modified files
     $changelogModified = $gitStatus | Select-String "CHANGELOG.md"
