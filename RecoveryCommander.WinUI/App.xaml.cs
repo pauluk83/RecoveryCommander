@@ -180,8 +180,8 @@ public partial class App : Application
         // in unpackaged Release builds (ms-appx:/// resolution failure).
         try
         {
-            object _ = appResources["PrimaryAccentBrush"];
-            object __ = appResources["MutedTextBrush"];
+            _ = appResources["PrimaryAccentBrush"];
+            _ = appResources["MutedTextBrush"];
             return true;
         }
 #pragma warning disable CA1031 // Resource key probing must return false on any failure — broad catch is intentional here
