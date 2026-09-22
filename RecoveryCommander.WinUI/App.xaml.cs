@@ -157,9 +157,7 @@ public partial class App : Application
         {
             appResources = this.Resources;
         }
-#pragma warning disable CA1031 // Resource access can transiently fail in unpackaged builds — broad catch is intentional here
-        catch (Exception ex)
-#pragma warning restore CA1031
+        catch (COMException ex)
         {
             // This can happen if called from constructor immediately after InitializeComponent
             // in Release publish builds (WinUI hydration race). Log it; the OnLaunched
